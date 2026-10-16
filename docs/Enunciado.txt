@@ -1,0 +1,20 @@
+El proyecto de curso consiste en instalar una red 5G operativa usando SDR, con srsRAN como acceso radio y el core de red 4G/5G con servicios tipo NFV. Las opciones a instalar son:
+
+SD-Core: https://opennetworking.org/sd-core/
+
+Open 5GS: https://open5gs.org/
+
+La tarjeta SIM se puede programar usando el software https://gitea.osmocom.org/laforge/cyberflex-shell/  o el  mas comun: https://smacarte.com/wp/grsimwrite_download/ 
+
+El proyecto se divide en tres fases, que se detallan a continuación: 
+
+Fase 1: Planificación, Diseño y Simulación
+Enfoque: Arquitectura lógica, protocolos y viabilidad.
+
+Fecha de sustentación 21 de abril
+
+Fase 2: Implementación Core y Red de Acceso (Zero-RF)
+Enfoque: Despliegue de software y mensajería NAS/AS.
+
+Fase 3: Integración SDR y Terminal Comercial
+Enfoque: Transmisión OTA, Hardware y Validación de Usuario.

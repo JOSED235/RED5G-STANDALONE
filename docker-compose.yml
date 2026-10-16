@@ -1,0 +1,94 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: red5g-mongodb
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=open5gs
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/open5gs/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      red5g_net:
+        ipv4_address: 172.20.0.2
+
+  open5gs:
+    build:
+      context: ./docker/open5gs
+      dockerfile: Dockerfile
+    image: red5g-open5gs:latest
+    container_name: red5g-open5gs
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv4.ip_forward=1
+    ports:
+      - "9999:9999"        # Open5GS WebUI (http://localhost:9999)
+      - "38412:38412/sctp" # N2 (NGAP)
+      - "2152:2152/udp"    # N3 (GTP-U)
+      - "8805:8805/udp"    # N4 (PFCP)
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_HOST=172.20.0.2
+    networks:
+      red5g_net:
+        ipv4_address: 172.20.0.3
+
+  gnb:
+    build:
+      context: ./docker/gnb
+      dockerfile: Dockerfile
+    image: red5g-gnb:latest
+    container_name: red5g-gnb
+    restart: unless-stopped
+    cap_add:
+      - SYS_NICE
+    ports:
+      - "2000:2000/tcp" # ZMQ TX
+      - "2001:2001/tcp" # ZMQ RX
+    depends_on:
+      - open5gs
+    environment:
+      - AMF_IP=172.20.0.3
+      - AMF_PORT=38412
+    networks:
+      red5g_net:
+        ipv4_address: 172.20.0.4
+
+  ue:
+    build:
+      context: ./docker/ue
+      dockerfile: Dockerfile
+    image: red5g-ue:latest
+    container_name: red5g-ue
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    depends_on:
+      - gnb
+    environment:
+      - GNB_IP=172.20.0.4
+      - GNB_PORT=2000
+    networks:
+      red5g_net:
+        ipv4_address: 172.20.0.5
+
+networks:
+  red5g_net:
+    name: red5g_net
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  mongodb_data:

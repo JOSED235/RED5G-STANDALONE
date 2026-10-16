@@ -1,0 +1,21 @@
+logger:
+  file: /var/log/open5gs/upf.log
+  level: info
+
+upf:
+  pfcp:
+    server:
+      - address: 127.0.0.7
+        port: 8805
+    client:
+      smf:
+        - address: 127.0.0.4
+          port: 8805
+  gtpu:
+    server:
+      - address: 0.0.0.0
+        port: 2152
+  session:
+    - subnet: 10.45.0.0/16
+      gateway: 10.45.0.1
+      dev: ogstun

@@ -1,0 +1,1325 @@
+% =====================================================================
+% Informe Fase 1 - Proyecto 5G (srsRAN + Open5GS + SDR)
+% Autor: Jose David Rodriguez Pinilla (A00407151)
+% Curso: Sistemas y Comunicaciones 2 - Universidad Icesi
+% Docente: Andres Navarro Cadavid, PhD
+% Plantilla: IEEEtran (conference). Compilar con pdfLaTeX en Overleaf.
+% Las cifras de la seccion de simulacion provienen de la ejecucion real
+% del banco ZMQ (14-15 de octubre de 2026).
+% =====================================================================
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+\usepackage{listings}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125em X}}
+
+\def\IEEEkeywordsname{Palabras clave}
+\setlength{\tabcolsep}{3.5pt}
+
+\lstset{
+  basicstyle=\ttfamily\fontsize{6.5}{7.5}\selectfont,
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  xleftmargin=2pt,
+  xrightmargin=2pt,
+  aboveskip=4pt,
+  belowskip=4pt
+}
+
+\begin{document}
+
+\title{Planificación, Diseño y Simulación de una Red 5G Standalone con srsRAN y Open5GS sobre Radios Definidos por Software}
+
+\author{
+\IEEEauthorblockN{Jose David Rodríguez Pinilla\IEEEauthorrefmark{1}}
+\IEEEauthorblockA{\IEEEauthorrefmark{1}Universidad Icesi, Cali, Colombia\\
+Código: A00407151 \uqad Correo: jdrpjd@gmail.com\\
+Curso: Sistemas y Comunicaciones 2 --- Docente: Andrés Navarro Cadavid, PhD}
+}
+
+\maketitle
+
+\begin{abstract}
+Este informe documenta la Fase 1 (Planificación, Diseño y Simulación) del proyecto de curso que consiste en desplegar una red 5G Standalone (SA) operativa mediante radios definidos por software (SDR), con \textit{srsRAN Project} como red de acceso y \textit{Open5GS} como núcleo 5G (5GC) con servicios virtualizados tipo NFV. Se justifica la selección tecnológica frente a SD-Core; se define la arquitectura lógica con las interfaces N1, N2, N3, N4 y N6; se modela la codificación de canal (LDPC y Polar) y la selección del MCS a partir de la relación señal-ruido; y se implementa y mide un banco de simulación sin radiofrecuencia basado en ZeroMQ (ZMQ). Con 20~MHz, 15~kHz de separación entre subportadoras y una capa espacial, el modelo arroja un caudal máximo teórico en enlace descendente de 85.1~Mbps con 64-QAM y 113.4~Mbps con 256-QAM. En la simulación, el UE completó el registro 5G-AKA y la sesión PDU en unos 0.51~s, obtuvo la dirección 10.45.0.2 y alcanzó un RTT medio de 32.7~ms hacia el núcleo (0\,\% de pérdidas), con un caudal TCP de 49.5~Mbps en descendente (58\,\% del máximo teórico) y 10.6~Mbps en ascendente (12\,\%). La captura en N3 indica que el núcleo aporta del orden de 0.1~ms, de modo que la latencia se origina en la ruta radio emulada; la brecha de caudal no se explica por saturación global de la CPU (quedó libre el 46\,\%), y sus causas se plantean como hipótesis con las pruebas que las discriminan.
+Se documentan además diez hallazgos de configuración (siete fallas corregidas, dos precauciones y una pendiente: la ruta por defecto del UE hacia Internet), un presupuesto de enlace para la Fase 3 y el marco de permisos de MinTIC para pruebas de espectro.
+\end{abstract}
+
+\begin{IEEEkeywords}
+5G NR, Standalone, Open5GS, srsRAN, SDR, ZeroMQ, LDPC, Polar, NFV, regulación del espectro.
+\end{IEEEkeywords}
+
+%=====================================================================
+\section{Introducción}
+\label{sec:intro}
+
+\subsection{Contexto y motivación}
+Las redes móviles de quinta generación (5G) introducen una arquitectura de núcleo basada en servicios (SBA, \textit{Service-Based Architecture}) y una interfaz radio nueva (NR, \textit{New Radio}) pensadas para escenarios de banda ancha móvil, comunicaciones de baja latencia y conectividad masiva \cite{itum2083,ts23501,dahlman}. Históricamente, desplegar una red de este tipo exigía equipos propietarios de alto costo. Hoy, la combinación de núcleos de código abierto (Open5GS, SD-Core), pilas de acceso abiertas (srsRAN Project) y radios definidos por software (SDR) permite construir un sistema 5G funcional y reproducible con hardware de laboratorio \cite{srsran,open5gs,sdcore}.
+
+\subsection{Objetivos}
+El proyecto de curso consiste en instalar una red 5G operativa con SDR, usando srsRAN como acceso radio y un núcleo 4G/5G con servicios tipo NFV (Open5GS o SD-Core), y programar la tarjeta SIM con \textit{grsimwrite} o \textit{cyberflex-shell} \cite{grsim,cyberflex}. El trabajo se divide en tres fases: (1) planificación, diseño y simulación; (2) implementación del núcleo y de la red de acceso sin radiofrecuencia (Zero-RF); y (3) integración con SDR y terminal comercial.
+
+El \textbf{objetivo general de la Fase 1} es validar la arquitectura, la selección de tecnologías y el modelado inicial de la red antes de su despliegue. Los objetivos específicos son:
+\begin{enumerate}
+  \item Seleccionar y justificar el núcleo, el SDR, la herramienta de programación de SIM y el entorno de simulación.
+  \item Definir la arquitectura lógica srsRAN--Open5GS con todas sus interfaces y flujos de señalización.
+  \item Modelar matemáticamente la codificación de canal y la selección de MCS según las condiciones del canal.
+  \item Implementar y ejecutar la simulación ZMQ, midiendo rendimiento y latencia y comparándolos con el modelo teórico.
+  \item Analizar la normativa de espectro, los riesgos de seguridad y privacidad y el impacto socio-técnico.
+\end{enumerate}
+
+\subsection{Alcance y trazabilidad con la rúbrica}
+La Fase 1 no incluye transmisión por aire; esta se aborda en la Fase 3. La Tabla~\ref{tab:trazabilidad} indica dónde se atiende cada criterio de evaluación de la rúbrica de la Fase 1.
+
+\begin{table}[!t]
+\caption{Trazabilidad entre la rúbrica de la Fase 1 y este informe}
+\label{tab:trazabilidad}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{2.5cm}p{4.7cm}p{0.8cm}}
+\toprule
+\textbf{Criterio} & \textbf{Evidencia incluida} & \textbf{Secc.} \\
+\midrule
+Arquitectura 5G (ABET 2) & Diagrama srsRAN--Open5GS; interfaces N1, N2, N3, N4, N6; roles gNB/núcleo; flujo de registro y sesión PDU; seguridad y SIM & \ref{sec:arq} \\
+Codificación y modelado (ABET 1) & LDPC y Polar con ejemplos numéricos, TBS y segmentación por MCS, tabla MCS--SNR, capacidad de Shannon, caudal teórico y contraste con lo medido & \ref{sec:cod} \\
+Simulación y factibilidad (ABET 1, 2) & Banco ZMQ ejecutado, señalización capturada, RTT, caudal y CPU medidos, descomposición de la latencia, hipótesis y pruebas que las discriminan, fallas halladas, presupuesto de enlace y factibilidad & \ref{sec:sim} \\
+Impacto y ética (ABET 4) & Espectro en Colombia, EMF, privacidad, ética profesional, impacto socio-técnico & \ref{sec:etica} \\
+Gestión técnica (soporte) & Bitácora de problemas y soluciones, decisiones de diseño, estado de avance y riesgos & \ref{sec:gestion} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Marco teórico}
+\label{sec:marco}
+
+\subsection{5G NR Standalone y arquitectura basada en servicios}
+En el modo Standalone, el gNB se conecta directamente al núcleo 5G (5GC) sin depender de un EPC 4G. El núcleo se organiza como un conjunto de funciones de red (NF) que exponen y consumen servicios mediante interfaces basadas en HTTP/2 (SBI) y se registran en la función NRF \cite{ts23501,ts23502}. Las funciones relevantes son: AMF (gestión de acceso y movilidad, terminación de NAS y de NGAP), SMF (gestión de sesiones y asignación de direcciones IP), UPF (plano de usuario, túneles GTP-U), AUSF y UDM/UDR (autenticación y datos de suscriptor), PCF (políticas), NSSF (selección de \textit{slices}) y NRF/SCP (descubrimiento y comunicación entre servicios).
+
+\subsection{NFV y despliegue nativo en la nube}
+La virtualización de funciones de red (NFV) desacopla el software de red del hardware dedicado: cada NF se ejecuta como servicio o contenedor sobre hardware genérico, con aislamiento, escalado y orquestación independientes. En este proyecto, cada NF de Open5GS corre como un servicio \texttt{systemd} con su propia dirección IP, y el UE simulado se aísla en un \textit{network namespace} de Linux, lo que reproduce a pequeña escala el modelo NFV.
+
+\subsection{SDR y srsRAN Project}
+Un SDR implementa en software gran parte del procesamiento de señal (modulación, codificación, planificación) y deja al hardware solo la conversión analógico-digital y la etapa de RF. srsRAN Project provee un gNB 5G NR de código abierto con arquitectura CU/DU, compatible con SDR de la familia USRP y con un modo de \textit{radio virtual} sobre ZeroMQ para pruebas sin RF \cite{srsran,zeromq}. Para el lado del terminal, srsRAN 4G (srsUE) soporta registro 5G SA y puede conectarse al gNB por ZMQ.
+
+\subsection{USIM y autenticación 5G-AKA}
+El terminal se autentica con la clave raíz $K$ almacenada en la USIM y en el UDM. El procedimiento 5G-AKA, basado en el algoritmo Milenage, produce vectores de autenticación y una jerarquía de claves para proteger NAS y AS \cite{ts33501,milenage}. Por ello la SIM debe programarse con el IMSI, $K$ y OPc del suscriptor y, en su caso, el PLMN de la red de prueba.
+
+%=====================================================================
+\section{Selección de tecnologías}
+\label{sec:tec}
+
+\subsection{Núcleo de red: Open5GS frente a SD-Core}
+La Tabla~\ref{tab:core} compara las dos opciones propuestas. Se selecciona \textbf{Open5GS} por (i) su despliegue ligero como servicios \texttt{systemd} en una sola máquina, (ii) su soporte simultáneo de EPC 4G y 5GC SA, cumpliendo el requisito de ``core 4G/5G'' (la instalación realizada incluye tanto MME/HSS como AMF/SMF), (iii) la existencia de guías de integración con srsRAN y (iv) su gestión sencilla de suscriptores mediante WebUI y MongoDB. SD-Core queda como alternativa si se requiere un despliegue sobre Kubernetes.
+
+\begin{table}[!t]
+\caption{Comparación de núcleos de código abierto (valores indicativos)}
+\label{tab:core}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.7cm}p{3.1cm}p{3.1cm}}
+\toprule
+\textbf{Criterio} & \textbf{Open5GS} & \textbf{SD-Core} \\
+\midrule
+Mantenimiento & Comunidad open source & ONF (proyecto Aether) \\
+Implementación & C, un proceso por NF & Go, microservicios \\
+Generaciones & EPC 4G y 5GC SA & 4G y 5G SA \\
+Despliegue & Paquetes apt/systemd, Docker & Contenedores sobre Kubernetes (Helm) \\
+Recursos & Bajos (una sola máquina) & Mayores (clúster K8s) \\
+Integración con srsRAN & Guía oficial de srsRAN & Documentación menos directa \\
+Suscriptores & WebUI + MongoDB & API/GUI propia \\
+Curva de aprendizaje & Moderada & Alta \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Radio: SDR y modo virtual ZMQ}
+La Tabla~\ref{tab:sdr} resume las opciones de radio. En las Fases 1 y 2 se usa el radio virtual ZMQ, que intercambia muestras I/Q por sockets TCP entre el gNB y el UE, eliminando la RF y permitiendo validar la pila completa. Para la Fase 3 se emplearán un SDR físico de la familia AD9361 (USRP B210 o bladeRF 2.0 micro, según la disponibilidad en el laboratorio) y, para el gNB, el controlador UHD en el caso de USRP.
+
+\begin{table}[!t]
+\caption{Opciones de radio para el proyecto}
+\label{tab:sdr}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.5cm}p{2.0cm}p{2.0cm}p{1.5cm}}
+\toprule
+\textbf{Criterio} & \textbf{USRP B210} & \textbf{bladeRF 2.0 micro} & \textbf{ZMQ} \\
+\midrule
+Transceptor & AD9361, 2$\times$2 & AD9361, 2$\times$2 & Virtual \\
+Frecuencia & 70~MHz--6~GHz & 47~MHz--6~GHz & N/A \\
+Interfaz & USB 3.0 & USB 3.0 & TCP local \\
+Fase de uso & 3 & 3 & 1 y 2 \\
+Riesgo RF & Sí & Sí & Ninguno \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Programación de la SIM}
+Se dispone de dos herramientas: \textit{grsimwrite}, el programa más común, que programa SIM/USIM programables mediante un lector PC/SC, y \textit{cyberflex-shell}, un intérprete en Python para tarjetas Cyberflex \cite{grsim,cyberflex}. Se adopta \textit{grsimwrite} como herramienta principal por su interfaz gráfica y su amplia documentación, y \textit{cyberflex-shell} como alternativa. La Tabla~\ref{tab:sim} lista los parámetros que deben coincidir entre la SIM y la base de datos del núcleo; en la simulación se usaron los mismos valores en el UE virtual (modo \texttt{soft}).
+
+\begin{table}[!t]
+\caption{Parámetros de la USIM (valores de prueba)}
+\label{tab:sim}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{2.0cm}p{5.8cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor / observación} \\
+\midrule
+PLMN (MCC/MNC) & 001/01 (PLMN de pruebas) \\
+IMSI & 001010123456780 (MCC 001 + MNC 01 + MSIN 0123456780) \\
+Clave $K$ & 128 bits, hexadecimal; clave de laboratorio, no se publica \\
+OPc & 128 bits; $\mathrm{OPc}=\mathrm{AES}_K(\mathrm{OP})\oplus\mathrm{OP}$; no se publica \\
+Algoritmo & Milenage \\
+DNN / APN & \texttt{internet} \\
+Clave ADM1 & Necesaria para escribir; el número de intentos es limitado y un error repetido puede bloquear la tarjeta \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Entorno de software empleado}
+La Tabla~\ref{tab:entorno} registra las versiones exactas con las que se obtuvieron los resultados (salida de los comandos de versión del propio equipo), lo que garantiza la reproducibilidad.
+
+\begin{table}[!t]
+\caption{Entorno de software y hardware utilizado}
+\label{tab:entorno}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{2.2cm}p{5.6cm}}
+\toprule
+\textbf{Componente} & \textbf{Versión / uso} \\
+\midrule
+Anfitrión & PC con Windows y WSL2 (Ubuntu 22.04.5 LTS, kernel 6.18.54.1-microsoft-standard-WSL2); 8 CPU lógicas y 7.8~GiB de RAM \\
+Núcleo 5GC & Open5GS 2.8.0 (paquetes PPA \texttt{jammy}) + MongoDB v8.0.34 \\
+gNB & srsRAN Project, rama \texttt{main}, \textit{commit} 4bf1543936 (16-feb-2026), versión 25.10.0, compilado con ZMQ \\
+UE simulado & srsRAN 4G (srsUE), \textit{commit} bef8680d5, ZMQ \\
+Captura y análisis & tcpdump, tshark/Wireshark (NGAP, NAS-5GS, PFCP, GTP) \\
+Medición & ping, iperf3 3.9, \texttt{top} \\
+Control de versiones & Git; \textit{scripts} de prueba y resultados archivados por carpeta con fecha \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Arquitectura 5G}
+\label{sec:arq}
+
+\subsection{Visión general}
+La Fig.~\ref{fig:arq} presenta la arquitectura lógica del sistema. El UE (srsUE o teléfono comercial con USIM) se comunica con el gNB srsRAN por la interfaz radio Uu. El gNB se conecta al núcleo Open5GS por N2 (plano de control) y N3 (plano de usuario). El mensaje NAS entre el UE y el AMF (N1) viaja de forma transparente a través del gNB.
+
+\begin{figure*}[!t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[font=\scriptsize,>=Stealth,
+  blk/.style={draw,rounded corners=2pt,align=center,minimum height=7mm,inner sep=2pt},
+  nf/.style={blk,fill=blue!8,minimum width=12mm},
+  ran/.style={blk,fill=green!12},
+  sbi/.style={orange!85!black}]
+\node[blk,fill=orange!15,minimum width=24mm,minimum height=17mm] (ue) at (0,0.6) {\textbf{UE}\\srsUE (ZMQ)\\o móvil comercial\\+ USIM};
+\node[ran,minimum width=33mm,minimum height=24mm] (gnb) at (5.3,0.6) {\textbf{gNB srsRAN Project}\\CU-CP: RRC, NGAP\\CU-UP: SDAP, PDCP, GTP-U\\DU: RLC, MAC, PHY};
+\node[nf] (nssf) at (9.8,3.2) {NSSF};
+\node[nf] (pcf) at (11.4,3.2) {PCF};
+\node[nf] (ausf) at (13.0,3.2) {AUSF};
+\node[nf] (udm) at (14.6,3.2) {UDM};
+\node[nf] (udr) at (16.2,3.2) {UDR};
+\node[nf,fill=yellow!20,minimum width=15mm] (mongo) at (16.2,4.7) {MongoDB};
+\node[nf] (amf) at (10.6,0.6) {\textbf{AMF}};
+\node[nf] (smf) at (13.4,0.6) {\textbf{SMF}};
+\node[nf] (nrf) at (16.0,0.6) {NRF/SCP};
+\node[nf] (upf) at (13.4,-1.8) {\textbf{UPF}};
+\node[blk,fill=gray!15] (dn) at (19.4,-1.8) {Internet\\(DN)};
+\draw[very thick,sbi] (9.4,2.0) -- (16.8,2.0);
+\foreach \n in {nssf,pcf,ausf,udm,udr} {\draw[sbi] (\n.south) -- ++(0,-0.85);}
+\foreach \n in {amf,smf,nrf} {\draw[sbi] (\n.north) -- ++(0,1.05);}
+\node[sbi,font=\tiny,fill=white,inner sep=1pt] at (12.1,2.0) {SBI (HTTP/2, :7777)};
+\draw (udr.north) -- (mongo.south);
+\begin{scope}[on background layer]
+\node[draw,dashed,rounded corners=3pt,fill=gray!6,inner sep=5mm,fit=(nssf)(mongo)(nrf)(upf)(amf),
+  label={[font=\scriptsize\bfseries]above:Open5GS 5GC (NFV: un servicio por función)}] (core) {};
+\end{scope}
+\draw[<->,thick] (ue.east) -- node[above,font=\tiny] {Uu (NR / ZMQ)} (gnb.west);
+\draw[<->,thick] (gnb.east) -- node[above,font=\tiny] {N2 (NGAP/SCTP :38412)} (amf.west);
+\draw[<->,thick] (gnb.south) |- node[above,pos=0.8,font=\tiny] {N3 (GTP-U/UDP :2152)} (upf.west);
+\draw[<->,thick] (smf.south) -- node[right,font=\tiny] {N4 (PFCP :8805)} (upf.north);
+\draw[<->,thick] (upf.east) -- node[above,font=\tiny] {N6 (ogstun, NAT)} (dn.west);
+\draw[<->,dashed,thick,blue!60!black] (ue.south) -- (0,-3.4) -- node[below,font=\tiny] {N1 (NAS-5GS), transparente al gNB} (10.6,-3.4) -- (amf.south);
+\end{tikzpicture}}
+\caption{Arquitectura lógica de la red 5G SA con srsRAN Project (acceso) y Open5GS (núcleo).}
+\label{fig:arq}
+\end{figure*}
+
+\subsection{Interfaces y protocolos}
+La Tabla~\ref{tab:interfaces} detalla las interfaces del sistema, sus extremos, protocolos y puertos. Las interfaces N2, N3 y N4 fueron verificadas en la captura de la simulación (Sección~\ref{sec:sim}).
+
+\begin{table*}[!t]
+\caption{Interfaces de la red 5G SA del proyecto}
+\label{tab:interfaces}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.4cm}p{2.6cm}p{5.8cm}p{1.5cm}p{4.5cm}}
+\toprule
+\textbf{Interfaz} & \textbf{Extremos} & \textbf{Protocolo / puerto} & \textbf{Plano} & \textbf{Referencia} \\
+\midrule
+Uu & UE -- gNB & NR (PHY/MAC/RLC/PDCP/SDAP/RRC); en simulación, ZMQ sobre TCP 2000/2001 & CP y UP & TS 38.300 \cite{ts38300} \\
+N1 & UE -- AMF & NAS-5GS, transportado sobre RRC y NGAP & CP & TS 24.501 \cite{ts24501} \\
+N2 & gNB -- AMF & NGAP sobre SCTP, puerto 38412 & CP & TS 38.413 \cite{ts38413}, RFC 4960 \cite{rfc4960} \\
+N3 & gNB -- UPF & GTP-U sobre UDP, puerto 2152 & UP & TS 29.281 \cite{ts29281} \\
+N4 & SMF -- UPF & PFCP sobre UDP, puerto 8805 & CP & TS 29.244 \cite{ts29244} \\
+N6 & UPF -- red de datos & IP (interfaz \texttt{ogstun}, NAT hacia Internet) & UP & TS 23.501 \cite{ts23501} \\
+N8, N10, N11, N12, N13 & AMF/SMF/AUSF -- UDM, AMF -- SMF, AMF -- AUSF & SBI: HTTP/2 + JSON, puerto 7777 (con NRF/SCP) & CP & TS 29.500 \cite{ts29500} \\
+F1, E1 & CU -- DU, CU-CP -- CU-UP & Internas al gNB de srsRAN, que corre como un solo proceso; no se capturan en la simulación & CP y UP & TS 38.401 \cite{ts38401} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Roles del gNB y del núcleo}
+Una confusión frecuente es atribuir al gNB funciones del núcleo o viceversa. La Tabla~\ref{tab:roles} separa las responsabilidades.
+
+\begin{table}[!t]
+\caption{Separación de roles entre gNB y núcleo}
+\label{tab:roles}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{2.6cm}p{5.2cm}}
+\toprule
+\textbf{Elemento} & \textbf{Responsabilidades} \\
+\midrule
+gNB & Procesamiento de la interfaz radio (PHY, MAC, RLC, PDCP, SDAP), planificación de recursos, RRC (conexión, reconfiguración, seguridad AS), cliente NGAP hacia el AMF, extremo del túnel GTP-U. \textbf{No} termina NAS ni asigna direcciones IP. \\
+AMF & Terminación de NAS (registro, movilidad, seguridad NAS), servidor NGAP, orquestación de la autenticación con AUSF/UDM, selección de SMF. \textbf{No} planifica radio. \\
+SMF & Gestión de sesiones PDU, asignación de IP del UE, control del UPF por N4. \\
+UPF & Reenvío del tráfico de usuario, túneles GTP-U, NAT hacia la red de datos. \\
+AUSF/UDM/UDR & Autenticación 5G-AKA y datos del suscriptor (en MongoDB). \\
+PCF/NSSF/NRF & Políticas, selección de \textit{slice} y descubrimiento de servicios. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\caption{Pila de protocolos del plano de control}
+\label{tab:pilas}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.8cm}p{2.9cm}p{2.9cm}}
+\toprule
+\textbf{Capa} & \textbf{UE -- gNB (Uu)} & \textbf{gNB -- AMF (N2)} \\
+\midrule
+Señalización NAS & NAS-5GS (extremo a extremo UE--AMF) & Transportado en NGAP \\
+Control & RRC & NGAP \\
+Transporte & PDCP, RLC, MAC, PHY & SCTP / IP \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Flujo de registro y sesión PDU}
+La Fig.~\ref{fig:seq} muestra la secuencia de mensajes. Los pasos 1 a 12 corresponden al registro del UE; los pasos 13 a 19, al establecimiento de la sesión PDU; y el paso 20, al tráfico de usuario. Los mensajes NAS (azul) viajan entre UE y AMF de forma transparente por el gNB. Esta secuencia coincide con la observada en la captura real (Tabla~\ref{tab:senal}).
+
+\begin{figure*}[!t]
+\centering
+\newcounter{seqn}
+\setcounter{seqn}{0}
+\newcommand{\seqmsg}[5][]{\stepcounter{seqn}%
+  \node[font=\tiny,circle,draw,inner sep=0.5pt] at (-1.3,#4) {\theseqn};%
+  \draw[->,#1] (#2,#4) -- node[above,inner sep=1pt,font=\tiny] {#5} (#3,#4);}
+\begin{tikzpicture}[x=1cm,y=-0.42cm,font=\scriptsize,>=Stealth,
+  lf/.style={draw,fill=gray!15,minimum width=16mm,minimum height=5mm,font=\scriptsize\bfseries},
+  nas/.style={blue!70!black},
+  sbi/.style={orange!85!black},
+  pfcp/.style={green!50!black,densely dashed},
+  data/.style={very thick,<->,red!60!black}]
+\node[lf] (ue) at (0,0) {UE};
+\node[lf] (gnb) at (3.2,0) {gNB};
+\node[lf] (amf) at (6.4,0) {AMF};
+\node[lf] (aus) at (9.6,0) {AUSF/UDM};
+\node[lf] (smf) at (12.4,0) {SMF};
+\node[lf] (upf) at (15.2,0) {UPF};
+\foreach \x in {0,3.2,6.4,9.6,12.4,15.2} {\draw[dotted,gray] (\x,0.9) -- (\x,24.2);}
+\seqmsg{0}{3.2}{1.6}{RRC Setup Request / Setup Complete}
+\seqmsg{3.2}{6.4}{2.7}{NGAP Initial UE Message [NAS Reg. Req.]}
+\seqmsg[sbi]{6.4}{9.6}{3.8}{Nausf/Nudm: Authenticate}
+\seqmsg[sbi,dashed]{9.6}{6.4}{4.9}{5G HE AV (RAND, AUTN, XRES*)}
+\seqmsg[nas]{6.4}{0}{6.0}{NAS Authentication Request (RAND, AUTN)}
+\seqmsg[nas]{0}{6.4}{7.1}{NAS Authentication Response (RES*)}
+\seqmsg[nas]{6.4}{0}{8.2}{NAS Security Mode Command}
+\seqmsg[nas]{0}{6.4}{9.3}{NAS Security Mode Complete}
+\seqmsg{6.4}{3.2}{10.4}{Initial Context Setup Req. ($K_{gNB}$)}
+\seqmsg{3.2}{0}{11.5}{RRC Security Mode Command/Complete}
+\seqmsg[nas]{6.4}{0}{12.6}{NAS Registration Accept}
+\seqmsg[nas]{0}{6.4}{13.7}{NAS Registration Complete}
+\seqmsg[nas]{0}{6.4}{14.8}{NAS PDU Session Establishment Req. (UL NAS Transport)}
+\seqmsg[sbi]{6.4}{12.4}{15.9}{Nsmf\_PDUSession\_CreateSMContext}
+\seqmsg[pfcp]{12.4}{15.2}{17.0}{N4 PFCP Session Estab.}
+\seqmsg{6.4}{3.2}{18.1}{PDU Sess. Res. Setup Req. (TEID)}
+\seqmsg{3.2}{0}{19.2}{RRC Reconfig. + NAS PDU Sess. Accept}
+\seqmsg{3.2}{6.4}{20.3}{PDU Sess. Res. Setup Resp.}
+\seqmsg[pfcp]{12.4}{15.2}{21.4}{N4 Session Modification}
+\stepcounter{seqn}
+\node[font=\tiny,circle,draw,inner sep=0.5pt] at (-1.3,23.0) {\theseqn};
+\draw[data] (0,23.0) -- node[above,inner sep=1pt,font=\tiny] {Tráfico IP de usuario: Uu + N3 (GTP-U) + N6} (15.2,23.0);
+\draw[gray] (16.6,1.2) -- (16.6,14.2);
+\node[font=\tiny,rotate=90,anchor=south] at (16.6,7.7) {Registro};
+\draw[gray] (16.6,14.5) -- (16.6,22.0);
+\node[font=\tiny,rotate=90,anchor=south] at (16.6,18.2) {Sesión PDU};
+\node[font=\tiny,anchor=west,blue!70!black] at (0,25.4) {Azul: NAS (N1)};
+\node[font=\tiny,anchor=west] at (3.6,25.4) {Negro: RRC / NGAP};
+\node[font=\tiny,anchor=west,orange!85!black] at (7.6,25.4) {Naranja: SBI (HTTP/2)};
+\node[font=\tiny,anchor=west,green!50!black] at (11.8,25.4) {Verde: PFCP (N4)};
+\end{tikzpicture}
+\caption{Diagrama de secuencia del registro del UE y establecimiento de la sesión PDU (simplificado).}
+\label{fig:seq}
+\end{figure*}
+
+\subsection{Identificadores y parámetros de la red}
+La red de pruebas usa los parámetros de la Tabla~\ref{tab:param}. El PLMN 001/01 es el valor reservado para pruebas, lo que evita colisiones con redes comerciales. Cada NF de Open5GS escucha en una dirección de \textit{loopback} distinta (en la captura: AMF 127.0.0.5, SMF 127.0.0.4, AUSF 127.0.0.11, UDM 127.0.0.12, PCF 127.0.0.13, NSSF 127.0.0.14), y el UE recibe direcciones de la subred 10.45.0.0/16 a través de la interfaz \texttt{ogstun}.
+
+\begin{table}[!t]
+\caption{Parámetros de red de la configuración utilizada}
+\label{tab:param}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{2.7cm}p{5.1cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+PLMN & MCC 001, MNC 01 \\
+TAC & 7 \\
+Slice (S-NSSAI) & SST 1 \\
+DNN / APN & \texttt{internet} \\
+AMF (NGAP) & 127.0.0.5, puerto 38412 \\
+Subred de UE & 10.45.0.0/16 (pasarela 10.45.0.1); UE: 10.45.0.2 \\
+Banda NR (simulación) & n3 (FDD), NR-ARFCN 368500 $\Rightarrow$ 1842.5~MHz (DL); UL 1747.5~MHz \\
+ARFCN del SSB & 368410 (1842.05~MHz), PCI 1 \\
+Ancho de banda / SCS & 20~MHz / 15~kHz (106 PRB) \\
+Frecuencia de muestreo & 23.04~MS/s \\
+Punto A (DL / UL) & NR-ARFCN 366592 / 347592 \\
+Espacio de búsqueda 0 & \texttt{coreset0\_index}=12, \texttt{ss0\_index}=0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El NR-ARFCN 368500 corresponde a $F = 5~\mathrm{kHz}\times 368500 = 1842.5$~MHz, dentro de la banda de enlace descendente de n3. En la simulación ZMQ no se emite energía de RF, por lo que la elección de la banda solo afecta a la configuración; en la Fase 3 sí tendrá implicaciones regulatorias (Sección~\ref{sec:etica}).
+
+\subsection{Seguridad 5G y jerarquía de claves}
+Tras la autenticación mutua 5G-AKA, se deriva la jerarquía de claves de la Tabla~\ref{tab:claves} \cite{ts33501}. En la simulación, el UE verificó la red (``\textit{Network authentication successful}'' con el nombre de red de servicio \texttt{5G:mnc001.mcc001.3gppnetwork.org}) y derivó $K_{AMF}$. El identificador permanente (SUPI, equivalente al IMSI) puede ocultarse como SUCI; en la configuración de laboratorio se usa el esquema nulo, lo que debe tenerse en cuenta en el análisis de privacidad (Sección~\ref{sec:etica}).
+
+\begin{table}[!t]
+\caption{Jerarquía de claves en 5G-AKA}
+\label{tab:claves}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.9cm}p{2.3cm}p{3.3cm}}
+\toprule
+\textbf{Clave} & \textbf{Derivada de} & \textbf{Uso} \\
+\midrule
+$K$ & --- (USIM/UDM) & Raíz de confianza \\
+CK$\|$IK & $K$, RAND & Milenage \\
+$K_{AUSF}$ & CK$\|$IK & Anclaje en el AUSF \\
+$K_{SEAF}$ & $K_{AUSF}$ & Anclaje en el SEAF/AMF \\
+$K_{AMF}$ & $K_{SEAF}$, SUPI & Base de las claves de acceso \\
+$K_{NASint}$, $K_{NASenc}$ & $K_{AMF}$ & Protección de NAS \\
+$K_{gNB}$ & $K_{AMF}$ & Claves AS (RRC y plano de usuario) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Despliegue NFV}
+Cada función de Open5GS se ejecuta como un servicio independiente (\texttt{open5gs-amfd}, \texttt{open5gs-smfd}, \texttt{open5gs-upfd}, etc.) con su archivo YAML de configuración. En el equipo de pruebas se verificaron 13 servicios activos (MongoDB, NRF, SCP, AMF, SMF, UPF, AUSF, UDM, UDR, PCF, NSSF, BSF y la WebUI), con 2~h~12~min de funcionamiento continuo sin reinicios. El UE simulado vive en un \textit{network namespace} (\texttt{ue1}) para que su tráfico atraviese realmente el túnel radio--GTP y no el \textit{loopback} del anfitrión.
+
+%=====================================================================
+\section{Codificación y modelado}
+\label{sec:cod}
+
+\subsection{Numerología y rejilla de recursos}
+En 5G NR la separación entre subportadoras es $\Delta f = 15\cdot 2^{\mu}$~kHz y la duración de una ranura (\textit{slot}) es $T_{slot}=2^{-\mu}$~ms \cite{ts38211}. Con $\mu=0$ (15~kHz), un canal de 20~MHz aloja $N_{PRB}=106$ bloques de recursos \cite{ts38101}, cada uno con 12 subportadoras. El ancho de banda ocupado es
+\begin{equation}
+B_{occ}=12\,N_{PRB}\,\Delta f = 12\cdot106\cdot15~\mathrm{kHz}=19.08~\mathrm{MHz}.
+\end{equation}
+La frecuencia de muestreo es $f_s=N_{FFT}\Delta f$; con $N_{FFT}=1536$ resulta $f_s=1536\cdot15~\mathrm{kHz}=23.04$~MS/s, el valor usado en la simulación (ocupación $1272/1536\approx83\%$). Con 10~MHz (52 PRB) bastan 11.52~MS/s.
+
+\subsection{Cadena de codificación del canal de datos}
+Para el canal compartido (PDSCH/PUSCH), el bloque de transporte (TB) recibe un CRC de 24 bits (o 16 si el TB es menor o igual a 3824 bits), se segmenta en $C$ bloques de código con CRC propio de 24 bits, se codifica con LDPC, se adapta en tasa, se aleatoriza, se modula y se mapea a la rejilla \cite{ts38212}. El número de bloques de código es
+\begin{equation}
+C=\left\lceil \frac{B}{K_{cb}-L}\right\rceil,\quad L=24,
+\end{equation}
+con $K_{cb}=8448$ para el \textit{base graph} 1 (BG1) y $3840$ para el BG2. Los ejemplos numéricos de esta sección se calcularon con un \textit{script} propio en Python que sigue TS~38.212 y TS~38.214; no provienen del registro del UE, que no se analizó a nivel de bloque de transporte.
+
+\subsection{Códigos LDPC}
+Los códigos LDPC de 5G NR son cuasi-cíclicos y están definidos por dos matrices base: BG1 (46$\times$68, tasa mínima 1/3, hasta 8448 bits de información) y BG2 (42$\times$52, tasa mínima 1/5, hasta 3840 bits) \cite{richardson,ts38212}. Cada elemento de la matriz base se expande con un factor de elevación $Z$ (hasta 384). Se usa BG2 si $A\le292$, o si $A\le3824$ y $R\le0.67$, o si $R\le0.25$; en otro caso, BG1 \cite{ts38212}. Se justifica su uso en el canal de datos porque: (i) su estructura permite decodificación altamente paralela, clave para altas tasas; (ii) la compatibilidad de tasa mediante \textit{rate matching} y versiones de redundancia soporta HARQ con combinación incremental; y (iii) ofrece desempeño cercano al límite de Shannon para bloques de mediana y gran longitud \cite{richardson}.
+
+\subsection{Códigos Polar}
+Los códigos Polar \cite{arikan} se usan en los canales de control (PDCCH, PBCH) y en la información de control de enlace ascendente con más de 11 bits. Con $N=2^n$ ($n_{max}=9$ en enlace descendente, $N\le512$, y $n_{max}=10$ en ascendente), un CRC de 24 bits y decodificación por cancelación sucesiva con lista (CA-SCL), ofrecen un desempeño superior en bloques cortos y con pocos bits de información, que es el caso del control, donde LDPC pierde eficiencia. Para cargas muy cortas (hasta 11 bits) se emplean códigos de bloque tipo Reed--Muller. La Tabla~\ref{tab:canales} resume la asignación y la Tabla~\ref{tab:polar} desarrolla un ejemplo numérico.
+
+\begin{table}[!t]
+\caption{Codificación por canal físico en 5G NR}
+\label{tab:canales}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.8cm}p{2.5cm}p{3.2cm}}
+\toprule
+\textbf{Canal} & \textbf{Codificación} & \textbf{Motivo} \\
+\midrule
+PDSCH, PUSCH & LDPC (BG1/BG2) & Alta tasa, paralelismo \\
+PDCCH, PBCH & Polar + CRC24 & Bloques cortos, alta confiabilidad \\
+UCI $>$ 11 bits & Polar & Bloques cortos \\
+UCI $\le$ 11 bits & Código de bloque (RM) & Cargas muy cortas \\
+PRACH & Secuencias Zadoff--Chu & Detección, sin FEC \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ejemplo Polar: PBCH y PDCCH}
+El tamaño del código Polar $N=2^n$ se obtiene de TS~38.212 \cite{ts38212} con $n_1=\lceil\log_2 E\rceil$ (reducido en 1 si $E\le\tfrac98 2^{\lceil\log_2E\rceil-1}$ y $K/E<9/16$), $n_2=\lceil\log_2(8K)\rceil$ (tasa mínima 1/8) y $n=\max(\min(n_1,n_2,n_{max}),5)$ con $n_{max}=9$. Para el PBCH, $K=56$ bits (32 de carga más 24 de CRC) y $E=864$ bits (432 RE de datos con QPSK); resulta $N=512$ y tasa $K/E=0.065$. Para el DCI formato 1\_0 con 106 PRB, el campo de asignación de frecuencia usa $\lceil\log_2(106\cdot107/2)\rceil=13$ bits, la carga estimada es de 41 bits y, con el CRC de 24 bits, $K=65$. Cada elemento de canal de control (CCE) aporta $6\times9\times2=108$ bits, de modo que $E=108\,L$ con $L$ el nivel de agregación. La Tabla~\ref{tab:polar} muestra que un UE con peor SNR recibe un nivel mayor, es decir, una tasa más baja y más protección. Son valores calculados, no extraídos del registro.
+
+\begin{table}[!t]
+\caption{Parámetros Polar de PBCH y DCI 1\_0 (cálculo)}
+\label{tab:polar}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Canal} & $K$ & $E$ & $N$ & $K/E$ \\
+\midrule
+PBCH & 56 & 864 & 512 & 0.065 \\
+DCI, $L=1$ & 65 & 108 & 128 & 0.602 \\
+DCI, $L=2$ & 65 & 216 & 256 & 0.301 \\
+DCI, $L=4$ & 65 & 432 & 512 & 0.150 \\
+DCI, $L=8$ & 65 & 864 & 512 & 0.075 \\
+DCI, $L=16$ & 65 & 1728 & 512 & 0.038 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ejemplo de cálculo de TBS y segmentación}
+Se calcula, según TS~38.214 \cite{ts38214}, el tamaño del bloque de transporte para un PDSCH con 106 PRB, 1 capa, MCS 19 de la tabla de 64-QAM ($Q_m=6$, $R=517/1024\approx0.505$), 13 símbolos de datos por ranura, un símbolo DMRS tipo 1 con dos grupos CDM sin datos (12 RE/PRB) y sin sobrecarga adicional. La Tabla~\ref{tab:tbs} presenta el desarrollo. El resultado, $\mathrm{TBS}=46104$ bits en una ranura de 1~ms, equivale a unos 46~Mbps si todas las ranuras fueran de enlace descendente (FDD), coherente con la sección siguiente.
+
+\begin{table}[!t]
+\caption{Cálculo de TBS y segmentación LDPC (MCS 19, 106 PRB, 1 capa)}
+\label{tab:tbs}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{3.3cm}p{4.4cm}}
+\toprule
+\textbf{Paso} & \textbf{Resultado} \\
+\midrule
+$N_{RE}'=12\cdot13-12-0$ & 144 RE/PRB \\
+$N_{RE}=144\cdot106$ & 15264 RE \\
+$N_{info}=N_{RE}\,R\,Q_m\,\nu$ & $\approx46239$ bits \\
+$n=\lfloor\log_2(N_{info}-24)\rfloor-5$ & 10 \\
+$N_{info}'=2^n\cdot\mathrm{round}\!\left(\tfrac{N_{info}-24}{2^n}\right)$ & 46080 \\
+$C=\lceil(N_{info}'+24)/8424\rceil$ & 6 bloques \\
+$\mathrm{TBS}=8C\lceil\tfrac{N_{info}'+24}{8C}\rceil-24$ & \textbf{46104 bits} \\
+Base graph & BG1 ($R>0.25$ y $A>3824$) \\
+$K'=(\mathrm{TBS}+24+24C)/C$ & 7712 bits/bloque \\
+Factor $Z$ ($22Z\ge K'$) & $Z=352$ ($K=7744$, 32 bits de relleno) \\
+Bits codificados $N=66Z$ & 23232 por bloque \\
+Bits disponibles $G=N_{RE}Q_m\nu$ & 91584 \\
+Tasa efectiva $\mathrm{TBS}/G$ & 0.503 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La Tabla~\ref{tab:tbsmcs} repite el cálculo para otros MCS con la misma asignación (106 PRB, 13 símbolos, 12 RE de DMRS por PRB). Se conserva el patrón: a bajas tasas ($R\le0.25$) se usa BG2; desde el MCS 4 se usa BG1, y para el MCS 28 el TB se divide en 10 bloques de 8424 bits ($Z=384$, 24 bits de relleno). La columna de caudal es el TBS dividido por una ranura de 1~ms; difiere en menos de 2\,\% de la columna ``DL'' de la Tabla~\ref{tab:mcs}, que usa la fórmula de TS~38.306.
+
+\begin{table}[!t]
+\caption{TBS y segmentación LDPC por MCS (106 PRB, 1 capa)}
+\label{tab:tbsmcs}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{rrlrrr}
+\toprule
+\textbf{MCS} & \textbf{TBS (bits)} & \textbf{BG} & $C$ & $Z$ & \textbf{Mbps} \\
+\midrule
+0 & 3624 & BG2 & 1 & 384 & 3.62 \\
+4 & 9224 & BG1 & 2 & 224 & 9.22 \\
+9 & 19968 & BG1 & 3 & 320 & 19.97 \\
+16 & 38936 & BG1 & 5 & 384 & 38.94 \\
+20 & 50184 & BG1 & 6 & 384 & 50.18 \\
+24 & 69672 & BG1 & 9 & 384 & 69.67 \\
+28 & 83976 & BG1 & 10 & 384 & 83.98 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Modulación, MCS y relación señal-ruido}
+La tabla de MCS de TS~38.214 asocia a cada índice un orden de modulación $Q_m$ y una tasa de código $R$; la eficiencia espectral es $\eta=Q_mR$. Como cota de referencia, la capacidad de Shannon exige
+\begin{equation}
+\mathrm{SNR}_{min}(\eta)=2^{\eta}-1.
+\end{equation}
+La Tabla~\ref{tab:mcs} calcula, para índices representativos, la eficiencia, el SNR mínimo teórico y un SNR objetivo que añade una brecha de implementación supuesta de 2~dB. Esa brecha es una hipótesis de diseño que debe validarse con curvas BLER obtenidas por simulación a nivel de enlace. El caudal indicativo usa $17.808\times10^{6}$ RE/s, 1 capa, FDD y 14\% de sobrecarga.
+
+\begin{table}[!t]
+\caption{MCS representativos (tabla de 64-QAM, TS 38.214) y SNR requerido}
+\label{tab:mcs}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{rlrrrrr}
+\toprule
+\textbf{MCS} & \textbf{Mod.} & $R\!\times\!1024$ & $\eta$ & \textbf{SNR$_{min}$} & \textbf{SNR obj.} & \textbf{DL} \\
+ & & & (b/s/Hz) & (dB) & (dB) & (Mbps) \\
+\midrule
+0 & QPSK & 120 & 0.234 & $-7.5$ & $-5.5$ & 3.6 \\
+4 & QPSK & 308 & 0.602 & $-2.9$ & $-0.9$ & 9.2 \\
+9 & QPSK & 679 & 1.326 & 1.8 & 3.8 & 20.3 \\
+16 & 16-QAM & 658 & 2.570 & 6.9 & 8.9 & 39.4 \\
+20 & 64-QAM & 567 & 3.322 & 9.5 & 11.5 & 50.9 \\
+23 & 64-QAM & 719 & 4.213 & 12.4 & 14.4 & 64.5 \\
+28 & 64-QAM & 948 & 5.555 & 16.6 & 18.6 & 85.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Selección de MCS según el canal}
+Sea $\gamma$ el SNR medido (derivado del CQI reportado por el UE). La adaptación de enlace elige el MCS más alto cuyo SNR objetivo no supere $\gamma$ menos un margen $\delta$:
+\begin{equation}
+m^{*}=\max\{m:\ \mathrm{SNR}_{obj}(m)\le\gamma-\delta\}.
+\end{equation}
+En la práctica, el planificador del gNB aplica un lazo externo (OLLA) que ajusta $\delta$ según los ACK/NACK de HARQ para mantener el BLER objetivo. Las hipótesis de diseño para cada escenario son:
+\begin{itemize}
+  \item \textbf{ZMQ (sin ruido):} no hay ruido añadido, por lo que el SNR es muy alto y se esperaba que el planificador convergiera a los MCS más altos. El caudal medido (Sección~\ref{sec:sim}) quedó en el 58\,\% del máximo teórico, lo que sugiere que el límite no lo impone el canal sino el emulador y el procesamiento; el MCS realmente usado no se registró (prueba P8).
+  \item \textbf{Fase 3 con cable y atenuador:} SNR controlable (por ejemplo, 20--30~dB); MCS alto, limitado por la calidad del SDR (EVM y ruido de fase).
+  \item \textbf{Fase 3 por aire, interior:} SNR entre 10 y 20~dB; MCS 16--23 según la distancia.
+  \item \textbf{Borde de celda:} SNR cercano a 0~dB; modulación QPSK con baja tasa (MCS 0--4).
+\end{itemize}
+La Fig.~\ref{fig:mcsplot} muestra que los 29 MCS quedan por debajo de la cota de Shannon y que la separación crece a SNR alto, donde el orden de modulación máximo (64-QAM) satura el caudal. Esto justifica elegir, para cada SNR, el MCS más alto cuyo SNR objetivo se cumple.
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.98\columnwidth,height=5.6cm,xlabel={SNR objetivo (dB)},ylabel={Caudal por ranura (Mbps)},
+  xmin=-8,xmax=24,ymin=0,ymax=130,grid=both,grid style={gray!25},
+  legend style={at={(0.02,0.98)},anchor=north west,font=\scriptsize},
+  tick label style={font=\scriptsize},label style={font=\scriptsize}]
+\addplot[only marks,mark=*,mark size=1.4pt,blue!70!black] coordinates {(-5.54,3.62) (-4.26,4.62) (-3.25,5.77) (-1.93,7.43) (-0.86,9.22) (0.26,11.27) (1.22,13.32) (2.16,15.62) (3.00,17.93) (3.78,19.97) (3.79,20.50) (4.51,22.54) (5.50,25.61) (6.42,29.19) (7.40,32.78) (8.34,36.90) (8.94,38.94) (8.92,38.94) (9.51,42.02) (10.55,46.10) (11.54,50.18) (12.49,55.30) (13.45,59.43) (14.44,64.55) (15.42,69.67) (16.34,73.78) (17.27,77.90) (17.94,81.98) (18.63,83.98)};
+\addplot[dashed,domain=-8:24,samples=60,black]{19.08*ln(1+exp(0.230259*x))/0.693147};
+\addplot[dotted,very thick,red!70!black,domain=-8:24]{49.5};
+\legend{{MCS 0--28 (TBS y SNR obj.)},Shannon ($B_{occ}=19.08$~MHz),DL medido (49.5~Mbps)}
+\end{axis}
+\end{tikzpicture}
+\caption{Caudal por ranura de cada MCS frente a su SNR objetivo (Shannon más 2~dB), comparado con la capacidad de Shannon y con el caudal DL medido.}
+\label{fig:mcsplot}
+\end{figure}
+
+Para validar estas hipótesis se recomienda, en la Fase 2, inyectar ruido y desvanecimiento en el canal ZMQ con un bloque de canal (por ejemplo, GNU Radio) y registrar el MCS seleccionado y el BLER \cite{srsran}.
+
+\subsection{Caudal máximo teórico}
+El caudal máximo de la capa física se estima con TS~38.306 \cite{ts38306}:
+\begin{equation}
+R_{max}=10^{-6}\,\nu\,Q_m\,f\,R_{c}\,\frac{12\,N_{PRB}}{T_s^{\mu}}\,(1-\mathrm{OH}),
+\end{equation}
+donde $\nu$ es el número de capas, $f=1$ el factor de escala, $R_c=948/1024$, $T_s^{\mu}=10^{-3}/(14\cdot2^{\mu})$ la duración de un símbolo OFDM y OH la sobrecarga (0.14 en enlace descendente FR1, 0.08 en ascendente). Con $\mu=0$, $N_{PRB}=106$ y $\nu=1$, el producto $12N_{PRB}/T_s=17.808\times10^{6}$ RE/s. Con 64-QAM (la tabla configurada en el gNB para PDSCH y PUSCH) resultan 85.1~Mbps en descendente y $17.808\cdot6\cdot0.9258\cdot0.92=91.0$~Mbps en ascendente. La Tabla~\ref{tab:thr} resume el caudal descendente por modulación.
+
+\begin{table}[!t]
+\caption{Caudal máximo teórico DL (20~MHz, 15~kHz, 1 capa, FDD)}
+\label{tab:thr}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Modulación} & $Q_m$ & \textbf{Caudal (Mbps)} \\
+\midrule
+QPSK & 2 & 28.4 \\
+16-QAM & 4 & 56.7 \\
+64-QAM & 6 & 85.1 \\
+256-QAM & 8 & 113.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Para comparar con el límite de Shannon, $C=B_{occ}\log_2(1+\mathrm{SNR})$ con $B_{occ}=19.08$~MHz da 19.1~Mbps a 0~dB, 66.0~Mbps a 10~dB, 127.0~Mbps a 20~dB y 190.2~Mbps a 30~dB (una capa espacial). A SNR alto, el caudal de NR queda limitado por el orden de modulación máximo y no por Shannon; por eso 256-QAM y MIMO son las palancas para superar los 85~Mbps. Si el despliegue usara TDD (por ejemplo, banda n78), el caudal efectivo de enlace descendente se reduciría en proporción a la fracción de ranuras DL del patrón TDD.
+
+\subsection{Requisitos de muestreo e interfaz con el SDR}
+A 23.04~MS/s y muestras I/Q de 16 bits por componente (\textit{sc16}), cada sentido requiere $23.04\times10^6\cdot32=737.3$~Mbps y el dúplex completo (TX+RX) 1.47~Gbps. Esto cabe en USB 3.0 (5~Gbps nominales) pero consume una fracción importante del ancho de banda práctico, por lo que se recomienda un puerto USB 3.0 dedicado, sin \textit{hubs}. La misma carga viaja por TCP en la simulación ZMQ, lo que hace del procesamiento y del emulador, y no de la radio, el candidato a factor limitante (Sección~\ref{sec:sim}).
+
+\subsection{Codificación de fuente y modelo de tráfico}
+La red 5G transporta paquetes IP y no realiza codificación de fuente (voz, audio o video), que corresponde a las aplicaciones. Sí puede aplicarse compresión de cabeceras en PDCP (ROHC) en flujos de bajo caudal. Para las pruebas se modela el tráfico con iperf3 (TCP) y con ping (ICMP), lo que permite aislar el desempeño de la red del de las aplicaciones.
+
+%=====================================================================
+\section{Simulación y factibilidad}
+\label{sec:sim}
+
+\subsection{Topología del banco de pruebas}
+La Fig.~\ref{fig:testbed} muestra el banco de pruebas, que corre completo en un único anfitrión (WSL2 sobre Windows). El gNB y el srsUE intercambian muestras I/Q por sockets TCP (puertos 2000 y 2001); el gNB habla con el AMF por NGAP/SCTP y con el UPF por GTP-U; y el tráfico del UE sale por \texttt{ogstun} con NAT.
+
+\begin{figure}[!t]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[font=\scriptsize,>=Stealth,
+  blk/.style={draw,rounded corners=2pt,align=center,minimum height=9mm,inner sep=3pt},
+  ran/.style={blk,fill=green!12},
+  nf/.style={blk,fill=blue!8}]
+\node[blk,fill=orange!15] (ue) at (0,0) {srsUE\\netns \texttt{ue1}\\\texttt{tun\_srsue}};
+\node[ran] (gnb) at (3.6,0) {gNB srsRAN\\(radio ZMQ)};
+\node[nf] (amf) at (7.0,0.9) {AMF};
+\node[nf] (smf) at (7.0,-0.1) {SMF};
+\node[nf] (upf) at (7.0,-1.1) {UPF};
+\node[blk,fill=gray!15] (net) at (9.8,-1.1) {Internet\\\texttt{ogstun}+NAT};
+\draw[<->,thick] (ue) -- node[above,font=\tiny] {ZMQ TCP :2000/:2001} (gnb);
+\draw[<->,thick] (gnb.north east) -- node[above,sloped,font=\tiny] {N2 SCTP :38412} (amf.west);
+\draw[<->,thick] (gnb.south east) -- node[below,sloped,font=\tiny] {N3 GTP-U :2152} (upf.west);
+\draw[<->] (smf) -- node[right,font=\tiny] {N4} (upf);
+\draw[<->,thick] (upf) -- node[above,font=\tiny] {N6} (net);
+\begin{scope}[on background layer]
+\node[draw,dashed,rounded corners=3pt,fill=gray!6,inner sep=3mm,fit=(ue)(gnb)(amf)(upf)(net),
+  label={[font=\scriptsize\bfseries]above:Anfitrión WSL2 (Ubuntu 22.04)}] {};
+\end{scope}
+\end{tikzpicture}}
+\caption{Banco de pruebas de simulación sin RF (Zero-RF) basado en ZMQ.}
+\label{fig:testbed}
+\end{figure}
+
+\subsection{Procedimiento de instalación y ejecución}
+El Listado~\ref{lst:inst} resume el procedimiento seguido. Un hallazgo relevante: el repositorio \texttt{srsRAN\_Project} fue archivado en GitHub y su rama por defecto (\texttt{archive}) solo contiene un \textit{README}; el código se obtuvo de la rama \texttt{main}.
+
+\begin{lstlisting}[language=bash,caption={Instalación del núcleo y compilación de srsRAN (resumen)},label={lst:inst}]
+# 1) Nucleo Open5GS (Ubuntu 22.04; MongoDB instalado antes)
+sudo add-apt-repository ppa:open5gs/latest
+sudo apt update && sudo apt install open5gs
+# 2) PLMN 001/01 y TAC 7 en amf.yaml y nrf.yaml
+sudo sed -i 's/mcc: 999/mcc: 001/; s/mnc: 70/mnc: 01/' /etc/open5gs/amf.yaml /etc/open5gs/nrf.yaml
+sudo sed -i 's/tac: 1$/tac: 7/' /etc/open5gs/amf.yaml
+# 3) Reenvio y NAT para la subred de UEs
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/16 ! -o ogstun -j MASQUERADE
+# 4) gNB srsRAN Project con ZMQ (rama main)
+git clone https://github.com/srsran/srsRAN_Project.git
+cd srsRAN_Project && git checkout -f -B main origin/main
+mkdir build && cd build
+cmake ../ -DENABLE_EXPORT=ON -DENABLE_ZEROMQ=ON
+make -j4
+# 5) UE srsUE (srsRAN 4G) con ZMQ y netns
+sudo ip netns add ue1
+\end{lstlisting}
+
+El suscriptor se registró en la WebUI de Open5GS (puerto 9999) con el IMSI, $K$ y OPc de la Tabla~\ref{tab:sim} y la sesión por defecto con DNN \texttt{internet}. Las configuraciones finales, con las que se obtuvieron los resultados, se muestran a continuación.
+
+\begin{lstlisting}[language={},caption={gnb\_zmq.yaml (configuración final)},label={lst:gnb}]
+cu_cp:
+  amf:
+    addr: 127.0.0.5
+    port: 38412
+    bind_addr: 127.0.0.1
+    supported_tracking_areas:
+      - tac: 7
+        plmn_list:
+          - plmn: "00101"
+            tai_slice_support_list:
+              - sst: 1
+ru_sdr:
+  device_driver: zmq
+  device_args: tx_port=tcp://127.0.0.1:2000,rx_port=tcp://127.0.0.1:2001,base_srate=23.04e6
+  srate: 23.04
+  tx_gain: 75
+  rx_gain: 75
+cell_cfg:
+  dl_arfcn: 368500
+  band: 3
+  channel_bandwidth_MHz: 20
+  common_scs: 15
+  plmn: "00101"
+  tac: 7
+  prach:
+    prach_config_index: 1
+  pdcch:
+    common:
+      ss0_index: 0
+      coreset0_index: 12
+    dedicated:
+      ss2_type: common
+      dci_format_0_1_and_1_1: false
+  pdsch:
+    mcs_table: qam64
+  pusch:
+    mcs_table: qam64
+pcap:
+  ngap_enable: true
+  ngap_filename: /tmp/gnb_ngap.pcap
+log:
+  filename: /tmp/gnb.log
+  all_level: info
+\end{lstlisting}
+
+\begin{lstlisting}[language={},caption={ue\_zmq.conf (configuración final; claves omitidas)},label={lst:ue}]
+[rf]
+freq_offset = 0
+tx_gain = 50
+rx_gain = 40
+srate = 23.04e6
+nof_antennas = 1
+device_name = zmq
+device_args = tx_port=tcp://127.0.0.1:2001,rx_port=tcp://127.0.0.1:2000,base_srate=23.04e6
+
+[rat.eutra]
+dl_earfcn = 2850
+nof_carriers = 0
+
+[rat.nr]
+bands = 3
+nof_carriers = 1
+max_nof_prb = 106
+nof_prb = 106
+
+[usim]
+mode = soft
+algo = milenage
+opc  = <OPc_32_hex>
+k    = <K_32_hex>
+imsi = 001010123456780
+imei = 353490069873319
+
+[nas]
+apn = internet
+apn_protocol = ipv4
+
+[gw]
+netns = ue1
+
+[rrc]
+release = 15
+ue_category = 4
+\end{lstlisting}
+
+La ejecución sigue el orden: núcleo activo, gNB (\texttt{sudo ./gnb -c gnb\_zmq.yaml}), UE y prueba de conectividad desde el \textit{namespace} del UE. El UE se lanza con los parámetros de la celda explícitos:
+\begin{lstlisting}[language=bash,caption={Arranque del UE y pruebas},label={lst:run}]
+sudo ./srsue ~/ue_zmq.conf --rat.nr.dl_nr_arfcn=368500 \
+  --rat.nr.nof_prb=106 --rat.nr.scs=15 --rat.nr.ssb_scs=15 \
+  --log.all_level=info --log.filename=$D/ue.log
+sudo ip netns exec ue1 ping -c 20 10.45.0.1
+iperf3 -s -B 10.45.0.1 -D
+sudo ip netns exec ue1 iperf3 -c 10.45.0.1 -t 15      # UL
+sudo ip netns exec ue1 iperf3 -c 10.45.0.1 -t 15 -R   # DL
+\end{lstlisting}
+
+Tras cada reinicio de la máquina se vuelve a ejecutar el siguiente guion, que reaplica el reenvío IP, la interfaz \texttt{ogstun}, el NAT y el \textit{namespace}, y reinicia UPF, SMF y AMF. El gNB y el UE se reinician siempre juntos: los desarrolladores de srsRAN indican que no se soporta reiniciar solo uno, porque no hay un mecanismo de sincronía para realinear el tiempo \cite{srsrandisc}.
+
+\begin{lstlisting}[language=bash,caption={arranque.sh: preparación de la red tras cada reinicio},label={lst:arranque}]
+#!/bin/bash
+sudo systemctl start mongod
+sudo sysctl -q -w net.ipv4.ip_forward=1
+ip link show ogstun >/dev/null 2>&1 || sudo ip tuntap add name ogstun mode tun
+ip addr show ogstun | grep -q "10.45.0.1/16" || sudo ip addr add 10.45.0.1/16 dev ogstun
+sudo ip link set ogstun up
+sudo iptables -t nat -C POSTROUTING -s 10.45.0.0/16 ! -o ogstun -j MASQUERADE 2>/dev/null || \
+  sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/16 ! -o ogstun -j MASQUERADE
+ip netns list | grep -q ue1 || sudo ip netns add ue1
+sudo systemctl restart open5gs-upfd open5gs-smfd open5gs-amfd
+\end{lstlisting}
+
+\subsection{Plan de pruebas y estado de ejecución}
+La Tabla~\ref{tab:pruebas} define las pruebas, sus métricas y su estado. Las pruebas P1 a P6 y P10 se ejecutaron una sola vez y se reportan en esta fase; P7 a P9 (UDP, MCS fijo y estabilidad de 30 min) y el aumento del número de repeticiones a cinco por prueba quedan programadas para la Fase 2.
+
+\begin{table*}[!t]
+\caption{Plan de pruebas de la simulación ZMQ y estado}
+\label{tab:pruebas}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{0.8cm}p{3.6cm}p{3.5cm}p{1.6cm}p{3.3cm}p{2.6cm}}
+\toprule
+\textbf{ID} & \textbf{Prueba} & \textbf{Métrica / herramienta} & \textbf{Interfaz} & \textbf{Criterio de éxito} & \textbf{Estado} \\
+\midrule
+P1 & Arranque del núcleo & \texttt{systemctl} & --- & Todas las NF activas & Cumplida (13/13) \\
+P2 & NG Setup gNB--AMF & NGAP en \texttt{tcpdump}/tshark & N2 & \textit{NG Setup Response} & Cumplida \\
+P3 & Registro del UE (5G-AKA) & NAS-5GS, registros del AMF/gNB & N1, N2 & \textit{Registration Accept} & Cumplida \\
+P4 & Sesión PDU & IP asignada, \texttt{tun\_srsue} & N1, N4 & IP en 10.45.0.0/16 & Cumplida (10.45.0.2) \\
+P5 & Latencia ICMP & RTT, 20 muestras, \texttt{ping} & Uu, N3 & Pérdida 0\% & Cumplida \\
+P6 & Caudal TCP DL y UL & \texttt{iperf3} (con y sin \texttt{-R}), 15~s & Uu, N3 & Reporte vs. Tabla~\ref{tab:thr} & Parcial (una corrida por sentido) \\
+P7 & Caudal UDP y pérdidas & \texttt{iperf3 -u} & Uu, N3 & Punto de saturación & Pendiente (Fase 2) \\
+P8 & Efecto del MCS & MCS fijo vs. caudal & Uu & Curva MCS--caudal & Pendiente (Fase 2) \\
+P9 & Estabilidad (30 min) & Reconexiones, \textit{underflows} & N2, N3 & Sin caídas & Pendiente (Fase 2) \\
+P10 & Uso de recursos & CPU (\texttt{top}) & --- & CPU global $<$ 80\% y ningún núcleo saturado & Parcial: global cumple; por núcleo no medido \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Resultados de la señalización}
+La captura (\texttt{tcpdump} en \texttt{lo}, filtro SCTP, UDP 2152 y UDP 8805) muestra el flujo completo previsto en la Fig.~\ref{fig:seq}. La Tabla~\ref{tab:senal} resume los mensajes con sus marcas de tiempo relativas. El \textit{NG Setup} se completó en unos 8~ms; desde el \textit{Registration Request} hasta el \textit{PDU Session Resource Setup Response} transcurrieron 0.51~s (139~ms hasta el \textit{Initial Context Setup Request}), y el SMF estableció la sesión PFCP con el UPF en unos 2~ms. En el lado del gNB se registró la detección del preámbulo PRACH (métrica de detección 87.4, TA 0~$\mu$s) y la creación del UE (C-RNTI 0x4601). Se observaron además dos retransmisiones SCTP de fragmentos de datos (TSN=4 y TSN=8) sin consecuencia visible en el flujo NGAP; su causa no se investigó y podría estar asociada a la carga del anfitrión.
+
+\begin{table}[!t]
+\caption{Señalización capturada en la simulación (extracto)}
+\label{tab:senal}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{rlp{4.4cm}}
+\toprule
+\textbf{t (s)} & \textbf{Protocolo} & \textbf{Mensaje} \\
+\midrule
+0.000 & NGAP & NGSetupRequest \\
+0.008 & NGAP & NGSetupResponse \\
+8.955 & NGAP/NAS-5GS & InitialUEMessage, Registration request \\
+8.993 & NGAP/NAS-5GS & DownlinkNASTransport, Authentication request \\
+9.024 & NGAP/NAS-5GS & UplinkNASTransport, Authentication response \\
+9.038 & NGAP/NAS-5GS & DownlinkNASTransport, Security mode command \\
+9.094 & NGAP/NAS-5GS & InitialContextSetupRequest \\
+9.189 & NGAP & InitialContextSetupResponse \\
+9.339 & PFCP & Session Establishment Request / Response \\
+9.345 & NGAP/NAS-5GS & PDUSessionResourceSetupRequest \\
+9.468 & NGAP & PDUSessionResourceSetupResponse \\
+9.470 & PFCP & Session Modification Request / Response \\
+10.355 & GTP (ICMP) & Echo request / reply (primer \textit{ping}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\IfFileExists{captura-wireshark.png}{
+\begin{figure}[!t]
+\centering
+\IfFileExists{captura-wireshark.png}{\includegraphics[width=0.98\columnwidth]{captura-wireshark.png}}{}
+\caption{Señalización capturada en la simulación (NG Setup, registro y sesión PDU), vista en Wireshark.}
+\label{fig:capt}
+\end{figure}
+
+}{}
+
+\subsection{Resultados de latencia y caudal}
+La Tabla~\ref{tab:res} contrasta el modelo con las mediciones obtenidas con 20 paquetes ICMP y pruebas iperf3 de 15~s, y la Fig.~\ref{fig:graf} compara el caudal medido con el teórico. Todas las mediciones provienen de una sola corrida (15 de octubre de 2026), de modo que no se reportan intervalos de confianza.
+
+\begin{table}[!t]
+\caption{Modelo teórico frente a mediciones en la simulación ZMQ}
+\label{tab:res}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{2.3cm}p{1.9cm}p{1.9cm}p{1.4cm}}
+\toprule
+\textbf{Métrica} & \textbf{Teórico} & \textbf{Medido} & \textbf{Relación} \\
+\midrule
+DL TCP (64-QAM) & 85.1 Mbps & 49.5 Mbps (receptor); 51.3 (emisor) & 58\% \\
+UL TCP (64-QAM) & 91.0 Mbps & 10.6 Mbps (receptor); 11.1 (emisor) & 12\% \\
+Retransmisiones TCP DL / UL & --- & 1158 / 17 & --- \\
+RTT mín / medio / máx & --- & 21.7 / 32.7 / 39.1 ms & --- \\
+RTT desv. estándar & --- & 5.4 ms & --- \\
+Pérdida ICMP & 0\% & 0\% (20/20) & --- \\
+CPU del gNB / srsUE & --- & 206\% / 163\% & --- \\
+CPU global (inactivo) & --- & 46\% (de 8 vCPU) & --- \\
+Memoria residente gNB / srsUE & --- & 2.5 / 0.8~GiB & --- \\
+Núcleo en N3 (solicitud a respuesta ICMP) & --- & 0.07--0.16 ms (19 muestras legibles) & --- \\
+Registro + sesión PDU & --- & 0.51 s & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  ybar, bar width=14pt, height=5.2cm, width=0.95\columnwidth,
+  symbolic x coords={DL,UL},
+  xtick=data, ymin=0, ymax=105,
+  ylabel={Caudal (Mbps)}, ylabel style={font=\footnotesize},
+  tick label style={font=\footnotesize},
+  legend style={font=\footnotesize, at={(0.5,1.05)}, anchor=south, legend columns=2},
+  nodes near coords, nodes near coords style={font=\scriptsize},
+  enlarge x limits=0.5]
+\addplot coordinates {(DL,85.1) (UL,91.0)};
+\addplot coordinates {(DL,49.5) (UL,10.6)};
+\legend{Teórico (64-QAM), Medido (TCP)}
+\end{axis}
+\end{tikzpicture}
+\caption{Caudal TCP medido frente al máximo teórico (20~MHz, 15~kHz, 1 capa).}
+\label{fig:graf}
+\end{figure}
+
+\subsection{Análisis crítico}
+\paragraph{Caudal en descendente (58\,\% del máximo).} Parte de la brecha es inherente: el modelo descuenta 14\,\% de sobrecarga, pero el caudal de aplicación TCP está además ligeramente por debajo del de capa física por las cabeceras IP/TCP, y existen SSB, SIB1, PDCCH, DMRS y CSI-RS. El resto no se explica por saturación global de la CPU: el gNB usó 206\,\% y el srsUE 163\,\% (de 800\,\%), pero quedó libre el 46\,\% del anfitrión.El gNB y el srsUE suman 369\,\% de 800 \,\%, es decir, el 46\,\% de la capacidad; el uso global fue 54\,\% porque incluye el núcleo, iperf3 y el resto del sistema, y el 46\,\% restante estaba inactivo. Las 1158 retransmisiones TCP en DL indican pérdidas o colas en el enlace emulado. Se plantean cuatro hipótesis, ninguna aislada experimentalmente; la Tabla~\ref{tab:hip} indica la prueba que permitiría discriminarlas.
+
+\begin{table}[!t]
+\caption{Hipótesis sobre la brecha de caudal y prueba que las discrimina}
+\label{tab:hip}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{p{2.9cm}p{4.8cm}}
+\toprule
+\textbf{Hipótesis} & \textbf{Prueba y resultado esperado} \\
+\midrule
+H1: ZMQ no opera en tiempo real y un hilo lento limita a todo el sistema & \texttt{top -H} por hilo: un hilo cerca de 100\,\% con CPU global libre \\
+H2: dinámica de TCP ante pérdidas o colas & P7 (UDP): si el caudal UDP supera al TCP con pérdidas bajas, el límite es de TCP \\
+H3: sobrecarga de señalización y de capas superiores & P8 (MCS fijo): comparar el caudal con el TBS por ranura de la Tabla~\ref{tab:tbsmcs} \\
+H4: limitaciones de srsUE en 5G SA (UL) & Barrido de UL con MCS fijo y revisión de BSR y concesiones en el registro del gNB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Asimetría en ascendente (12\,\%).} El UL es cinco veces menor que el DL. El tutorial de srsRAN describe las extensiones 5G de srsUE como orientadas a pruebas de concepto y sin desarrollo activo \cite{srsuetut}, y el UL exige solicitud, concesión y transmisión, además de que el UE de software sintetiza el UL mientras demodula el DL. Solo hubo 17 retransmisiones TCP en UL, lo que sugiere que el límite es de planificación o de cómputo y no de pérdida de paquetes; esto es una conjetura, no una medición.
+
+\paragraph{Latencia.} El RTT medio fue de 32.7~ms (mín. 21.7, máx. 39.1, $\sigma=5.4$~ms), sin pérdidas. La captura en N3 permite separar el aporte del núcleo: entre la solicitud ICMP que llega al UPF y su respuesta transcurren 0.07 a 0.16~ms en 18 de las 19 parejas legibles (la primera, de 1.16~ms, incluye la resolución inicial), menos del 1\,\% del RTT. La latencia se origina entonces en la ruta radio emulada (planificación, ranura de 1~ms, ZMQ sobre TCP, procesamiento de software del UE y del gNB y cambio de \textit{namespace}) y no en el núcleo. Las metas de TR~38.913 para el plano de usuario son de 4~ms (eMBB) y 0.5~ms (URLLC) por sentido \cite{ts38913}; aun dividiendo el RTT entre dos (unos 16~ms), este banco no las alcanza, lo cual es esperable porque ZMQ no representa una radio real. Solo se usan diferencias entre solicitud y respuesta de cada \textit{ping}; el espaciado entre paquetes en la captura no se interpretó.
+
+\paragraph{Uso de CPU (P10).} Solo se midió la CPU global y por proceso. Globalmente se cumple el criterio de 80\,\% (se usó 54\,\%), pero el gNB equivale a unos 2 núcleos y el srsUE a unos 1.6, y no se midió por hilo, por lo que no puede descartarse un hilo saturado (H1). El gNB advierte que no puede leer el gobernador de frecuencia (\texttt{scaling\_governor}) en WSL2, de modo que no se pudo fijar el modo \texttt{performance}.
+
+\paragraph{Conectividad a Internet no verificada.} El \textit{ping} a 8.8.8.8 desde \texttt{ue1} devolvió \textit{Network is unreachable}: el \textit{namespace} solo tiene la ruta conectada de 10.45.0.0/24, sin ruta por defecto por \texttt{tun\_srsue}. Se corregirá en la Fase 2 con \texttt{ip netns exec ue1 ip route add default dev tun\_srsue} y se repetirá la prueba; el reenvío IP y el NAT ya estaban activos.
+
+\paragraph{Limitaciones.} Una sola repetición no permite estimar la variabilidad del caudal ni un percentil 95; la ausencia de canal físico impide observar desvanecimiento, desfase de reloj o interferencia (Fase 3); y el análisis de causas depende de pruebas pendientes (P7--P9).
+
+\subsection{Problemas encontrados y su solución}
+La Tabla~\ref{tab:fallas} registra diez hallazgos surgidos durante el despliegue, con su diagnóstico y corrección: siete fallas corregidas (#1, 2, 3, 5, 6, 7 y 9), dos precauciones (#4, verificación preventiva de claves, y #8, limitación de sincronía de ZMQ) y una pendiente (#10, ruta por defecto del UE, que se cerrará en la Fase 2). Se incluye entre las evidencias de gestión técnica, pues muestra el proceso de depuración con los registros del AMF, del gNB y del UE.
+
+\begin{table*}[!t]
+\caption{Fallas encontradas en el despliegue, diagnóstico y corrección}
+\label{tab:fallas}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{0.5cm}p{3.5cm}p{4.2cm}p{4.3cm}p{4.4cm}}
+\toprule
+\textbf{\#} & \textbf{Síntoma} & \textbf{Causa} & \textbf{Diagnóstico} & \textbf{Corrección} \\
+\midrule
+1 & \texttt{CMakeLists.txt} inexistente al compilar el gNB & La rama por defecto del repositorio \texttt{srsRAN\_Project} (\texttt{archive}) solo contiene un README con aviso de archivo & \texttt{git ls-tree HEAD} mostró un solo archivo; \texttt{origin/main} sí contiene el código & \texttt{git checkout -f -B main origin/main}; \textit{commit} 4bf1543936 (16-feb-2026) \\
+2 & El gNB aborta: ``256QAM MCS table cannot be used for PDSCH with fallback DCI format in SearchSpace\#2'' & Tabla MCS por defecto 256-QAM incompatible con el DCI de respaldo & Mensaje de validación del gNB & \texttt{mcs\_table: qam64} en PDSCH y PUSCH y espacio de búsqueda 2 de tipo común (Lst.~\ref{lst:gnb}) \\
+3 & \textit{NG Setup} falla: \textit{unknown-PLMN-or-SNPN} & El AMF conservaba el PLMN 999/70 y el TAC 1 & Registro del gNB y del AMF & PLMN 001/01 y TAC 7 en \texttt{amf.yaml} y \texttt{nrf.yaml}; reinicio del núcleo \\
+4 & Riesgo de falla de autenticación (verificación preventiva) & $K$ y OPc de MongoDB deben ser idénticos a los del UE & Comparación de \texttt{db.subscribers} con \texttt{ue\_zmq.conf} & Mismos $K$ y OPc en ambos lados; el UE registra \textit{Network authentication successful} \\
+5 & El UE no encuentra la celda (\textit{Cell Selection completed with failure}) & SSB del gNB en 366970 (1834.85~MHz) frente a 368410 que busca el UE; al quitar el bloque \texttt{pdcch} cambió la configuración del espacio de búsqueda & Banner del gNB (\texttt{dl\_ssb\_arfcn}) frente a la frecuencia que busca el UE & Restaurar el bloque \texttt{pdcch} (SSB 368410) \\
+6 & \textit{Address already in use} (puerto ZMQ 2001) & Un \texttt{srsue} anterior seguía vivo & \texttt{pgrep}, \texttt{ss -tlnp} & \texttt{pkill -9 -x srsue} antes de cada prueba \\
+7 & \textit{RAR Timer expired}: el UE envía el PRACH y no recibe respuesta & El valor por defecto de \texttt{prach\_config\_index} del gNB no coincide con el que espera srsUE; el tutorial de srsRAN fija 1 \cite{srsuetut} & Registro del UE: preámbulo transmitido y temporizador de RAR vencido & \texttt{prach\_config\_index: 1}; el gNB detecta el PRACH y el UE completa el acceso aleatorio (C-RNTI 0x4601). No se probaron otros valores \\
+8 & Sin sincronía al reiniciar solo el gNB o el UE & ZMQ no dispone de un mecanismo para realinear el tiempo \cite{srsrandisc} & Comportamiento descrito por los desarrolladores & Reiniciar siempre ambos \\
+9 & Tras reiniciar el equipo se pierden reenvío IP, NAT, \texttt{ogstun} y el \textit{namespace} & Configuración no persistente & \texttt{estado.sh} informa ``NAT: NO'' y ``netns ue1: NO'' & Guion \texttt{arranque.sh} (Lst.~\ref{lst:arranque}) \\
+10 & \textit{Network is unreachable} hacia Internet desde \texttt{ue1} & Falta ruta por defecto en el \textit{namespace} & \texttt{ping} desde \texttt{ue1} & Pendiente: \texttt{ip route add default dev tun\_srsue} (Fase 2) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Análisis de factibilidad}
+\paragraph{Técnica.} La simulación demostró que la pila completa funciona en un único equipo de 8 CPU lógicas y 7.8~GiB de RAM sobre WSL2, con registro y sesión PDU correctos y tráfico bidireccional. Durante el DL el gNB usó 2.5~GiB y unos 2 núcleos, y el srsUE unos 1.6, con el 46\,\% de la CPU libre. El caudal quedó por debajo del modelo por causas que aún no se aíslan (Tabla~\ref{tab:hip}). Para la Fase 3 se recomienda disponer de un puerto USB 3.0 dedicado y, si hace falta, reducir a 10~MHz (52 PRB, 11.52~MS/s) o ejecutar el gNB en Linux nativo, ya que WSL2 limita el control del gobernador de CPU y del USB.
+
+\paragraph{Presupuesto de enlace.} Para anticipar la Fase 3 se calcula el SNR en el receptor con pérdidas de espacio libre y piso de ruido:
+\begin{align}
+\mathrm{FSPL}&=20\log_{10}d_{km}+20\log_{10}f_{MHz}+32.44,\\
+N&=-174+10\log_{10}B+NF.
+\end{align}
+Con $B=19.08$~MHz y una figura de ruido supuesta $NF=7$~dB, $N=-94.2$~dBm. Se suponen antenas de 2~dBi en el SDR y 0~dBi en el terminal. La Tabla~\ref{tab:enlace} muestra el SNR resultante y la Tabla~\ref{tab:cond} el caso conducido con cable y atenuadores para una potencia de 0~dBm.
+
+\begin{table}[!t]
+\caption{SNR en espacio libre a 1842.5~MHz}
+\label{tab:enlace}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{rrrr}
+\toprule
+$d$ (m) & FSPL (dB) & SNR a 0~dBm (dB) & SNR a 10~dBm (dB) \\
+\midrule
+1 & 37.7 & 58.4 & 68.4 \\
+5 & 51.7 & 44.5 & 54.5 \\
+10 & 57.7 & 38.4 & 48.4 \\
+20 & 63.8 & 32.4 & 42.4 \\
+50 & 71.7 & 24.5 & 34.5 \\
+100 & 77.7 & 18.4 & 28.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\caption{Prueba conducida: potencia y SNR en el UE ($P_{tx}=0$~dBm)}
+\label{tab:cond}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{rrr}
+\toprule
+Atenuación (dB) & Potencia en el UE (dBm) & SNR (dB) \\
+\midrule
+50 & $-50$ & 44.2 \\
+60 & $-60$ & 34.2 \\
+70 & $-70$ & 24.2 \\
+80 & $-80$ & 14.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[xmode=log,width=0.98\columnwidth,height=5cm,xlabel={Distancia (m)},ylabel={SNR (dB)},
+  xmin=1,xmax=100,ymin=-10,ymax=75,grid=both,grid style={gray!25},
+  legend style={at={(0.98,0.98)},anchor=north east,font=\scriptsize},
+  tick label style={font=\scriptsize},label style={font=\scriptsize}]
+\addplot[blue!70!black,thick] coordinates {(1,58.4) (2,52.4) (5,44.5) (10,38.4) (20,32.4) (50,24.5) (100,18.4)};
+\addplot[orange!85!black,thick] coordinates {(1,68.4) (2,62.4) (5,54.5) (10,48.4) (20,42.4) (50,34.5) (100,28.4)};
+\addplot[dashed,red!70!black,domain=1:100]{18.6};
+\addplot[dashed,green!50!black,domain=1:100]{-5.5};
+\legend{$P_{tx}=0$~dBm,$P_{tx}=10$~dBm,SNR obj. MCS 28,SNR obj. MCS 0}
+\end{axis}
+\end{tikzpicture}
+\caption{SNR frente a la distancia en espacio libre y SNR objetivo de los MCS extremos.}
+\label{fig:enlace}
+\end{figure}
+
+El enlace no es el factor limitante a distancias de laboratorio: a 100~m y 0~dBm el SNR (18.4~dB) ya iguala al objetivo del MCS 28 (18.6~dB), y a pocos metros sobra por más de 40~dB. El riesgo es el contrario: un SNR muy alto puede saturar los receptores del SDR o del teléfono, y la potencia emitida aumenta el riesgo de interferencia. Paredes y multitrayecto añaden pérdidas que este modelo no incluye, así que las cifras son una cota superior. Por ello se recomienda la prueba conducida con 60 a 80~dB de atenuación, que recorre los MCS de la Tabla~\ref{tab:mcs} de forma controlada y no radia al aire.
+
+\paragraph{Compatibilidad del terminal.} Para la Fase 3 hay que comprobar, antes de comprar, que el teléfono soporte 5G SA, la banda elegida (n3 u otra) y la aceptación de un PLMN de pruebas con una SIM programable; no todos los teléfonos comerciales lo permiten. Esta verificación es crítica y se incluye entre los riesgos.
+
+\paragraph{Económica.} La Tabla~\ref{tab:costos} estima el presupuesto. Dado que el software es libre y el equipo de cómputo ya existe, el costo adicional se concentra en el hardware de radio, para el cual se gestionará préstamo del laboratorio.
+
+\begin{table}[!t]
+\caption{Presupuesto estimado}
+\label{tab:costos}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{3.6cm}p{1.2cm}p{2.4cm}}
+\toprule
+\textbf{Elemento} & \textbf{Cant.} & \textbf{Costo (COP)} \\
+\midrule
+Software (Open5GS, srsRAN, MongoDB) & --- & 0 (código abierto) \\
+Equipo de cómputo (existente) & 1 & 0 \\
+SDR (B210 o bladeRF) & 1 & Préstamo del laboratorio \\
+Lector PC/SC + SIM programable & 1 + 1 & Por cotizar (Fase 3) \\
+Cables RF, adaptadores, atenuadores & 1 juego & Por cotizar (Fase 3) \\
+Teléfono con 5G SA y banda adecuada & 1 & Préstamo o por definir \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Riesgos.} La Tabla~\ref{tab:riesgos} resume los riesgos técnicos y de gestión con sus mitigaciones.
+
+\begin{table*}[!t]
+\caption{Matriz de riesgos del proyecto}
+\label{tab:riesgos}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{0.8cm}p{5.3cm}p{1.6cm}p{1.6cm}p{6.5cm}}
+\toprule
+\textbf{ID} & \textbf{Riesgo} & \textbf{Probab.} & \textbf{Impacto} & \textbf{Mitigación} \\
+\midrule
+R1 & Incompatibilidad de versiones srsRAN/Open5GS (materializado: repositorio archivado) & Alta & Alto & Versiones y \textit{commit} fijados y documentados (Tabla~\ref{tab:entorno}) \\
+R2 & Desempeño del banco ZMQ por debajo del modelo (materializado: 58\,\% DL, 12\,\% UL) & Alta & Alto & Medir por hilo y con MCS fijo; reducir a 10~MHz; Linux nativo; separar UE y gNB \\
+R3 & Terminal sin soporte SA o de banda & Media & Alto & Verificar fichas técnicas antes de la Fase 3 \\
+R4 & Interferencia con redes comerciales & Baja & Muy alto & Cable RF con atenuación, jaula de Faraday, potencia mínima, PLMN 001/01 \\
+R5 & Bloqueo de la SIM por ADM1 incorrecta & Media & Alto & Confirmar la clave ADM1; limitar intentos; SIM de repuesto \\
+R6 & Retraso en la disponibilidad del SDR & Media & Alto & Gestionar préstamo temprano; continuar con ZMQ \\
+R7 & Pérdida de configuraciones o de trabajo & Baja & Medio & Git, copias de seguridad, \textit{scripts} reproducibles \\
+R8 & Permiso de espectro no disponible a tiempo para la Fase 3 & Media & Alto & Prueba conducida por cable, sin radiación; gestionar con antelación el permiso temporal (Res.~467 de 2020) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Criterios para pasar a la Fase 2}
+Se considera completada la Fase 1 cuando: (i) el diagrama de arquitectura y el flujo de señalización estén definidos (cumplido); (ii) el modelo de codificación y MCS esté documentado (cumplido); (iii) la simulación ZMQ realice el registro del UE y una sesión PDU (cumplido); (iv) el plan de pruebas esté definido y se hayan registrado mediciones iniciales (cumplido, con las pruebas P7--P9 pendientes); y (v) el análisis normativo y ético esté incluido (cumplido).
+
+%=====================================================================
+\section{Impacto, normativa y ética}
+\label{sec:etica}
+
+\subsection{Marco normativo en Colombia}
+El espectro radioeléctrico es un bien público inalienable e imprescriptible sujeto a la gestión y el control del Estado \cite{constitucion}. La Tabla~\ref{tab:entes} identifica las entidades y normas que aplican a un proyecto como este. Las Resoluciones 467 de 2020 (MinTIC) y 774 de 2018 (ANE) se consultaron en el normograma de MinTIC; su vigencia, sus posibles modificaciones y la atribución vigente de la banda n3 en el CNABF deben confirmarse con la ANE/MinTIC antes de cualquier emisión, y no se verificaron en una fuente oficial de atribución. Si se desea emitir al aire, se solicitará el permiso correspondiente.
+
+\begin{table}[!t]
+\caption{Entidades y normas relevantes en Colombia}
+\label{tab:entes}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.7cm}p{6.0cm}}
+\toprule
+\textbf{Entidad} & \textbf{Competencia} \\
+\midrule
+ANE & Agencia Nacional del Espectro: planeación, gestión, vigilancia y control del espectro; cuadro de atribución de bandas (CNABF) y límites de exposición a campos electromagnéticos (Res.~774 de 2018) \cite{ane774} \\
+MinTIC & Política sectorial, habilitación y permisos para el uso del espectro (Ley 1341 de 2009) \cite{ley1341}; permisos temporales para pruebas técnicas (Res.~467 de 2020, modificada por la Res.~2328 de 2022) \cite{res467} \\
+CRC & Comisión de Regulación de Comunicaciones: regulación de mercados y de servicios \\
+SIC & Protección de datos personales (Ley 1581 de 2012) \cite{ley1581} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Las bandas candidatas (n3 en 1.8~GHz y n78 en 3.5~GHz) son bandas IMT asignadas a operadores móviles. Por tanto, \textbf{transmitir sobre ellas sin autorización es una infracción} y puede interferir con servicios comerciales y de emergencia. A nivel internacional, la UIT define la visión IMT-2020 y administra el Reglamento de Radiocomunicaciones \cite{itum2083}.
+
+\paragraph{Permisos temporales de pruebas.} La Resolución 467 de 2020 de MinTIC, modificada por la Resolución 2328 de 2022, fija las condiciones para otorgar permisos temporales de uso del espectro, en cualquier banda y tipo de red, para pruebas técnicas \cite{res467}. Según su texto compilado, el permiso: dura 6 o 12 meses y se prorroga una sola vez; exige la inscripción en el Registro Único de TIC, los formularios de solicitud, de descripción de red y de información técnica del equipo, un documento con el propósito, lugar, fechas, frecuencias y ancho de banda de las pruebas, y una carta de compromiso para entregar un informe de resultados dentro de los 30 días siguientes al vencimiento; implica una contraprestación económica; no reserva la frecuencia ni da derecho a una asignación posterior; no puede usarse para dar servicio a terceros ni para operación comercial; es personal e intransferible; y obliga a cesar de inmediato cualquier interferencia perjudicial a usuarios autorizados, con responsabilidad del titular por los daños a terceros. En consecuencia, si la Fase 3 usara antena, la solicitud debe tramitarse con antelación; la alternativa de menor riesgo regulatorio es la prueba conducida por cable, sin radiación, que debe confirmarse con la autoridad.
+
+\subsection{Mitigación del riesgo de interferencia}
+El diseño del proyecto contempla estas medidas:
+\begin{itemize}
+  \item \textbf{Fases 1 y 2:} operación íntegramente virtual (ZMQ); no hay emisión de RF. Esto se verificó en la simulación: el gNB y el UE solo intercambian muestras por \textit{sockets} TCP locales.
+  \item \textbf{Fase 3:} conexión por cable coaxial con atenuación fija y, de ser posible, jaula de Faraday; potencia de transmisión mínima y uso del PLMN de pruebas 001/01. El MCC 001 está reservado para pruebas; no debe emplearse el MCC/MNC de un operador real (el MCC de Colombia es 732), pues un terminal podría intentar conectarse a la celda de pruebas como si fuera la de su operador.
+  \item \textbf{Terminal:} usar un teléfono dedicado a la prueba, sin servicio comercial activo, ya que una celda de pruebas no puede encaminar llamadas de emergencia.
+  \item \textbf{Permisos:} consultar a la ANE/MinTIC la vía para pruebas experimentales o bandas de uso libre antes de cualquier emisión al aire.
+\end{itemize}
+
+\subsection{Exposición a campos electromagnéticos}
+Los límites de exposición se basan en las guías ICNIRP \cite{icnirp}. En Colombia, el Decreto 195 de 2005 \cite{decreto195} fue compilado en el Decreto 1078 de 2015 y su capítulo subrogado por el Decreto 1370 de 2018, y la ANE adoptó los límites y las condiciones de las estaciones radioeléctricas en la Resolución 774 de 2018 \cite{ane774}; los valores numéricos aplicables deben tomarse de la norma vigente. A 1842.5~MHz, el límite de densidad de potencia para el público es $f/200\approx9.2$~W/m$^2$ (ICNIRP, 400--2000~MHz). Para un SDR con potencia de 10~dBm (10~mW) y antena isotrópica a $d=1$~m:
+\begin{equation}
+S=\frac{P}{4\pi d^{2}}=\frac{0.01}{4\pi\cdot1^{2}}\approx7.96\times10^{-4}~\mathrm{W/m^{2}},
+\end{equation}
+es decir, alrededor del 0.009\% del límite. Con cable y atenuadores, la exposición es aún menor. En el peor caso considerado (EIRP de 30~dBm a 0.2~m) la densidad de potencia es 1.99~W/m$^2$, el 21.6\,\% del límite. Aun así, la normativa de espectro, y no la de exposición, es la restricción dominante.
+
+\subsection{Privacidad y seguridad de la información}
+Las capturas de tráfico contienen identificadores personales (IMSI/SUPI en la configuración de esquema nulo) y metadatos de uso. Se adoptan las siguientes prácticas, alineadas con la Ley 1581 de 2012 \cite{ley1581}: usar SIM y datos de prueba (no los de una persona), almacenar las capturas en un repositorio restringido, anonimizar los identificadores antes de publicarlas y no incluir $K$ ni OPc en repositorios ni en informes (en este documento se omiten). En la simulación se emplearon claves de ejemplo; para la SIM real de la Fase 3 se generarán $K$ y OPc únicos, que no se publicarán. En Open5GS se recomienda restringir MongoDB a \textit{localhost} y proteger la WebUI, cuya cuenta predeterminada de administrador debe cambiarse. Debe tenerse presente que el esquema nulo de SUCI no oculta el identificador del suscriptor, lo cual es aceptable en el laboratorio pero no en una red real.
+
+\subsection{Ética profesional y licencias}
+El proyecto se rige por el Código de Ética del IEEE \cite{ieeeethics}: anteponer la seguridad, la salud y el bienestar del público, proteger la privacidad, declarar con honestidad los límites del trabajo (como se hizo con las pruebas pendientes y las hipótesis no aisladas) y reconocer las contribuciones ajenas. El software de Open5GS se distribuye bajo AGPL-3.0, lo que obliga a publicar el código fuente de las modificaciones si se ofrece como servicio de red; se deben consultar y respetar las licencias vigentes de cada proyecto.
+
+\subsection{Impacto socio-técnico}
+La Tabla~\ref{tab:impacto} resume beneficios, riesgos y medidas de mitigación de las redes 5G abiertas con SDR.
+
+\begin{table*}[!t]
+\caption{Impacto socio-técnico de redes 5G abiertas basadas en SDR}
+\label{tab:impacto}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{4.3cm}p{6.4cm}p{6.4cm}}
+\toprule
+\textbf{Dimensión} & \textbf{Oportunidades} & \textbf{Riesgos y mitigación} \\
+\midrule
+Conectividad y brecha digital & Redes comunitarias y rurales de menor costo; redes privadas en campus, campo e industria & Riesgo de redes no reguladas o inseguras; mitigar con licenciamiento y buenas prácticas de seguridad \\
+Soberanía y capacidades locales & Formación de talento y menor dependencia de proveedores únicos & Escasez de personal especializado; mitigar con formación y documentación abierta \\
+Costos & Software libre y hardware genérico reducen costo inicial & Costo oculto de operación y soporte; planificar mantenimiento \\
+Sostenibilidad & Reutilización de equipos y menor huella en laboratorio & Consumo energético y residuos electrónicos; mitigar con apagado programado y reciclaje \\
+Seguridad y privacidad & Transparencia del código permite auditar & Configuraciones por defecto débiles; mitigar con \textit{hardening} y gestión de secretos \\
+Salud pública & Exposición muy inferior a los límites en el laboratorio & Percepción de riesgo; comunicar con base en las guías ICNIRP \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+%=====================================================================
+\section{Gestión técnica y decisiones}
+\label{sec:gestion}
+
+\subsection{Registro de decisiones de diseño}
+La Tabla~\ref{tab:decisiones} documenta las decisiones principales, sus alternativas y su justificación.
+
+\begin{table*}[!t]
+\caption{Registro de decisiones de diseño}
+\label{tab:decisiones}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{3.0cm}p{3.6cm}p{3.6cm}p{6.8cm}}
+\toprule
+\textbf{Decisión} & \textbf{Elegido} & \textbf{Alternativa} & \textbf{Justificación} \\
+\midrule
+Núcleo & Open5GS 2.8.0 & SD-Core & Menor complejidad, guías de integración con srsRAN, EPC y 5GC \\
+Plataforma de ejecución & WSL2 (Ubuntu 22.04) con \textit{systemd} & Máquina virtual o Linux nativo & Disponible en el equipo; SCTP y TUN verificados; limitaciones documentadas \\
+Origen del gNB & srsRAN Project, rama \texttt{main}, \textit{commit} 4bf1543936 & Otro proyecto, OCUDU, citado en el aviso del repositorio & Compatibilidad con la documentación y los parámetros del curso; el repositorio archivado conserva el código en \texttt{main} \\
+Radio en Fases 1--2 & ZMQ & SDR directo & Sin riesgo de RF; permite validar la pila completa \\
+Aislamiento del UE & \textit{Network namespace} & Segundo anfitrión & Reproduce el túnel real con un solo equipo \\
+PLMN & 001/01 & PLMN comercial & Evita colisión con operadores \\
+Banda de simulación & n3 FDD (20~MHz, 15~kHz) & n78 TDD & FDD simplifica el análisis de caudal \\
+Tabla MCS & 64-QAM & 256-QAM & Exigido por la validación del DCI de respaldo; facilita la comparación con el modelo \\
+Programación de SIM & grsimwrite & cyberflex-shell & Interfaz gráfica y mayor documentación; la otra queda de respaldo \\
+Gestión de suscriptores & WebUI + MongoDB & Edición manual & Menor probabilidad de errores \\
+Captura de tráfico & tcpdump + tshark & Wireshark en Windows & Wireshark en Windows no ve el \textit{loopback} de WSL2 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Estado de avance y proyección}
+La Tabla~\ref{tab:cronograma} resume el avance. Todo el trabajo fue desarrollado de forma individual por el autor, incluyendo la revisión de los resultados contra el modelo teórico.
+
+\begin{table}[!t]
+\caption{Estado de avance de las fases}
+\label{tab:cronograma}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{1.4cm}p{4.0cm}p{2.3cm}}
+\toprule
+\textbf{Fase} & \textbf{Actividades} & \textbf{Estado} \\
+\midrule
+1 & Arquitectura, modelado, simulación ZMQ inicial, normativa & Completada (este informe) \\
+2 & Núcleo estable, análisis de trazas en Wireshark, pruebas P7--P9, ruta a Internet, repeticiones estadísticas & En curso (núcleo, gNB y UE ya operativos) \\
+3 & SDR físico, SIM programada, terminal comercial, KPI en campo & Pendiente \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La Fase 2 reutiliza el banco ZMQ para estabilizar el núcleo, mantener el túnel GTP-U, completar la conectividad a Internet y analizar a fondo las trazas de registro y sesión PDU. La Fase 3 sustituye ZMQ por el SDR físico: se deben calibrar ganancias y frecuencia, controlar el desfase de reloj, medir SNR, caudal y latencia con el terminal comercial y cumplir las medidas de la Sección~\ref{sec:etica}.
+
+%=====================================================================
+\section{Conclusiones}
+\label{sec:concl}
+
+\begin{enumerate}
+  \item Se seleccionó Open5GS con srsRAN Project y radio ZMQ para las Fases 1 y 2, por su menor complejidad, su compatibilidad con 4G/5G y la existencia de guías de integración. El SDR físico se reserva para la Fase 3.
+  \item La arquitectura lógica quedó definida con las interfaces N1, N2, N3, N4 y N6, con una separación explícita de roles, y se verificó en la captura: \textit{NG Setup} en N2, autenticación 5G-AKA, establecimiento de la sesión PDU con PFCP en N4 y tráfico GTP-U en N3.
+  \item El modelo de codificación justifica LDPC para datos y Polar para control, y calcula TBS, segmentación y MCS. Con 20~MHz, 15~kHz y una capa, el máximo teórico de enlace descendente es de 85.1~Mbps (64-QAM) y 113.4~Mbps (256-QAM).
+  \item La simulación ZMQ completó el registro y la sesión PDU en 0.51~s, con RTT medio de 32.7~ms (mín. 21.7; máx. 39.1), 0\,\% de pérdidas y caudales TCP de 49.5~Mbps (DL, 58\,\% del teórico) y 10.6~Mbps (UL, 12\,\%). El núcleo aporta del orden de 0.1~ms, de modo que la latencia proviene de la ruta radio emulada. La brecha de caudal no se explica por saturación global de la CPU (46\,\% libre); se plantean cuatro hipótesis (Tabla~\ref{tab:hip}) que deben contrastarse en la Fase 2 con barrido de MCS, prueba UDP y medición por hilo.
+  
+  \item Se documentaron diez hallazgos de configuración: siete fallas corregidas (repositorio archivado, tabla MCS, PLMN, frecuencia del SSB, puerto ZMQ ocupado, PRACH y persistencia de la red), dos precauciones (verificación de claves y reinicio conjunto de gNB y UE) y una pendiente, la ruta por defecto del UE para alcanzar Internet.
+  
+  \item El presupuesto de enlace muestra que el SNR no limita a distancias de laboratorio (18.4~dB a 100~m con 0~dBm); en la Fase 3 el riesgo es la saturación y la interferencia, por lo que se recomienda la prueba conducida con 60 a 80~dB de atenuación y la gestión previa del permiso temporal de MinTIC si se usa antena.
+  \item El principal riesgo del proyecto es regulatorio y de interferencia en la Fase 3. Se propone operar con cable y atenuación, PLMN de pruebas y coordinación previa con las autoridades. Otro riesgo crítico es la compatibilidad del terminal con 5G SA y con la banda elegida.
+  \item \textbf{Trabajo futuro:} completar la conectividad a Internet, ejecutar las pruebas P7--P9, analizar las trazas (Fase 2), y validar la transmisión OTA y los KPI en campo con un móvil comercial (Fase 3).
+\end{enumerate}
+
+%=====================================================================
+\begin{thebibliography}{00}
+\bibitem{ts38300} 3GPP, ``NR; NR and NG-RAN overall description; Stage 2,'' TS 38.300.
+\bibitem{ts23501} 3GPP, ``System architecture for the 5G System (5GS); Stage 2,'' TS 23.501.
+\bibitem{ts23502} 3GPP, ``Procedures for the 5G System (5GS); Stage 2,'' TS 23.502.
+\bibitem{ts24501} 3GPP, ``Non-Access-Stratum (NAS) protocol for 5G System (5GS); Stage 3,'' TS 24.501.
+\bibitem{ts38413} 3GPP, ``NG-RAN; NG Application Protocol (NGAP),'' TS 38.413.
+\bibitem{ts29244} 3GPP, ``Interface between the Control Plane and the User Plane nodes (PFCP),'' TS 29.244.
+\bibitem{ts29281} 3GPP, ``General Packet Radio System (GPRS) Tunnelling Protocol User Plane (GTPv1-U),'' TS 29.281.
+\bibitem{ts33501} 3GPP, ``Security architecture and procedures for 5G System,'' TS 33.501.
+\bibitem{ts38211} 3GPP, ``NR; Physical channels and modulation,'' TS 38.211.
+\bibitem{ts38212} 3GPP, ``NR; Multiplexing and channel coding,'' TS 38.212.
+\bibitem{ts38214} 3GPP, ``NR; Physical layer procedures for data,'' TS 38.214.
+\bibitem{ts38306} 3GPP, ``NR; User Equipment (UE) radio access capabilities,'' TS 38.306.
+\bibitem{ts38101} 3GPP, ``NR; User Equipment (UE) radio transmission and reception; Part 1: Range 1 Standalone,'' TS 38.101-1.
+\bibitem{milenage} 3GPP, ``Specification of the MILENAGE algorithm set,'' TS 35.206.
+\bibitem{rfc4960} R. Stewart, ``Stream Control Transmission Protocol,'' IETF RFC 4960, 2007.
+\bibitem{richardson} T. Richardson and S. Kudekar, ``Design of low-density parity check codes for 5G new radio,'' \textit{IEEE Commun. Mag.}, vol. 56, no. 3, pp. 28--34, Mar. 2018.
+\bibitem{arikan} E. Arıkan, ``Channel polarization: A method for constructing capacity-achieving codes for symmetric binary-input memoryless channels,'' \textit{IEEE Trans. Inf. Theory}, vol. 55, no. 7, pp. 3051--3073, Jul. 2009.
+\bibitem{dahlman} E. Dahlman, S. Parkvall, and J. Sköld, \textit{5G NR: The Next Generation Wireless Access Technology}. Academic Press, 2018.
+\bibitem{itum2083} ITU-R, ``Framework and overall objectives of the future development of IMT for 2020 and beyond,'' Recommendation ITU-R M.2083, 2015.
+\bibitem{srsran} Software Radio Systems, ``srsRAN Project documentation.'' [Online]. Available: \url{https://docs.srsran.com}
+\bibitem{open5gs} Open5GS, ``Open5GS: Open source implementation of 5GC and EPC.'' [Online]. Available: \url{https://open5gs.org}
+\bibitem{sdcore} Open Networking Foundation, ``SD-Core.'' [Online]. Available: \url{https://opennetworking.org/sd-core/}
+\bibitem{grsim} ``grsim\_write: programación de tarjetas SIM/USIM.'' [Online]. Available: \url{https://smacarte.com/wp/grsimwrite_download/}
+\bibitem{cyberflex} H. Welte, ``cyberflex-shell,'' Osmocom. [Online]. Available: \url{https://gitea.osmocom.org/laforge/cyberflex-shell/}
+\bibitem{zeromq} ZeroMQ, ``ZeroMQ: distributed messaging.'' [Online]. Available: \url{https://zeromq.org}
+\bibitem{icnirp} ICNIRP, ``Guidelines for limiting exposure to electromagnetic fields (100 kHz to 300 GHz),'' \textit{Health Physics}, vol. 118, no. 5, pp. 483--524, 2020.
+\bibitem{ieeeethics} IEEE, ``IEEE Code of Ethics,'' IEEE Policies, Section 7.8.
+\bibitem{constitucion} República de Colombia, ``Constitución Política de Colombia,'' art. 75, 1991.
+\bibitem{ley1341} Congreso de Colombia, ``Ley 1341 de 2009 (Ley de TIC),'' modificada por la Ley 1978 de 2019.
+\bibitem{ley1581} Congreso de Colombia, ``Ley 1581 de 2012: Protección de datos personales.''
+\bibitem{ts38401} 3GPP, ``NG-RAN; Architecture description,'' TS 38.401.
+\bibitem{ts29500} 3GPP, ``5G System; Technical Realization of Service Based Architecture; Stage 3,'' TS 29.500.
+\bibitem{ts38913} 3GPP, ``Study on scenarios and requirements for next generation access technologies,'' TR 38.913.
+\bibitem{res467} Ministerio de Tecnologías de la Información y las Comunicaciones, ``Resolución 467 de 2020 (modificada por la Resolución 2328 de 2022): permisos temporales de uso del espectro radioeléctrico para pruebas técnicas.'' [Online]. Available: \url{https://normograma.mintic.gov.co/mintic/docs/pdf/resolucion_mintic_0467_2020.pdf}
+\bibitem{ane774} Agencia Nacional del Espectro, ``Resolución 774 de 2018: límites de exposición de las personas a campos electromagnéticos y condiciones de las estaciones radioeléctricas.'' [Online]. Available: \url{https://normograma.mintic.gov.co/mintic/compilacion/docs/resolucion_ane_0774_2018.htm}
+\bibitem{srsuetut} Software Radio Systems, ``srsRAN gNB with srsUE (tutorial).'' [Online]. Available: \url{https://docs.srsran.com/projects/project/en/latest/tutorials/source/srsUE/source/index.html}
+\bibitem{srsrandisc} srsRAN Project, ``Unstable connection of srsUE to srs gNB,'' GitHub Discussions \#138. [Online]. Available: \url{https://github.com/srsran/srsRAN_Project/discussions/138}
+\bibitem{decreto195} República de Colombia, ``Decreto 195 de 2005: Límites de exposición de las personas a campos electromagnéticos.''
+\end{thebibliography}
+
+\end{document}
