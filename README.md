@@ -8,7 +8,7 @@
 
 ---
 
-## 📌 1. Visión General del Proyecto
+##  1. Visión General del Proyecto
 
 El objetivo principal de este proyecto de curso es diseñar, simular, implementar y validar experimentalmente una red celular **5G New Radio (NR) en modo Standalone (SA)** completamente funcional y basada en tecnologías de código abierto.
 
@@ -22,19 +22,19 @@ La arquitectura integra:
 
 ---
 
-## 🗺️ 2. Fases del Proyecto y Estado de Avance
+## 2. Fases del Proyecto y Estado de Avance
 
 El proyecto se estructura en tres fases progresivas alineadas con la rúbrica de evaluación académica:
 
 | Fase | Enfoque | Hitos Principales | Estado |
 | :--- | :--- | :--- | :---: |
-| **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada** ✅ |
-| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • Estabilización del núcleo Open5GS y persistencia de servicios.<br>• Habilitación de ruta por defecto hacia Internet desde el UE (`ip route add default dev tun_srsue`).<br>• Análisis exhaustivo de trazas de paquetes en Wireshark (NGAP, NAS-5GS, PFCP, GTP-U).<br>• Pruebas P7 (Caudal y saturación UDP), P8 (Efecto de MCS fijo) y P9 (Estabilidad 30 min).<br>• Repeticiones estadísticas (5 corridas) con intervalos de confianza.<br>• Automatización y contenerización del despliegue. | **En curso / Próxima** 🔄 |
-| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y cálculo de presupuesto de enlace. | **Planificada** ⏳ |
+| **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada**  |
+| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • Estabilización del núcleo Open5GS y persistencia de servicios.<br>• Habilitación de ruta por defecto hacia Internet desde el UE (`ip route add default dev tun_srsue`).<br>• Análisis exhaustivo de trazas de paquetes en Wireshark (NGAP, NAS-5GS, PFCP, GTP-U).<br>• Pruebas P7 (Caudal y saturación UDP), P8 (Efecto de MCS fijo) y P9 (Estabilidad 30 min).<br>• Repeticiones estadísticas (5 corridas) con intervalos de confianza.<br>• Automatización y contenerización del despliegue. | **En curso / Próxima**  |
+| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y cálculo de presupuesto de enlace. | **Planificada**  |
 
 ---
 
-## 🏛️ 3. Arquitectura Lógica del Sistema 5G SA
+##  3. Arquitectura Lógica del Sistema 5G SA
 
 El sistema opera bajo el estándar 3GPP Release 15/16 en topología Standalone pura (Option 2), donde el gNB conecta de manera nativa al 5G Core sin dependencia de infraestructura 4G EPC.
 
@@ -80,7 +80,7 @@ El sistema opera bajo el estándar 3GPP Release 15/16 en topología Standalone p
 
 ---
 
-## ⚙️ 4. Parámetros de Configuración del Banco de Pruebas
+## 4. Parámetros de Configuración del Banco de Pruebas
 
 Los siguientes parámetros fueron configurados y verificados en la Fase 1 tanto en el núcleo Open5GS como en el gNB srsRAN y el srsUE:
 
@@ -100,7 +100,7 @@ Los siguientes parámetros fueron configurados y verificados en la Fase 1 tanto 
 
 ---
 
-## 📊 5. Resultados de la Fase 1: Teórico vs. Simulación ZMQ
+##  5. Resultados de la Fase 1: Teórico vs. Simulación ZMQ
 
 En la Fase 1 se llevó a cabo el modelado analítico completo (codificación LDPC para datos, Polar para control, capacidad de Shannon y fórmula 3GPP TS 38.306) contrastado con una corrida experimental en el banco ZMQ:
 
@@ -115,7 +115,7 @@ En la Fase 1 se llevó a cabo el modelado analítico completo (codificación LDP
 
 ---
 
-## 🛠️ 6. Bitácora Técnica de Hallazgos y Soluciones (Troubleshooting)
+##  6. Bitácora Técnica de Hallazgos y Soluciones (Troubleshooting)
 
 Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas críticas de configuración:
 
@@ -132,7 +132,7 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 
 ---
 
-## 📋 7. Trazabilidad con la Rúbrica de Evaluación (ABET)
+##  7. Trazabilidad con la Rúbrica de Evaluación (ABET)
 
 | Criterio / Competencia | Fase | Nivel de Cumplimiento e Información de Respaldo |
 | :--- | :---: | :--- |
@@ -147,7 +147,7 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 
 ---
 
-## 🐳 8. Automatización y Contenerización (Fase 2)
+##  8. Automatización y Contenerización (Fase 2)
 
 Para la **Fase 2**, se ha preparado una arquitectura completa basada en **Docker Compose** que permite levantar, monitorear y evaluar toda la red 5G Standalone con un solo comando, eliminando la necesidad de ejecutar comandos manuales individuales:
 
@@ -173,7 +173,7 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 
 ---
 
-## 📂 9. Estructura del Repositorio y Documentación
+##  9. Estructura del Repositorio y Documentación
 
 * [`README.md`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/README.md): Contexto global, arquitectura, especificaciones y estado del proyecto.
 * [`SKILLS.md`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/SKILLS.md): Competencias técnicas necesarias, perfiles de especialidad y directriz estricta de idioma (Español).
