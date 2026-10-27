@@ -28,9 +28,9 @@ El proyecto se estructura en tres fases progresivas alineadas con la rúbrica de
 
 | Fase | Enfoque | Hitos Principales | Estado |
 | :--- | :--- | :--- | :---: |
-| **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada**  |
-| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • Estabilización del núcleo Open5GS y persistencia de servicios.<br>• Habilitación de ruta por defecto hacia Internet desde el UE (`ip route add default dev tun_srsue`).<br>• Análisis exhaustivo de trazas de paquetes en Wireshark (NGAP, NAS-5GS, PFCP, GTP-U).<br>• Pruebas P7 (Caudal y saturación UDP), P8 (Efecto de MCS fijo) y P9 (Estabilidad 30 min).<br>• Repeticiones estadísticas (5 corridas) con intervalos de confianza.<br>• Automatización y contenerización del despliegue. | **En curso / Próxima**  |
-| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y cálculo de presupuesto de enlace. | **Planificada**  |
+| **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada** |
+| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • [Hecho] Automatización y contenerización del despliegue (Docker Compose, validado de extremo a extremo).<br>• [Hecho] Estabilización del núcleo Open5GS (11 NF activas, healthchecks y reinicio automático).<br>• [Hecho] Ruta por defecto hacia Internet desde el UE por `tun_srsue` (Falla #10 resuelta).<br>• [Hecho] Captura automatizada del flujo NG Setup → Registration → PDU Session (NGAP, NAS-5GS, PFCP, SBI).<br>• [Pendiente] Análisis exhaustivo de trazas en Wireshark (campo a campo).<br>• [Pendiente] Pruebas P7 (Caudal y saturación UDP), P8 (Efecto de MCS fijo) y P9 (Estabilidad 30 min).<br>• [Pendiente] Repeticiones estadísticas (5 corridas) con intervalos de confianza. | **En curso** |
+| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y cálculo de presupuesto de enlace. | **Planificada** |
 
 ---
 
@@ -128,7 +128,23 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 7. **Expiración de temporizador RAR (`RAR Timer expired`):** El preámbulo PRACH no era atendido; se fijó `prach_config_index: 1` en el gNB según la especificación para srsUE.
 8. **Pérdida de sincronía en ZMQ:** Reiniciar únicamente el UE o el gNB desincronizaba el tiempo de muestras; se estableció la regla de reiniciar siempre ambos componentes en conjunto.
 9. **Volatilidad de red tras reinicio del host:** La interfaz `ogstun`, las reglas de `iptables MASQUERADE`, el `ip_forward` y el namespace `ue1` se perdían al reiniciar la máquina; se automatizó con el script `arranque.sh`.
-10. **Ruta por defecto hacia Internet pendiente (Fase 2):** Al hacer ping a `8.8.8.8` desde `ue1` se producía `Network is unreachable` por falta de la ruta por defecto. Se subsanará en Fase 2 mediante `ip netns exec ue1 ip route add default dev tun_srsue`.
+10. **Ruta por defecto hacia Internet (resuelta en Fase 2):** Al hacer ping a `8.8.8.8` desde `ue1` se producía `Network is unreachable` por falta de la ruta por defecto. En el despliegue Docker el UE reemplaza la ruta por defecto del contenedor por `default dev tun_srsue` en cuanto la sesión PDU le asigna IP (ver Fase 2, falla F2-7).
+
+### Fallas corregidas al validar la contenerización (Fase 2)
+
+| # | Síntoma | Causa | Corrección |
+| :--- | :--- | :--- | :--- |
+| F2-1 | La imagen de Open5GS no construía | `open5gs-webui` no existe como paquete apt | WebUI en contenedor propio (`docker/webui`), compilada desde el código fuente v2.8.0 |
+| F2-2 | UDR/PCF sin base de datos | Los yaml del paquete apuntan a `mongodb://localhost` | El entrypoint reescribe `db_uri` hacia el contenedor `mongodb` |
+| F2-3 | Configuración rechazada / PLMN 999/70 | `amf.yaml` mezclaba formatos antiguos y nuevos; `nrf.yaml` sin sobrescribir | `amf.yaml`, `nrf.yaml` y `upf.yaml` reescritos en formato 2.7+/2.8 con PLMN 001/01 |
+| F2-4 | GTP-U inalcanzable | El UPF anunciaba N3 en `0.0.0.0` y el gNB enlazaba N3 en `127.0.0.1` (valor por defecto) | UPF en `172.20.0.3`; gNB con `cu_up.ngu.socket.bind_addr: 172.20.0.4` |
+| F2-5 | El gNB esperaba indefinidamente al AMF | Se sondeaba NGAP con `nc` (TCP) pero NGAP usa SCTP | Healthcheck sobre `/proc/net/sctp/eps` y `depends_on: service_healthy` |
+| F2-6 | Sin radio entre gNB y UE | Puertos ZMQ cruzados: el gNB se conectaba a sí mismo y el UE intentaba enlazar la IP del gNB | gNB TX `bind 172.20.0.4:2000` / RX → UE `172.20.0.5:2001`, y simétrico en el UE |
+| F2-7 | El ping a Internet "funcionaba" sin pasar por 5G | `ip route add default ... metric 1` perdía contra la ruta de Docker (métrica 0) | `ip route replace default dev tun_srsue` en un bucle de monitoreo permanente |
+| F2-8 | Registro exitoso pero sesión PDU rechazada (`No 5QI`) | `init-mongo.js` usaba la clave `pcn` en lugar de `qos` | Documento de suscriptor con el esquema de Open5GS 2.8 |
+| F2-9 | Caudal reducido y cola de logs desbordada | PHY/MAC en `info` (~20 MB/min) y PCAP de N3 por paquete en el gNB | Logs en `warning` (señalización en `info`) y N3 capturado desde el Core |
+| F2-10 | Scripts rotos al clonar en Windows | `core.autocrlf=true` convierte los `.sh` a CRLF | `.gitattributes` con `eol=lf` y normalización `sed 's/\r$//'` en los Dockerfiles |
+| F2-11 | Captura PCAP corrupta desde PowerShell | La redirección `>` de PowerShell 5.1 reescribe el binario en UTF-16 | `tcpdump -w` dentro del contenedor sobre el volumen `./capturas` |
 
 ---
 
@@ -152,37 +168,66 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 Para la **Fase 2**, se ha preparado una arquitectura completa basada en **Docker Compose** que permite levantar, monitorear y evaluar toda la red 5G Standalone con un solo comando, eliminando la necesidad de ejecutar comandos manuales individuales:
 
 ```powershell
-# Iniciar toda la red (MongoDB + Open5GS 5GC + gNB srsRAN + srsUE)
+# Iniciar toda la red (MongoDB + Open5GS 5GC + WebUI + gNB srsRAN + srsUE)
 .\manage_lab.ps1 up
 
 # O con Docker Compose nativo:
 docker compose up -d --build
 ```
 
-### Características de la Infraestructura Contenerizada:
-* **MongoDB automatizado:** Registra de forma inmediata el suscriptor de pruebas con perfil eMBB (SST: 1) y APN `internet`.
-* **Open5GS NFV unificado:** Configura automáticamente la interfaz `ogstun`, reenvío `ip_forward` y reglas NAT MASQUERADE con WebUI en [http://localhost:9999](http://localhost:9999).
-* **srsRAN gNB & srsUE (ZeroMQ):** Emulación de canal radio por software con comunicación interna de baja latencia.
-* **Resolución automática de la Falla #10:** El contenedor del UE inyecta automáticamente la ruta por defecto a Internet (`ip route add default dev tun_srsue`) en cuanto recibe su dirección IP.
-* **Scripts de prueba integrados:**
-  * Pruebas de conectividad y latencia ICMP (`.\manage_lab.ps1 test-ping`).
-  * Pruebas de caudal TCP y saturación UDP para la prueba P7 (`.\manage_lab.ps1 test-iperf`).
-  * Captura de trazas PCAP para análisis en Wireshark (`.\manage_lab.ps1 pcap`).
+La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el equipo; las siguientes usan la caché de Docker.
 
-Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/docker/README.md).
+### Características de la Infraestructura Contenerizada:
+* **MongoDB automatizado:** Registra de forma inmediata el suscriptor de pruebas con perfil eMBB (SST: 1, 5QI: 9) y DNN `internet`.
+* **Open5GS v2.8.0 NFV:** 11 funciones de red, interfaz `ogstun`, `ip_forward` y NAT MASQUERADE automáticos; healthcheck sobre NGAP/SCTP.
+* **WebUI** en [http://localhost:9999](http://localhost:9999) (`admin` / `1423`), en su propio contenedor.
+* **srsRAN gNB & srsUE (ZeroMQ):** Emulación de canal radio por software entre contenedores; el gNB publica cada segundo una tabla de métricas (CQI, MCS, caudal, ACK/NACK) en `docker compose logs gnb`.
+* **Falla #10 resuelta:** El UE reemplaza la ruta por defecto por `default dev tun_srsue`, así que todo su tráfico sale por la red 5G.
+* **Evidencia automática en `./capturas`:** `gnb_ngap.pcap`, `ue_nas.pcap`, `gnb.log`, `ue.log` y las trazas `fase2_traza_*.pcap` del Core.
+* **Scripts de prueba integrados:**
+  * Conectividad y latencia ICMP (`.\manage_lab.ps1 test-ping`).
+  * Caudal TCP y saturación UDP para la prueba P7 (`.\manage_lab.ps1 test-iperf`).
+  * Captura de trazas PCAP (`.\manage_lab.ps1 pcap -Seconds 60`) y del registro completo (`.\manage_lab.ps1 pcap-registro`).
+
+### Validación del despliegue (27 de octubre de 2026)
+
+Ejecutado en el equipo menos potente del proyecto (portátil Intel Core i5-8250U, 4 núcleos / 8 hilos a 1.6 GHz, Docker Desktop sobre WSL2 con 8 CPU y 10 GB):
+
+| Verificación | Resultado |
+| :--- | :--- |
+| Core Open5GS | 11 NF activas, NRF con todas las NF registradas, PFCP SMF↔UPF asociado, UDR/PCF conectados a MongoDB |
+| N2 (NGAP/SCTP) | `NGSetupRequest` / `NGSetupResponse` exitosos, PLMN 00101 |
+| Registro y sesión | 5G-AKA, Security Mode, Registration complete y PDU Session Establishment (IP 10.45.0.x) |
+| Plano de usuario | Ping al UPF y a `8.8.8.8` por `tun_srsue` con 0 % de pérdida; DNS resuelto por la red 5G |
+| Caudal (iperf3) | TCP DL ≈ 8–14 Mbps, TCP UL ≈ 1–2 Mbps, UDP DL ≈ 9–12 Mbps |
+| Traza PCAP | Flujo completo NG Setup → Registration → PDU Session decodificado (NGAP, NAS-5GS, PFCP, HTTP/2 SBI) |
+
+> **Sobre el rendimiento:** el canal ZMQ es sincrónico (gNB y UE intercambian muestras I/Q en lazo cerrado), así que en un equipo que no alcanza a procesar 23.04 MS/s la emulación transcurre más lenta que el tiempo real. En este portátil el gNB reporta MCS 28, CQI 15 y unos 59 Mbps DL **por segundo emulado**, pero solo se emulan unos 200 ms por cada segundo de reloj; de ahí el caudal (≈ 10 Mbps) y el RTT (90–250 ms) medidos. Las cifras de la Fase 1 (49.5 Mbps DL, RTT 32.7 ms) se obtuvieron en un equipo más potente. Las mediciones P7–P9 deben registrar el equipo usado y hacerse en una misma máquina para que sean comparables.
+>
+> La configuración no depende del equipo: no fija CPU, memoria ni afinidad de núcleos, y es la misma en ambas máquinas. Como el gNB se compila con `-march=native`, cada equipo debe construir su propia imagen (`.\manage_lab.ps1 up`) en lugar de copiar la imagen de otro.
+
+### Pendiente para completar la Fase 2
+1. **Análisis de protocolos en Wireshark:** documentar campo a campo la captura `pcap-registro` (SUCI/SUPI, RAND/AUTN, RES*, algoritmos NIA/NEA, TEID GTP-U, PDU Session Establishment Accept con la IP asignada, reglas PDR/FAR de PFCP).
+2. **Prueba P7:** saturación UDP con barrido de tasa ofrecida y punto de saturación.
+3. **Prueba P8:** efecto de MCS fijo sobre caudal y BLER (en el gNB, `cell_cfg.pdsch.min_ue_mcs` = `max_ue_mcs`, y análogo en `pusch`).
+4. **Prueba P9:** estabilidad de 30 minutos (ping e iperf continuos, monitoreo de reconexiones).
+5. **Estadística:** 5 corridas por prueba con media e intervalo de confianza, en un mismo equipo.
+6. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-11.
+
+Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](docker/README.md).
 
 ---
 
 ##  9. Estructura del Repositorio y Documentación
 
-* [`README.md`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/README.md): Contexto global, arquitectura, especificaciones y estado del proyecto.
-* [`SKILLS.md`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/SKILLS.md): Competencias técnicas necesarias, perfiles de especialidad y directriz estricta de idioma (Español).
-* [`docker-compose.yml`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/docker-compose.yml): Orquestador principal de contenedores para la Fase 2.
-* [`manage_lab.ps1`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/manage_lab.ps1): Script de control y pruebas rápidas en PowerShell para Windows.
-* [`Makefile`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/Makefile): Comandos abreviados para entornos Linux / WSL.
-* [`docker/README.md`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/docker/README.md): Manual operativo de la infraestructura Docker.
-* [`docs/Enunciado.txt`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.
-* [`docs/SyC2ProyectoFinal.pdf`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/docs/SyC2ProyectoFinal.pdf): Informe formal completo de la Fase 1 generado bajo formato IEEE Transactions.
-* [`docs/informe_fase1_corregido.tex`](file:///C:/Users/Fa1097la/OneDrive%20-%20Universidad%20Icesi/Sexto%20Semestre/SyC2/RED5G-STANDALONE/docs/informe_fase1_corregido.tex): Código fuente en LaTeX del informe de la Fase 1 (compatible con compilación en Overleaf / pdfLaTeX).
+* [`README.md`](README.md): Contexto global, arquitectura, especificaciones y estado del proyecto.
+* [`SKILLS.md`](SKILLS.md): Competencias técnicas necesarias, perfiles de especialidad y directriz estricta de idioma (Español).
+* [`docker-compose.yml`](docker-compose.yml): Orquestador principal de contenedores para la Fase 2.
+* [`manage_lab.ps1`](manage_lab.ps1): Script de control y pruebas rápidas en PowerShell para Windows.
+* [`Makefile`](Makefile): Comandos abreviados para entornos Linux / WSL.
+* [`docker/README.md`](docker/README.md): Manual operativo de la infraestructura Docker.
+* [`docs/Enunciado.txt`](docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.
+* [`docs/SyC2ProyectoFinal.pdf`](docs/SyC2ProyectoFinal.pdf): Informe formal completo de la Fase 1 generado bajo formato IEEE Transactions.
+* [`docs/informe_fase1_corregido.tex`](docs/informe_fase1_corregido.tex): Código fuente en LaTeX del informe de la Fase 1 (compatible con compilación en Overleaf / pdfLaTeX).
 * `docs/Rúbricas de Evaluación proyecto 5G (2).xlsx`: Matriz de evaluación académica y criterios ABET para las Fases 1, 2 y 3.
 

@@ -1,0 +1,16 @@
+# Los archivos que se ejecutan o leen dentro de contenedores Linux deben conservar LF,
+# aunque el repositorio se clone en Windows con core.autocrlf=true.
+* text=auto
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.conf text eol=lf
+*.js text eol=lf
+Dockerfile text eol=lf
+Makefile text eol=lf
+.env text eol=lf
+*.ps1 text eol=crlf
+
+*.pdf binary
+*.xlsx binary
+*.pcap binary

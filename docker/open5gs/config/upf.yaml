@@ -1,21 +1,24 @@
 logger:
-  file: /var/log/open5gs/upf.log
+  file:
+    path: /var/log/open5gs/upf.log
   level: info
+
+global:
+  max:
+    ue: 1024
 
 upf:
   pfcp:
     server:
       - address: 127.0.0.7
-        port: 8805
-    client:
-      smf:
-        - address: 127.0.0.4
-          port: 8805
   gtpu:
     server:
-      - address: 0.0.0.0
-        port: 2152
+      - address: 172.20.0.3   # Dirección N3 que el SMF anuncia al gNB (no puede ser 0.0.0.0)
   session:
     - subnet: 10.45.0.0/16
       gateway: 10.45.0.1
       dev: ogstun
+  metrics:
+    server:
+      - address: 127.0.0.7
+        port: 9090

@@ -1,23 +1,23 @@
 logger:
-  file: /var/log/open5gs/amf.log
+  file:
+    path: /var/log/open5gs/amf.log
   level: info
 
-sbi:
-  server:
-    - address: 127.0.0.5
-      port: 7777
-  client:
-    nrf:
-      - uri: http://127.0.0.10:7777
+global:
+  max:
+    ue: 1024
 
 amf:
   sbi:
-    - addr: 127.0.0.5
-      port: 7777
+    server:
+      - address: 127.0.0.5
+        port: 7777
+    client:
+      scp:
+        - uri: http://127.0.0.200:7777
   ngap:
     server:
-      - address: 0.0.0.0
-        port: 38412
+      - address: 172.20.0.3   # N2 expuesto en la red Docker hacia el gNB
   metrics:
     server:
       - address: 127.0.0.5
@@ -47,3 +47,6 @@ amf:
     full: Open5GS
     short: 5GS
   amf_name: open5gs-amf0
+  time:
+    t3512:
+      value: 540

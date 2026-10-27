@@ -1,4 +1,4 @@
-.PHONY: up down restart logs ps test-ping test-iperf pcap status clean
+.PHONY: up down restart restart-ran logs logs-gnb logs-ue logs-core ps test-ping test-iperf pcap pcap-registro status clean
 
 up:
 	docker compose up -d --build
@@ -8,6 +8,10 @@ down:
 
 restart:
 	docker compose down && docker compose up -d
+
+# Falla #8 de la Fase 1: con ZMQ siempre se reinician gNB y UE en conjunto
+restart-ran:
+	docker compose restart gnb ue
 
 logs:
 	docker compose logs -f
@@ -34,7 +38,10 @@ test-iperf:
 	bash docker/scripts/test_iperf.sh
 
 pcap:
-	bash docker/scripts/capture_pcap.sh
+	bash docker/scripts/capture_pcap.sh 60
+
+pcap-registro:
+	bash docker/scripts/capture_pcap.sh 60 registro
 
 clean:
 	docker compose down -v --remove-orphans

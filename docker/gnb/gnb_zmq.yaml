@@ -1,8 +1,8 @@
 cu_cp:
   amf:
-    addr: 172.20.0.3
+    addr: 172.20.0.3          # AMF (contenedor open5gs)
     port: 38412
-    bind_addr: 0.0.0.0
+    bind_addr: 172.20.0.4     # N2: dirección local del gNB en la red Docker
     supported_tracking_areas:
       - tac: 7
         plmn_list:
@@ -10,9 +10,16 @@ cu_cp:
             tai_slice_support_list:
               - sst: 1
 
+cu_up:
+  ngu:
+    socket:
+      - bind_addr: 172.20.0.4 # N3: el valor por defecto (127.0.0.1) rompe GTP-U entre contenedores
+
+# Radio virtual ZMQ: cada extremo enlaza (bind) su puerto TX y se conecta al TX del otro.
+#   gNB TX -> bind 172.20.0.4:2000   |   gNB RX <- connect al TX del UE 172.20.0.5:2001
 ru_sdr:
   device_driver: zmq
-  device_args: tx_port=tcp://0.0.0.0:2000,rx_port=tcp://0.0.0.0:2001,base_srate=23.04e6
+  device_args: tx_port=tcp://172.20.0.4:2000,rx_port=tcp://172.20.0.5:2001,base_srate=23.04e6
   srate: 23.04
   tx_gain: 75
   rx_gain: 75
@@ -40,8 +47,20 @@ cell_cfg:
 
 pcap:
   ngap_enable: true
-  ngap_filename: /tmp/gnb_ngap.pcap
+  ngap_filename: /capturas/gnb_ngap.pcap
+  # El PCAP de N3 por paquete satura la cola de tareas del gNB y reduce el caudal;
+  # el plano de usuario N3 se captura desde el Core (manage_lab.ps1 pcap).
+  n3_enable: false
 
 log:
-  filename: /tmp/gnb.log
-  all_level: info
+  filename: /capturas/gnb.log
+  # info en todas las capas genera ~2 MB/min y resta CPU al procesamiento en tiempo real;
+  # se deja warning por defecto e info solo en la señalización (RRC, NGAP).
+  all_level: warning
+  rrc_level: info
+  ngap_level: info
+
+# Tabla de métricas por UE cada segundo en la salida del contenedor (docker compose logs gnb):
+# CQI, MCS, caudal, ACK/NACK (BLER) en DL y UL. Evidencia para las pruebas P7/P8.
+metrics:
+  autostart_stdout_metrics: true

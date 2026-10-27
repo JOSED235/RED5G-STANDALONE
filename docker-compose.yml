@@ -8,6 +8,14 @@ services:
     volumes:
       - mongodb_data:/data/db
       - ./docker/open5gs/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    healthcheck:
+      # mongosh consume casi un núcleo al arrancar: sondeo rápido solo durante el arranque
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+      start_interval: 3s
     networks:
       red5g_net:
         ipv4_address: 172.20.0.2
@@ -26,18 +34,37 @@ services:
       - /dev/net/tun:/dev/net/tun
     sysctls:
       - net.ipv4.ip_forward=1
-    ports:
-      - "9999:9999"        # Open5GS WebUI (http://localhost:9999)
-      - "38412:38412/sctp" # N2 (NGAP)
-      - "2152:2152/udp"    # N3 (GTP-U)
-      - "8805:8805/udp"    # N4 (PFCP)
+    # N2 (SCTP), N3 y N4 solo se usan dentro de red5g_net: no se publican en el host
+    # (Docker Desktop no publica SCTP de forma fiable y no es necesario).
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     environment:
       - MONGO_HOST=172.20.0.2
+    volumes:
+      - ./capturas:/capturas
     networks:
       red5g_net:
         ipv4_address: 172.20.0.3
+
+  webui:
+    build:
+      context: ./docker/webui
+      dockerfile: Dockerfile
+    image: red5g-webui:latest
+    container_name: red5g-webui
+    restart: unless-stopped
+    ports:
+      - "9999:9999"        # Open5GS WebUI (http://localhost:9999 - admin / 1423)
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - DB_URI=mongodb://172.20.0.2/open5gs
+      - HOSTNAME=0.0.0.0
+    networks:
+      red5g_net:
+        ipv4_address: 172.20.0.6
 
   gnb:
     build:
@@ -46,16 +73,14 @@ services:
     image: red5g-gnb:latest
     container_name: red5g-gnb
     restart: unless-stopped
+    tty: true   # sin TTY el gNB deja su salida en búfer y no aparece en 'docker compose logs'
     cap_add:
       - SYS_NICE
-    ports:
-      - "2000:2000/tcp" # ZMQ TX
-      - "2001:2001/tcp" # ZMQ RX
     depends_on:
-      - open5gs
-    environment:
-      - AMF_IP=172.20.0.3
-      - AMF_PORT=38412
+      open5gs:
+        condition: service_healthy   # AMF escuchando NGAP (SCTP 38412)
+    volumes:
+      - ./capturas:/capturas
     networks:
       red5g_net:
         ipv4_address: 172.20.0.4
@@ -74,9 +99,14 @@ services:
       - /dev/net/tun:/dev/net/tun
     depends_on:
       - gnb
-    environment:
-      - GNB_IP=172.20.0.4
-      - GNB_PORT=2000
+    volumes:
+      - ./capturas:/capturas
+    healthcheck:
+      test: ["CMD-SHELL", "ip -4 addr show tun_srsue | grep -q 'inet 10.45.'"]
+      interval: 5s
+      timeout: 3s
+      start_period: 60s
+      retries: 3
     networks:
       red5g_net:
         ipv4_address: 172.20.0.5

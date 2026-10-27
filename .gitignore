@@ -1,0 +1,10 @@
+# Evidencia generada en ejecución (logs y PCAP del gNB, UE y Core).
+# Copie a docs/ las capturas que vaya a usar en el informe.
+capturas/*
+!capturas/.gitkeep
+
+# Artefactos de LaTeX
+*.aux
+*.log
+*.out
+*.synctex.gz

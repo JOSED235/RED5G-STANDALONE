@@ -1,0 +1,18 @@
+logger:
+  file:
+    path: /var/log/open5gs/nrf.log
+  level: info
+
+global:
+  max:
+    ue: 1024
+
+nrf:
+  serving:   # PLMN de pruebas 001/01 (Falla #3 de la Fase 1: el valor por defecto es 999/70)
+    - plmn_id:
+        mcc: 001
+        mnc: 01
+  sbi:
+    server:
+      - address: 127.0.0.10
+        port: 7777
