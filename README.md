@@ -29,7 +29,7 @@ El proyecto se estructura en tres fases progresivas alineadas con la rúbrica de
 | Fase | Enfoque | Hitos Principales | Estado |
 | :--- | :--- | :--- | :---: |
 | **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada** |
-| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • [Hecho] Automatización y contenerización del despliegue (Docker Compose, validado de extremo a extremo).<br>• [Hecho] Estabilización del núcleo Open5GS (11 NF activas, healthchecks y reinicio automático).<br>• [Hecho] Ruta por defecto hacia Internet desde el UE por `tun_srsue` (Falla #10 resuelta).<br>• [Hecho] Captura automatizada del flujo NG Setup → Registration → PDU Session (NGAP, NAS-5GS, PFCP, SBI).<br>• [Pendiente] Análisis exhaustivo de trazas en Wireshark (campo a campo).<br>• [Pendiente] Pruebas P7 (Caudal y saturación UDP), P8 (Efecto de MCS fijo) y P9 (Estabilidad 30 min).<br>• [Pendiente] Repeticiones estadísticas (5 corridas) con intervalos de confianza. | **En curso** |
+| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • [Hecho] Automatización y contenerización del despliegue (Docker Compose, validado de extremo a extremo).<br>• [Hecho] Estabilización del núcleo Open5GS (11 NF activas, healthchecks y reinicio automático).<br>• [Hecho] Ruta por defecto hacia Internet desde el UE por `tun_srsue` (Falla #10 resuelta).<br>• [Hecho] Captura automatizada del flujo NG Setup → Registration → PDU Session (NGAP, NAS-5GS, PFCP, SBI).<br>• [Pendiente] Análisis exhaustivo de trazas en Wireshark (campo a campo).<br>• [Hecho] Configuración única en `.env`, Open5GS fijado en v2.8.0 e integridad NAS NIA2.<br>• [Hecho] Banco de pruebas automatizado (P5–P10, campañas de N corridas, resultados con metadatos), validado de extremo a extremo.<br>• [Pendiente] Ejecutar la campaña completa (5 corridas, P7, P8 y P9 de 30 min) y su análisis estadístico con intervalos de confianza. | **En curso** |
 | **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y cálculo de presupuesto de enlace. | **Planificada** |
 
 ---
@@ -146,6 +146,8 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 | F2-10 | Scripts rotos al clonar en Windows | `core.autocrlf=true` convierte los `.sh` a CRLF | `.gitattributes` con `eol=lf` y normalización `sed 's/\r$//'` en los Dockerfiles |
 | F2-11 | Captura PCAP corrupta desde PowerShell | La redirección `>` de PowerShell 5.1 reescribe el binario en UTF-16 | `tcpdump -w` dentro del contenedor sobre el volumen `./capturas` |
 
+| F2-12 | `Pool overlaps with other one on this address space` al hacer `up` | Docker asigna solo las subredes 172.17–172.31 a las redes de otros proyectos Compose, y `172.20.0.0/24` chocaba con una de ellas (incluso sin contenedores) | Subred por defecto `10.53.0.0/24`, fuera de ese rango; configurable en `.env` y detectada por `python -m banco verificar`. Las IP 172.20.0.x de F2-4 y F2-6 corresponden al direccionamiento anterior |
+
 ---
 
 ##  7. Trazabilidad con la Rúbrica de Evaluación (ABET)
@@ -155,7 +157,7 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 | **Arquitectura 5G (ABET 2)** | Fase 1 | Definición rigurosa de todas las interfaces (N1, N2, N3, N4, N6, SBI), separación estricta de roles gNB vs. Core, y diagrama de secuencia de registro 5G-AKA y PDU Session. |
 | **Codificación y Modelado (ABET 1)** | Fase 1 | Modelado matemático de códigos LDPC (matrices base BG1/BG2, elevación Z) y Polar (PBCH/PDCCH), tabla MCS vs. SNR, y cálculo de caudal máximo por fórmula 3GPP TS 38.306 y Shannon. |
 | **Simulación y Factibilidad (ABET 1, 2)** | Fase 1 | Banco ZeroMQ operativo sobre WSL2, capturas de señalización en N2/N3/N4, análisis crítico de latencia y caudal, presupuesto de enlace FSPL y matriz de riesgos. |
-| **Core Open5GS (ABET 2)** | Fase 2 | 13 funciones de red activas de forma continua, base de datos MongoDB aprovisionada con claves simétricas seguras y WebUI funcional. |
+| **Core Open5GS (ABET 2)** | Fase 2 | 11 funciones de red 5G activas de forma continua (NRF, SCP, AMF, SMF, UPF, AUSF, UDM, UDR, PCF, NSSF, BSF), base de datos MongoDB aprovisionada con claves Milenage, integridad NAS con NIA2 (el cifrado NEA2 queda listo para la Fase 3, ver BITACORA.md) y WebUI funcional. |
 | **gNB srsRAN (ABET 1, 2)** | Fase 2 | Enlace NGAP/SCTP estable, transporte GTP-U verificado y salida completa a Internet para el UE sin micro-cortes. |
 | **Análisis de Protocolos (ABET 1)** | Fase 2 | Inspección a nivel de bit y campo de trazas en Wireshark/tshark para flujos de registro, autenticación Milenage, establecimiento de sesión PDU y encapsulación GTP. |
 | **Configuración SDR y Conexión UE (ABET 2)** | Fase 3 | Calibración de ganancias de RF, control de deriva de reloj, programación física de USIM y conexión exitosa de terminal comercial 5G. |
@@ -172,22 +174,37 @@ Para la **Fase 2**, se ha preparado una arquitectura completa basada en **Docker
 .\manage_lab.ps1 up
 
 # O con Docker Compose nativo:
-docker compose up -d --build
+docker compose up -d        # construye solo las imágenes que falten
+docker compose build        # reconstruir tras cambiar Dockerfiles o plantillas (.\manage_lab.ps1 build)
 ```
 
-La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el equipo; las siguientes usan la caché de Docker.
+La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el equipo; las siguientes usan la caché de Docker. Para trabajar en varios equipos (cada uno con su `.env` y sus imágenes), siga [Uso en varios equipos](docker/README.md#uso-en-varios-equipos-equipo-potente-y-portátil-menos-potente).
 
 ### Características de la Infraestructura Contenerizada:
-* **MongoDB automatizado:** Registra de forma inmediata el suscriptor de pruebas con perfil eMBB (SST: 1, 5QI: 9) y DNN `internet`.
-* **Open5GS v2.8.0 NFV:** 11 funciones de red, interfaz `ogstun`, `ip_forward` y NAT MASQUERADE automáticos; healthcheck sobre NGAP/SCTP.
+* **Configuración única en `.env`:** PLMN, TAC, slice, DNN, seguridad NAS, credenciales del suscriptor, IP de la red Docker, rango de MCS y versión de Open5GS se definen una sola vez. Los archivos de configuración de Core, gNB y UE son plantillas que se rellenan al arrancar. `.env` no se versiona (en la Fase 3 guardará las claves de la SIM física); la plantilla es [`.env.example`](.env.example) y `manage_lab.ps1` / `make` la copian si falta.
+* **MongoDB automatizado:** Registra de forma inmediata el suscriptor definido en `.env` con perfil eMBB (SST: 1, 5QI: 9) y DNN `internet`.
+* **Open5GS v2.8.0 NFV:** compilado desde la etiqueta `v2.8.0` del código fuente (igual que la WebUI), en lugar del PPA `latest`, que cambia de versión sin aviso. 11 funciones de red, interfaz `ogstun`, `ip_forward` y NAT MASQUERADE automáticos; healthcheck sobre NGAP/SCTP.
+* **Seguridad NAS configurable** (`AMF_INTEGRITY_ORDER` / `AMF_CIPHERING_ORDER` en `.env`): la integridad prioriza NIA2 (AES-CMAC). El cifrado prioriza NEA0 porque el srsUE usado (srsRAN_4G `bef8680d5`) no completa el registro si el AMF elige NEA1, NEA2 o NEA3, y no permite limitar los algoritmos que anuncia (verificado el 28/10/2026). Con el terminal comercial de la Fase 3 se cambia a `NEA2, NEA1, NEA0`.
 * **WebUI** en [http://localhost:9999](http://localhost:9999) (`admin` / `1423`), en su propio contenedor.
 * **srsRAN gNB & srsUE (ZeroMQ):** Emulación de canal radio por software entre contenedores; el gNB publica cada segundo una tabla de métricas (CQI, MCS, caudal, ACK/NACK) en `docker compose logs gnb`.
 * **Falla #10 resuelta:** El UE reemplaza la ruta por defecto por `default dev tun_srsue`, así que todo su tráfico sale por la red 5G.
 * **Evidencia automática en `./capturas`:** `gnb_ngap.pcap`, `ue_nas.pcap`, `gnb.log`, `ue.log` y las trazas `fase2_traza_*.pcap` del Core.
-* **Scripts de prueba integrados:**
-  * Conectividad y latencia ICMP (`.\manage_lab.ps1 test-ping`).
-  * Caudal TCP y saturación UDP para la prueba P7 (`.\manage_lab.ps1 test-iperf`).
-  * Captura de trazas PCAP (`.\manage_lab.ps1 pcap -Seconds 60`) y del registro completo (`.\manage_lab.ps1 pcap-registro`).
+* **Banco de pruebas automatizado ([`banco/`](banco), Python 3.10+ sin dependencias externas):** cada medición guarda en `resultados/<fecha>_<prueba>/` los datos crudos (ping, JSON de iperf3, logs), un `resumen.csv` en formato largo listo para la estadística y un `metadata.json` con el equipo, la CPU, la versión del código, la configuración y las imágenes usadas. Durante cada medición también se recoge la tabla de métricas del gNB (MCS, CQI, SNR, BLER).
+
+| Prueba | PowerShell | Make (Linux / WSL) |
+| :--- | :--- | :--- |
+| Verificación previa del equipo (Docker, RAM/CPU, `.env`, subred) | `.\manage_lab.ps1 verificar` | `make verificar` |
+| Estado completo | `.\manage_lab.ps1 status` | `make status` |
+| P5 Latencia ICMP (UPF e Internet) | `.\manage_lab.ps1 test-ping` | `make test-ping` |
+| P6 Caudal TCP UL/DL | `.\manage_lab.ps1 test-iperf` | `make test-iperf` |
+| P7 Barrido UDP y punto de saturación | `.\manage_lab.ps1 p7 --tasas 2,5,10,20` | `make p7 ARGS="--tasas 2,5,10,20"` |
+| P8 Caudal y BLER con MCS fijo | `.\manage_lab.ps1 p8 --mcs 0,10,20,28` | `make p8 ARGS="--mcs 0,10,20,28"` |
+| P9 Estabilidad 30 min | `.\manage_lab.ps1 p9 --carga 5M --recuperar` | `make p9 ARGS="--carga 5M"` |
+| P10 CPU global, por núcleo y por contenedor | `.\manage_lab.ps1 p10 --carga dl` | `make p10` |
+| 5 repeticiones de varias pruebas | `.\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5` | `make campana ARGS="--corridas 5"` |
+| Captura PCAP (N s / registro completo) | `.\manage_lab.ps1 pcap -Seconds 60` / `pcap-registro` | `make pcap` / `make pcap-registro` |
+
+Todas las pruebas aceptan `--corridas N`, `--equipo <etiqueta>` y `--help`. El manual completo del banco está en [`docker/README.md`](docker/README.md#4-banco-de-pruebas-de-la-fase-2).
 
 ### Validación del despliegue (27 de octubre de 2026)
 
@@ -207,12 +224,11 @@ Ejecutado en el equipo menos potente del proyecto (portátil Intel Core i5-8250U
 > La configuración no depende del equipo: no fija CPU, memoria ni afinidad de núcleos, y es la misma en ambas máquinas. Como el gNB se compila con `-march=native`, cada equipo debe construir su propia imagen (`.\manage_lab.ps1 up`) en lugar de copiar la imagen de otro.
 
 ### Pendiente para completar la Fase 2
-1. **Análisis de protocolos en Wireshark:** documentar campo a campo la captura `pcap-registro` (SUCI/SUPI, RAND/AUTN, RES*, algoritmos NIA/NEA, TEID GTP-U, PDU Session Establishment Accept con la IP asignada, reglas PDR/FAR de PFCP).
-2. **Prueba P7:** saturación UDP con barrido de tasa ofrecida y punto de saturación.
-3. **Prueba P8:** efecto de MCS fijo sobre caudal y BLER (en el gNB, `cell_cfg.pdsch.min_ue_mcs` = `max_ue_mcs`, y análogo en `pusch`).
-4. **Prueba P9:** estabilidad de 30 minutos (ping e iperf continuos, monitoreo de reconexiones).
-5. **Estadística:** 5 corridas por prueba con media e intervalo de confianza, en un mismo equipo.
-6. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-11.
+El detalle actualizado de lo hecho y lo pendiente está en [`BITACORA.md`](BITACORA.md). En resumen:
+1. **Ejecutar la campaña de mediciones** con el banco (P5–P10, 5 corridas, en un mismo equipo).
+2. **Análisis estadístico:** media, desviación e intervalo de confianza del 95 % a partir de `resumen.csv`, y gráficas para el informe.
+3. **Análisis de protocolos en Wireshark:** documentar campo a campo la captura `pcap-registro` (SUCI/SUPI, RAND/AUTN, RES*, algoritmos NIA/NEA, TEID GTP-U, PDU Session Establishment Accept con la IP asignada, reglas PDR/FAR de PFCP).
+4. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-11.
 
 Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](docker/README.md).
 
@@ -221,10 +237,16 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 ##  9. Estructura del Repositorio y Documentación
 
 * [`README.md`](README.md): Contexto global, arquitectura, especificaciones y estado del proyecto.
+* [`BITACORA.md`](BITACORA.md): Registro de cada cambio realizado (qué, por qué, cómo se verificó) y pendientes vigentes.
 * [`SKILLS.md`](SKILLS.md): Competencias técnicas necesarias, perfiles de especialidad y directriz estricta de idioma (Español).
+* [`CLAUDE.md`](CLAUDE.md): Instrucciones de trabajo para el asistente (idioma, bitácora obligatoria, convenciones).
+* [`.claude/skills/`](.claude/skills): Skills de Claude Code del proyecto: [`ingeniero-telecom-5g`](.claude/skills/ingeniero-telecom-5g/SKILL.md) (redes 5G SA, diagnóstico, mediciones, Fase 3) y [`desarrollador-fullstack`](.claude/skills/desarrollador-fullstack/SKILL.md) (código, Docker, banco de pruebas, convenciones del repositorio).
+* [`.env.example`](.env.example): Plantilla de la configuración única del laboratorio (se copia a `.env`, no versionado).
 * [`docker-compose.yml`](docker-compose.yml): Orquestador principal de contenedores para la Fase 2.
-* [`manage_lab.ps1`](manage_lab.ps1): Script de control y pruebas rápidas en PowerShell para Windows.
+* [`manage_lab.ps1`](manage_lab.ps1): Script de control en PowerShell para Windows (ciclo de vida y acceso al banco de pruebas).
 * [`Makefile`](Makefile): Comandos abreviados para entornos Linux / WSL.
+* [`banco/`](banco): Banco de pruebas automatizado en Python (P5–P10, campañas, captura PCAP) con pruebas unitarias en `banco/tests/`.
+* `resultados/`: Salida del banco de pruebas (no versionada; copie a `docs/` lo que use en el informe).
 * [`docker/README.md`](docker/README.md): Manual operativo de la infraestructura Docker.
 * [`docs/Enunciado.txt`](docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.
 * [`docs/SyC2ProyectoFinal.pdf`](docs/SyC2ProyectoFinal.pdf): Informe formal completo de la Fase 1 generado bajo formato IEEE Transactions.
