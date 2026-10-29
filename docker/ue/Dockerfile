@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iputils-ping \
     iperf3 \
     dnsutils \
+    gettext-base \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -52,9 +53,12 @@ COPY --from=builder /usr/local/bin/srsue /usr/local/bin/srsue
 COPY --from=builder /usr/local/lib/ /usr/local/lib/
 RUN ldconfig && ! ldd /usr/local/bin/srsue /usr/local/lib/libsrsran_rf_zmq.so | grep "not found"
 
-COPY ue_zmq.conf /etc/srsran/ue_zmq.conf
+# Plantilla de configuración: el entrypoint genera /etc/srsran/ue_zmq.conf con los valores de .env
+COPY ue_zmq.conf /etc/srsran/plantillas/ue_zmq.conf
+COPY --from=comun renderizar_plantilla.sh /usr/local/bin/renderizar_plantilla.sh
 COPY entrypoint.sh /entrypoint.sh
 # Normaliza finales de línea por si el repositorio se clona con CRLF en Windows
-RUN sed -i 's/\r$//' /entrypoint.sh /etc/srsran/ue_zmq.conf && chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh /usr/local/bin/renderizar_plantilla.sh /etc/srsran/plantillas/ue_zmq.conf && \
+    chmod +x /entrypoint.sh /usr/local/bin/renderizar_plantilla.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

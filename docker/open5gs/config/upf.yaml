@@ -1,3 +1,6 @@
+# Plantilla: los marcadores ${...} se sustituyen al arrancar el contenedor con los
+# valores de .env (docker/comun/renderizar_plantilla.sh). No edite valores de red aquí.
+
 logger:
   file:
     path: /var/log/open5gs/upf.log
@@ -13,7 +16,7 @@ upf:
       - address: 127.0.0.7
   gtpu:
     server:
-      - address: 172.20.0.3   # Dirección N3 que el SMF anuncia al gNB (no puede ser 0.0.0.0)
+      - address: ${OPEN5GS_IP}   # Dirección N3 que el SMF anuncia al gNB (no puede ser 0.0.0.0)
   session:
     - subnet: 10.45.0.0/16
       gateway: 10.45.0.1

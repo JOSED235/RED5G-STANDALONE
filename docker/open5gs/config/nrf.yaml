@@ -1,3 +1,6 @@
+# Plantilla: los marcadores ${...} se sustituyen al arrancar el contenedor con los
+# valores de .env (docker/comun/renderizar_plantilla.sh). No edite valores de red aquí.
+
 logger:
   file:
     path: /var/log/open5gs/nrf.log
@@ -10,8 +13,8 @@ global:
 nrf:
   serving:   # PLMN de pruebas 001/01 (Falla #3 de la Fase 1: el valor por defecto es 999/70)
     - plmn_id:
-        mcc: 001
-        mnc: 01
+        mcc: ${MCC}
+        mnc: ${MNC}
   sbi:
     server:
       - address: 127.0.0.10

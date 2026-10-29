@@ -3,9 +3,11 @@ set -e
 
 echo "=========================================================="
 echo ">>> [srsUE] Iniciando srsUE con banda n3 (ARFCN 368500, 106 PRB) sobre ZMQ..."
-echo ">>> [srsUE] Radio virtual: TX bind 172.20.0.5:2001 | RX -> gNB 172.20.0.4:2000"
+echo ">>> [srsUE] Radio virtual: TX bind ${UE_IP}:2001 | RX -> gNB ${GNB_IP}:2000"
+echo ">>> [srsUE] USIM soft: IMSI ${UE_IMSI} | DNN ${DNN}"
 echo "=========================================================="
 
+renderizar_plantilla.sh /etc/srsran/plantillas/ue_zmq.conf /etc/srsran/ue_zmq.conf
 mkdir -p /capturas
 
 # Monitoreo en segundo plano (solución de la Falla #10):
@@ -16,7 +18,7 @@ mkdir -p /capturas
 (
     echo ">>> [srsUE Monitoreo] Esperando asignación de IP en tun_srsue..."
     while true; do
-        if ip -4 addr show tun_srsue 2>/dev/null | grep -q "inet 10.45."; then
+        if ip -4 addr show tun_srsue 2>/dev/null | grep -q "inet "; then
             if ! ip route show default | grep -q "dev tun_srsue"; then
                 IP_ASIGNADA=$(ip -4 addr show tun_srsue | awk '/inet /{print $2}')
                 ip route replace default dev tun_srsue

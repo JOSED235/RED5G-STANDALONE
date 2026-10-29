@@ -1,10 +1,28 @@
+# Todos los valores ${...} provienen de .env (plantilla versionada: .env.example).
+# Los contenedores generan su configuración a partir de plantillas con estos valores.
+
+# Identidad de red común a Core, gNB y suscriptor
+x-identidad-red: &identidad-red
+  MCC: ${MCC:?defina MCC en .env (copie .env.example)}
+  MNC: ${MNC:?defina MNC en .env}
+  TAC: ${TAC:?defina TAC en .env}
+  SST: ${SST:?defina SST en .env}
+  DNN: ${DNN:?defina DNN en .env}
+
+# Credenciales del suscriptor (solo las reciben MongoDB y el UE)
+x-suscriptor: &suscriptor
+  UE_IMSI: ${UE_IMSI:?defina UE_IMSI en .env}
+  UE_K: ${UE_K:?defina UE_K en .env}
+  UE_OPC: ${UE_OPC:?defina UE_OPC en .env}
+
 services:
   mongodb:
     image: mongo:6.0
     container_name: red5g-mongodb
     restart: unless-stopped
     environment:
-      - MONGO_INITDB_DATABASE=open5gs
+      <<: [*identidad-red, *suscriptor]
+      MONGO_INITDB_DATABASE: open5gs
     volumes:
       - mongodb_data:/data/db
       - ./docker/open5gs/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
@@ -18,12 +36,16 @@ services:
       start_interval: 3s
     networks:
       red5g_net:
-        ipv4_address: 172.20.0.2
+        ipv4_address: ${MONGO_IP}
 
   open5gs:
     build:
       context: ./docker/open5gs
       dockerfile: Dockerfile
+      additional_contexts:
+        comun: ./docker/comun
+      args:
+        OPEN5GS_VERSION: ${OPEN5GS_VERSION:?defina OPEN5GS_VERSION en .env}
     image: red5g-open5gs:latest
     container_name: red5g-open5gs
     restart: unless-stopped
@@ -40,17 +62,23 @@ services:
       mongodb:
         condition: service_healthy
     environment:
-      - MONGO_HOST=172.20.0.2
+      <<: *identidad-red
+      MONGO_HOST: ${MONGO_IP}
+      OPEN5GS_IP: ${OPEN5GS_IP}
+      AMF_INTEGRITY_ORDER: ${AMF_INTEGRITY_ORDER:?defina AMF_INTEGRITY_ORDER en .env}
+      AMF_CIPHERING_ORDER: ${AMF_CIPHERING_ORDER:?defina AMF_CIPHERING_ORDER en .env}
     volumes:
       - ./capturas:/capturas
     networks:
       red5g_net:
-        ipv4_address: 172.20.0.3
+        ipv4_address: ${OPEN5GS_IP}
 
   webui:
     build:
       context: ./docker/webui
       dockerfile: Dockerfile
+      args:
+        OPEN5GS_VERSION: ${OPEN5GS_VERSION}
     image: red5g-webui:latest
     container_name: red5g-webui
     restart: unless-stopped
@@ -60,16 +88,18 @@ services:
       mongodb:
         condition: service_healthy
     environment:
-      - DB_URI=mongodb://172.20.0.2/open5gs
-      - HOSTNAME=0.0.0.0
+      DB_URI: mongodb://${MONGO_IP}/open5gs
+      HOSTNAME: 0.0.0.0
     networks:
       red5g_net:
-        ipv4_address: 172.20.0.6
+        ipv4_address: ${WEBUI_IP}
 
   gnb:
     build:
       context: ./docker/gnb
       dockerfile: Dockerfile
+      additional_contexts:
+        comun: ./docker/comun
     image: red5g-gnb:latest
     container_name: red5g-gnb
     restart: unless-stopped
@@ -79,16 +109,27 @@ services:
     depends_on:
       open5gs:
         condition: service_healthy   # AMF escuchando NGAP (SCTP 38412)
+    environment:
+      <<: *identidad-red
+      OPEN5GS_IP: ${OPEN5GS_IP}
+      GNB_IP: ${GNB_IP}
+      UE_IP: ${UE_IP}
+      PDSCH_MIN_MCS: ${PDSCH_MIN_MCS:-0}
+      PDSCH_MAX_MCS: ${PDSCH_MAX_MCS:-28}
+      PUSCH_MIN_MCS: ${PUSCH_MIN_MCS:-0}
+      PUSCH_MAX_MCS: ${PUSCH_MAX_MCS:-28}
     volumes:
       - ./capturas:/capturas
     networks:
       red5g_net:
-        ipv4_address: 172.20.0.4
+        ipv4_address: ${GNB_IP}
 
   ue:
     build:
       context: ./docker/ue
       dockerfile: Dockerfile
+      additional_contexts:
+        comun: ./docker/comun
     image: red5g-ue:latest
     container_name: red5g-ue
     restart: unless-stopped
@@ -98,18 +139,28 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     depends_on:
-      - gnb
+      gnb:
+        condition: service_started
+        # Falla #8: con ZMQ el UE pierde la sincronía si el gNB se reinicia solo;
+        # así 'docker compose restart gnb' (o recrearlo) reinicia también el UE.
+        restart: true
+    environment:
+      <<: *suscriptor
+      DNN: ${DNN}
+      UE_IMEI: ${UE_IMEI:?defina UE_IMEI en .env}
+      GNB_IP: ${GNB_IP}
+      UE_IP: ${UE_IP}
     volumes:
       - ./capturas:/capturas
     healthcheck:
-      test: ["CMD-SHELL", "ip -4 addr show tun_srsue | grep -q 'inet 10.45.'"]
+      test: ["CMD-SHELL", "ip -4 addr show tun_srsue | grep -q 'inet '"]
       interval: 5s
       timeout: 3s
       start_period: 60s
       retries: 3
     networks:
       red5g_net:
-        ipv4_address: 172.20.0.5
+        ipv4_address: ${UE_IP}
 
 networks:
   red5g_net:
@@ -118,7 +169,7 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.20.0.0/24
+        - subnet: ${SUBRED_DOCKER}
 
 volumes:
   mongodb_data:

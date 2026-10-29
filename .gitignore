@@ -1,3 +1,7 @@
+# Configuración local (copia de .env.example). En la Fase 3 contiene las claves de la SIM
+# física (K, OPc), que no deben publicarse (Ley 1581 de 2012).
+.env
+
 # Evidencia generada en ejecución (logs y PCAP del gNB, UE y Core).
 # Copie a docs/ las capturas que vaya a usar en el informe.
 capturas/*
@@ -8,3 +12,11 @@ capturas/*
 *.log
 *.out
 *.synctex.gz
+
+# Resultados del banco de pruebas (python -m banco). Copie a docs/ los que use en el informe.
+resultados/*
+!resultados/.gitkeep
+
+# Python
+__pycache__/
+*.pyc

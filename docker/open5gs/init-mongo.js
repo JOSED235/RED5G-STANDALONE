@@ -1,13 +1,29 @@
 // Inicialización de la base de datos Open5GS en MongoDB
-// Registra automáticamente al suscriptor de prueba configurado en la Fase 1
-// (esquema de suscriptor de Open5GS 2.7/2.8: la QoS de la sesión va en "qos")
+// Registra automáticamente al suscriptor de prueba con los valores de .env
+// (UE_IMSI, UE_K, UE_OPC, SST, DNN), que Docker Compose pasa al contenedor.
+// Esquema de suscriptor de Open5GS 2.7/2.8: la QoS de la sesión va en "qos".
+// Solo se ejecuta con el volumen vacío: tras cambiar .env use 'clean' y luego 'up'.
+
+const requerida = (nombre) => {
+  const valor = process.env[nombre];
+  if (!valor) {
+    throw new Error(`Variable ${nombre} no definida: revise .env y docker-compose.yml`);
+  }
+  return valor;
+};
+
+const imsi = requerida("UE_IMSI");
+const k = requerida("UE_K");
+const opc = requerida("UE_OPC");
+const sst = parseInt(requerida("SST"), 10);
+const dnn = requerida("DNN");
 
 db = db.getSiblingDB("open5gs");
 
-db.subscribers.deleteMany({ "imsi": "001010123456780" });
+db.subscribers.deleteMany({ "imsi": imsi });
 
 db.subscribers.insertOne({
-  "imsi": "001010123456780",
+  "imsi": imsi,
   "msisdn": [],
   "imeisv": [],
   "mme_host": [],
@@ -20,11 +36,11 @@ db.subscribers.insertOne({
   "access_restriction_data": 32,
   "slice": [
     {
-      "sst": 1,
+      "sst": sst,
       "default_indicator": true,
       "session": [
         {
-          "name": "internet",
+          "name": dnn,
           "type": 1,                       // 1 = IPv4
           "qos": {
             "index": 9,                    // 5QI 9 (best effort, eMBB)
@@ -44,10 +60,10 @@ db.subscribers.insertOne({
     }
   ],
   "security": {
-    "k": "00112233445566778899aabbccddeeff",
+    "k": k,
     "amf": "8000",
     "op": null,
-    "opc": "63BFA50EE6523365FF14C1F45F88737D",
+    "opc": opc,
     "sqn": NumberLong(0)
   },
   "ambr": {
@@ -58,4 +74,4 @@ db.subscribers.insertOne({
   "__v": 0
 });
 
-print(">>> [MongoDB] Suscriptor 001010123456780 aprovisionado exitosamente con perfil 5G SA (eMBB, SST:1, 5QI:9, DNN:internet).");
+print(`>>> [MongoDB] Suscriptor ${imsi} aprovisionado exitosamente con perfil 5G SA (eMBB, SST:${sst}, 5QI:9, DNN:${dnn}).`);

@@ -1,25 +1,28 @@
+# Plantilla: los marcadores ${...} se sustituyen al arrancar el contenedor con los
+# valores de .env (docker/comun/renderizar_plantilla.sh). No edite valores de red aquí.
+
 cu_cp:
   amf:
-    addr: 172.20.0.3          # AMF (contenedor open5gs)
+    addr: ${OPEN5GS_IP}       # AMF (contenedor open5gs)
     port: 38412
-    bind_addr: 172.20.0.4     # N2: dirección local del gNB en la red Docker
+    bind_addr: ${GNB_IP}      # N2: dirección local del gNB en la red Docker
     supported_tracking_areas:
-      - tac: 7
+      - tac: ${TAC}
         plmn_list:
-          - plmn: "00101"
+          - plmn: "${MCC}${MNC}"
             tai_slice_support_list:
-              - sst: 1
+              - sst: ${SST}
 
 cu_up:
   ngu:
     socket:
-      - bind_addr: 172.20.0.4 # N3: el valor por defecto (127.0.0.1) rompe GTP-U entre contenedores
+      - bind_addr: ${GNB_IP}  # N3: el valor por defecto (127.0.0.1) rompe GTP-U entre contenedores
 
 # Radio virtual ZMQ: cada extremo enlaza (bind) su puerto TX y se conecta al TX del otro.
-#   gNB TX -> bind 172.20.0.4:2000   |   gNB RX <- connect al TX del UE 172.20.0.5:2001
+#   gNB TX -> bind GNB_IP:2000   |   gNB RX <- connect al TX del UE (UE_IP:2001)
 ru_sdr:
   device_driver: zmq
-  device_args: tx_port=tcp://172.20.0.4:2000,rx_port=tcp://172.20.0.5:2001,base_srate=23.04e6
+  device_args: tx_port=tcp://${GNB_IP}:2000,rx_port=tcp://${UE_IP}:2001,base_srate=23.04e6
   srate: 23.04
   tx_gain: 75
   rx_gain: 75
@@ -29,8 +32,8 @@ cell_cfg:
   band: 3
   channel_bandwidth_MHz: 20
   common_scs: 15
-  plmn: "00101"
-  tac: 7
+  plmn: "${MCC}${MNC}"
+  tac: ${TAC}
   prach:
     prach_config_index: 1
   pdcch:
@@ -40,10 +43,16 @@ cell_cfg:
     dedicated:
       ss2_type: common
       dci_format_0_1_and_1_1: false
+  # Rango de MCS del scheduler (PDSCH_*/PUSCH_*_MCS en .env). 0..28 = adaptación de enlace;
+  # mínimo = máximo fija el MCS (prueba P8, python -m banco p8).
   pdsch:
     mcs_table: qam64
+    min_ue_mcs: ${PDSCH_MIN_MCS}
+    max_ue_mcs: ${PDSCH_MAX_MCS}
   pusch:
     mcs_table: qam64
+    min_ue_mcs: ${PUSCH_MIN_MCS}
+    max_ue_mcs: ${PUSCH_MAX_MCS}
 
 pcap:
   ngap_enable: true

@@ -42,6 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libzmq5 \
     procps \
     iproute2 \
+    gettext-base \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -50,10 +51,13 @@ COPY --from=builder /usr/local/bin/gnb /usr/local/bin/gnb
 # Falla temprana si alguna librería dinámica del gNB no está presente en la imagen final
 RUN ! ldd /usr/local/bin/gnb | grep "not found"
 
-COPY gnb_zmq.yaml /etc/srsran/gnb_zmq.yaml
+# Plantilla de configuración: el entrypoint genera /etc/srsran/gnb_zmq.yaml con los valores de .env
+COPY gnb_zmq.yaml /etc/srsran/plantillas/gnb_zmq.yaml
+COPY --from=comun renderizar_plantilla.sh /usr/local/bin/renderizar_plantilla.sh
 COPY entrypoint.sh /entrypoint.sh
 # Normaliza finales de línea por si el repositorio se clona con CRLF en Windows
-RUN sed -i 's/\r$//' /entrypoint.sh /etc/srsran/gnb_zmq.yaml && chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh /usr/local/bin/renderizar_plantilla.sh /etc/srsran/plantillas/gnb_zmq.yaml && \
+    chmod +x /entrypoint.sh /usr/local/bin/renderizar_plantilla.sh
 
 EXPOSE 2000/tcp
 
