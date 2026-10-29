@@ -220,3 +220,33 @@ los `.md` (solo quedan menciones históricas de la Fase 1 y de F2-4/F2-6, que so
 
 **Pendiente / siguientes pasos:** sin cambios respecto a "Pendientes vigentes" (commit, primer
 arranque en el portátil, campaña definitiva y paso 3).
+
+## 2026-10-29 — Commits y push del trabajo; reparación del repositorio en OneDrive
+
+**Objetivo:** subir a GitHub todo el trabajo pendiente, sin líneas de coautoría.
+
+**Cambios realizados:**
+- Cuatro commits en `main` y push a `origin` (`cdb10ad..fe6cea5`): configuración única y Core
+  fijado (`d2cbfcc`), banco de pruebas (`1743dca`), documentación, bitácora y skills
+  (`b90cb9e`) y ajuste del encabezado del `.tex` de la Fase 1 (`fe6cea5`).
+- `README.md`: normalizado a CRLF (como estaba versionado); una edición había dejado un CR suelto
+  y finales mezclados, que inflaban el diff a 487 líneas (el real es de 39 + 17).
+- `.claude/skills/desarrollador-fullstack`: nueva trampa documentada (repositorio en OneDrive).
+
+**Hallazgo:** git fallaba en la carpeta del proyecto con `fatal: mmap failed: Invalid argument`
+(en `status`, `show` y `diff`) o se colgaba. Causa: OneDrive (*Files On-Demand*) tenía 26
+objetos de `.git/objects` como "solo en la nube" y no logró descargarlos ni al marcarlos para
+mantener en el dispositivo. Solución: clonar de GitHub en una carpeta local, copiar el árbol de
+trabajo (sin `.env`, capturas ni resultados), hacer allí los commits y el push, y reemplazar el
+`.git` de la carpeta de OneDrive por el del clon. El `.git` dañado quedó como respaldo oculto en
+`.git_roto_20261029/` (excluido en `.git/info/exclude`); puede borrarse cuando se confirme que
+todo está bien. Un primer intento de commit dentro de OneDrive incluyó `.env` por error; se
+corrigió antes de subir (nunca llegó a GitHub).
+
+**Verificación:** `git status` en la carpeta de OneDrive responde en 0,5 s, `main` coincide con
+`origin/main`, el `.env` local se conserva y está ignorado, y ningún commit tiene coautoría.
+
+**Pendiente / siguientes pasos:**
+- Borrar `.git_roto_20261029/` cuando se confirme que el repositorio funciona bien.
+- Valorar sacar el repositorio de OneDrive (o dejarlo siempre en el dispositivo) para evitar que
+  se repita.

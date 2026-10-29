@@ -62,6 +62,11 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   10.53.0.0/24. `python -m banco verificar` detecta choques.
 - **iperf3 3.9 (Ubuntu 22.04):** no uses `-O` con UDP; el caudal UDP se calcula a partir de los
   paquetes recibidos.
+- **Repositorio dentro de OneDrive:** con *Files On-Demand*, OneDrive puede dejar objetos de
+  `.git/objects` como "solo en la nube" y git falla con `fatal: mmap failed: Invalid argument`
+  (o se cuelga). Mantenga la carpeta "siempre en este dispositivo" (`attrib +P -U /S /D`). Si ya
+  ocurrió: clone de GitHub fuera de OneDrive, copie el árbol de trabajo, haga commit y push allí
+  y reemplace el `.git` dañado (dejando respaldo).
 - **Salida en Windows:** con stdout redirigido, Python usa cp1252; el banco fuerza UTF-8.
 
 ## 4. Flujo de verificación antes de dar algo por terminado
