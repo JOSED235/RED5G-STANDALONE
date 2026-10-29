@@ -1,10 +1,23 @@
 ﻿# Script de control en PowerShell para el laboratorio 5G Standalone con Docker Compose
-#   .\manage_lab.ps1 up | down | restart | restart-ran | logs | status
-#   .\manage_lab.ps1 test-ping | test-iperf | pcap [-Seconds 60] | pcap-registro [-Seconds 60] | clean
+#   Ciclo de vida:  .\manage_lab.ps1 up | build | down | restart | restart-ran | logs | clean
+#     up construye solo las imágenes que falten; build reconstruye tras cambiar un Dockerfile
+#   Diagnóstico:    .\manage_lab.ps1 verificar (equipo, .env, subred; 'up' la ejecuta antes) | status
+#   Pruebas (banco de pruebas en Python, guarda resultados en .\resultados):
+#     .\manage_lab.ps1 test-ping | test-iperf | p7 | p8 | p9 | p10 | campana  [opciones del banco]
+#     .\manage_lab.ps1 pcap [-Seconds 60] | pcap-registro [-Seconds 60]
+#   Ejemplos:
+#     .\manage_lab.ps1 p7 --tasas 2,5,10,20 --sentidos dl
+#     .\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5
+#     .\manage_lab.ps1 banco p9 --duracion 1800 --carga 5M --recuperar
+[CmdletBinding(PositionalBinding = $false)]
 param(
-    [ValidateSet("up", "down", "restart", "restart-ran", "logs", "status", "test-ping", "test-iperf", "pcap", "pcap-registro", "clean")]
+    [Parameter(Position = 0)]
+    [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
+                 "p7", "p8", "p9", "p10", "campana", "banco", "pcap", "pcap-registro", "clean")]
     [string]$Action = "up",
-    [int]$Seconds = 60
+    [int]$Seconds = 60,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Opciones = @()
 )
 
 Set-Location -Path $PSScriptRoot
@@ -21,34 +34,62 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     }
 }
 
-function Start-Captura([int]$Duracion, [bool]$ReiniciarRan) {
-    $Archivo = "fase2_traza_{0}.pcap" -f (Get-Date -Format "yyyyMMdd_HHmmss")
-    Write-Host ">>> Capturando NGAP, GTP-U, PFCP y SBI durante $Duracion s en capturas\$Archivo ..." -ForegroundColor Cyan
-    # La captura se escribe dentro del contenedor (volumen ./capturas); redirigir con '>' en
-    # PowerShell 5.1 corrompe el binario PCAP al convertirlo a UTF-16.
-    & $DockerBin compose exec -T -d open5gs timeout $Duracion tcpdump -i any -U -w "/capturas/$Archivo" sctp or udp port 2152 or udp port 8805 or tcp port 7777
-    Start-Sleep -Seconds 2
-    if ($ReiniciarRan) {
-        Write-Host ">>> Reiniciando gNB y UE juntos para registrar NG Setup, Registration y PDU Session..." -ForegroundColor Yellow
-        & $DockerBin compose restart gnb ue
+# .env es la configuración única (no versionada); se crea desde la plantilla si falta
+if (-not (Test-Path ".env")) {
+    Copy-Item ".env.example" ".env"
+    Write-Host ">>> Se creó .env a partir de .env.example" -ForegroundColor Yellow
+}
+
+# Las pruebas se ejecutan con el banco de pruebas en Python (una sola implementación
+# compartida con make); este script solo lo invoca.
+function Get-Python {
+    if (Get-Command py -ErrorAction SilentlyContinue) { return @("py", "-3") }
+    if (Get-Command python -ErrorAction SilentlyContinue) { return @("python") }
+    return $null
+}
+
+function Invoke-Banco([string[]]$Argumentos) {
+    $Python = Get-Python
+    if (-not $Python) {
+        Write-Error "Se requiere Python 3.10 o superior para el banco de pruebas (https://www.python.org/downloads/)."
+        exit 1
     }
-    Start-Sleep -Seconds $Duracion
-    Write-Host ">>> Captura finalizada: capturas\$Archivo" -ForegroundColor Green
+    & $Python[0] @($Python | Select-Object -Skip 1) -m banco @Argumentos
+    exit $LASTEXITCODE
 }
 
 switch ($Action) {
     "up" {
+        # Chequeo previo (subred ocupada, .env incompleto, Docker detenido) antes de construir
+        $Python = Get-Python
+        if ($Python) {
+            & $Python[0] @($Python | Select-Object -Skip 1) -m banco verificar
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host ">>> Corrija los errores anteriores y vuelva a ejecutar 'up'." -ForegroundColor Red
+                exit 1
+            }
+        } else {
+            Write-Host ">>> Python no disponible: se omite la verificación previa." -ForegroundColor Yellow
+        }
         Write-Host ">>> Iniciando red 5G Standalone (MongoDB, Open5GS, WebUI, srsRAN gNB, srsUE)..." -ForegroundColor Cyan
-        & $DockerBin compose up -d --build
+        # Sin --build: solo se construyen las imágenes que falten (primer arranque del equipo).
+        # Con --build, si Docker descartó su caché de compilación, se recompilaba srsRAN
+        # completo (hasta 90 min en el portátil). Tras cambiar un Dockerfile: .\manage_lab.ps1 build
+        & $DockerBin compose up -d
         Write-Host ">>> Red levantada. WebUI en: http://localhost:9999 (admin / 1423)" -ForegroundColor Green
         Write-Host ">>> Verifique el estado con: .\manage_lab.ps1 status" -ForegroundColor Green
+    }
+    "build" {
+        Write-Host ">>> Reconstruyendo imágenes (aplica cambios en Dockerfiles, plantillas y entrypoints)..." -ForegroundColor Cyan
+        & $DockerBin compose build
+        Write-Host ">>> Aplique las imágenes nuevas con: .\manage_lab.ps1 restart" -ForegroundColor Green
     }
     "down" {
         Write-Host ">>> Deteniendo red 5G..." -ForegroundColor Yellow
         & $DockerBin compose down
     }
     "restart" {
-        Write-Host ">>> Reiniciando red 5G..." -ForegroundColor Yellow
+        Write-Host ">>> Reiniciando red 5G (aplica los cambios de .env)..." -ForegroundColor Yellow
         & $DockerBin compose down
         & $DockerBin compose up -d
     }
@@ -60,36 +101,18 @@ switch ($Action) {
     "logs" {
         & $DockerBin compose logs -f
     }
-    "status" {
-        & $DockerBin compose ps
-        Write-Host "`n>>> Estado de la sesión 5G en el UE:" -ForegroundColor Cyan
-        & $DockerBin compose exec -T ue ip -4 addr show tun_srsue
-        Write-Host "`n>>> Ruta por defecto del UE:" -ForegroundColor Cyan
-        & $DockerBin compose exec -T ue ip route show default
-    }
-    "test-ping" {
-        Write-Host ">>> Ejecutando ping hacia el Core (10.45.0.1)..." -ForegroundColor Cyan
-        & $DockerBin compose exec -T ue ping -I tun_srsue -c 10 10.45.0.1
-        Write-Host "`n>>> Ejecutando ping hacia Internet por el túnel 5G (8.8.8.8)..." -ForegroundColor Cyan
-        & $DockerBin compose exec -T ue ping -I tun_srsue -c 10 8.8.8.8
-    }
-    "test-iperf" {
-        Write-Host ">>> Levantando servidor iperf3 en el Core..." -ForegroundColor Cyan
-        & $DockerBin compose exec -T open5gs sh -c "pkill -x iperf3; iperf3 -s -D -B 10.45.0.1"
-        Start-Sleep -Seconds 2
-        Write-Host ">>> Test TCP Uplink (10s)..." -ForegroundColor Green
-        & $DockerBin compose exec -T ue iperf3 -c 10.45.0.1 -t 10
-        Write-Host "`n>>> Test TCP Downlink (10s)..." -ForegroundColor Green
-        & $DockerBin compose exec -T ue iperf3 -c 10.45.0.1 -t 10 -R
-        Write-Host "`n>>> Test UDP Downlink a 100 Mbps (10s, prueba P7)..." -ForegroundColor Green
-        & $DockerBin compose exec -T ue iperf3 -c 10.45.0.1 -u -b 100M -t 10 -R
-    }
-    "pcap" {
-        Start-Captura -Duracion $Seconds -ReiniciarRan $false
-    }
-    "pcap-registro" {
-        Start-Captura -Duracion $Seconds -ReiniciarRan $true
-    }
+    "verificar"     { Invoke-Banco (@("verificar") + $Opciones) }
+    "status"        { Invoke-Banco (@("estado") + $Opciones) }
+    "test-ping"     { Invoke-Banco (@("ping") + $Opciones) }
+    "test-iperf"    { Invoke-Banco (@("iperf") + $Opciones) }
+    "p7"            { Invoke-Banco (@("p7") + $Opciones) }
+    "p8"            { Invoke-Banco (@("p8") + $Opciones) }
+    "p9"            { Invoke-Banco (@("p9") + $Opciones) }
+    "p10"           { Invoke-Banco (@("p10") + $Opciones) }
+    "campana"       { Invoke-Banco (@("campana") + $Opciones) }
+    "banco"         { Invoke-Banco $Opciones }
+    "pcap"          { Invoke-Banco (@("pcap", "--segundos", "$Seconds") + $Opciones) }
+    "pcap-registro" { Invoke-Banco (@("pcap", "--segundos", "$Seconds", "--registro") + $Opciones) }
     "clean" {
         Write-Host ">>> Limpieza total de contenedores y volúmenes..." -ForegroundColor Red
         & $DockerBin compose down -v --remove-orphans
