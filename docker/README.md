@@ -42,7 +42,7 @@ La red se despliega sobre una subred bridge dedicada (`10.53.0.0/24` por defecto
    El healthcheck declara el contenedor sano cuando el AMF escucha NGAP en SCTP 38412.
 3. **`webui` (10.53.0.6):** WebUI de Open5GS v2.8.0 compilada desde el código fuente, en `http://localhost:9999` (usuario `admin`, clave `1423`).
 4. **`gnb` (10.53.0.4):** gNodeB de srsRAN Project (commit `4bf1543936`). Arranca solo cuando el Core está sano. N2 hacia `10.53.0.3:38412` y N3 enlazado en `10.53.0.4:2152`.
-5. **`ue` (10.53.0.5):** srsUE (srsRAN 4G, commit `bef8680d5`). Realiza la sincronización con la celda, el registro 5G-AKA y la sesión PDU. Cuando `tun_srsue` recibe IP, **reemplaza la ruta por defecto de Docker** por `default dev tun_srsue` (Falla #10), de modo que todo el tráfico del UE sale por la red 5G.
+5. **`ue` (10.53.0.5):** srsUE (srsRAN 4G 26.10, commit `06f0b1e23`; se cambia con `--build-arg SRSRAN_4G_COMMIT=...`). Realiza la sincronización con la celda, el registro 5G-AKA y la sesión PDU. Cuando `tun_srsue` recibe IP, **reemplaza la ruta por defecto de Docker** por `default dev tun_srsue` (Falla #10), de modo que todo el tráfico del UE sale por la red 5G.
 
 ### Archivos de configuración relevantes
 
@@ -106,7 +106,9 @@ La carpeta `capturas/` del repositorio se monta en los contenedores y recibe aut
 | `fase2_traza_*.pcap` | Core (`tcpdump -i any`) | NGAP, GTP-U, PFCP (N4) y SBI HTTP/2 |
 
 Su contenido no se versiona en git (`.gitignore`); copie a `docs/` las capturas que use en el informe.
-Las capturas de NGAP de srsRAN se abren directamente en Wireshark. Con el srsUE el AMF negocia NIA2 (integridad) y NEA0 (sin cifrado), así que los mensajes NAS posteriores al Security Mode Command son legibles en las trazas del Core, y el Security Mode Command muestra los algoritmos negociados. El srsUE no completa el registro con NEA1/2/3 (ver `AMF_CIPHERING_ORDER` en `.env.example`). En la Fase 3, con NEA2, los mensajes NAS del Core irán cifrados.
+
+**Repositorio en una unidad en la nube (Google Drive `G:\`, OneDrive):** lo que los contenedores escriben en `./capturas` puede no aparecer en Windows (falla F2-14). `pcap` copia su traza con `docker compose cp`; para los demás archivos use `docker compose cp open5gs:/capturas/<archivo> capturas/`. La solución de fondo es clonar el repositorio en un disco local.
+Las capturas de NGAP de srsRAN se abren directamente en Wireshark. Con el srsUE 26.10 el AMF negocia NIA2 (integridad) y NEA2 (cifrado): el Security Mode Command muestra los algoritmos negociados y los mensajes NAS posteriores van cifrados en las trazas del Core (`security_header_type = 2`). Para leer su contenido en Wireshark, use `ue_nas.pcap` (el UE lo guarda en claro) o ponga temporalmente `AMF_CIPHERING_ORDER=NEA0, NEA2, NEA1` en `.env`.
 
 ---
 
@@ -126,6 +128,8 @@ Las pruebas se ejecutan con el banco de pruebas en Python ([`../banco`](../banco
 | Campaña | `.\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5` | Varias pruebas repetidas N veces en una misma carpeta (base de la estadística) |
 | Captura | `.\manage_lab.ps1 pcap -Seconds 60` / `pcap-registro` | PCAP de NGAP, GTP-U, PFCP y SBI en el Core; `pcap-registro` reinicia gNB + UE para capturar el registro completo |
 | Enlace (Fase 3) | `.\manage_lab.ps1 banco enlace [--atenuacion 60,70,80] [--ptx 0] [--distancia 0]` | Presupuesto de enlace sin Docker: FSPL, Prx, RSRP, ruido térmico, SNR, Shannon, MCS teórico (TS 38.214 qam64 con Shannon atenuado α = 0,6) y caudal TS 38.306 por cada atenuación; avisa si Prx supera `--prx-max` |
+| Estadística (paso 3) | `.\manage_lab.ps1 banco estadistica [resultados\<carpeta>]` | Sin Docker. Escribe `estadistica.csv` en la carpeta (por defecto la más reciente): n, media, desviación muestral, IC 95 % con t-Student (n−1 g.l.), mín y máx por prueba, parámetro y métrica, más `dl/ul_bler_agregada_pct` con los ACK/NACK sumados de todas las corridas |
+| Gráficas (paso 3) | `.\manage_lab.ps1 analisis [resultados\<carpeta>]` | Regenera `estadistica.csv` y escribe `graficas/*.pdf` y `*.png` (media ± IC 95 %) de P5, P6, P7, P8 y P10. Necesita matplotlib: `pip install -r analisis/requirements.txt` (por eso vive en `analisis/`, fuera del banco) |
 
 Opciones comunes: `--corridas N`, `--pausa S` (entre corridas), `--equipo <etiqueta>` (por defecto `EQUIPO` de `.env` o el nombre del host) y `--etiqueta <sufijo>` para la carpeta. En Linux/WSL: `make p7 ARGS="--tasas 2,5,10"`.
 
@@ -137,6 +141,7 @@ Opciones comunes: `--corridas N`, `--pausa S` (entre corridas), `--equipo <etiqu
 | `resumen.csv` | Una fila por métrica: `prueba, corrida, parametro, valor_parametro, metrica, valor, unidad` (formato largo para la estadística) |
 | `metricas_gnb.csv` | Tabla de métricas del gNB (CQI, MCS, caudal, ACK/NACK, SNR...) durante cada medición |
 | `ping_muestras.csv`, `iperf_series.csv`, `p9_*.csv`, `p10_*.csv` | Series detalladas para gráficas |
+| `estadistica.csv`, `graficas/` | Generados por `banco estadistica` y `analisis` (paso 3) |
 | `crudos/` | Salidas originales (ping, JSON de iperf3, logs, `/proc/stat`) para auditar los cálculos |
 
 La BLER se calcula agregando ACK/NACK de todo el intervalo, no promediando porcentajes. El caudal UDP se obtiene de los paquetes recibidos, así que no depende de si el UE es emisor o receptor.
@@ -156,7 +161,7 @@ docker compose exec -it ue bash      # terminal dentro del UE
 ```
 
 ### Problemas conocidos
-* **ZMQ exige reiniciar gNB y UE en conjunto** (Falla #8). Si solo uno se reinicia, el UE no vuelve a sincronizar: use `restart-ran`. En `docker-compose.yml` el UE declara `depends_on: gnb` con `restart: true`, así que `docker compose restart gnb` (o recrear el gNB) también reinicia el UE.
+* **ZMQ exige reiniciar gNB y UE en conjunto** (Falla #8). Si solo uno se reinicia, el UE no vuelve a sincronizar: use `restart-ran`, que **recrea** ambos contenedores. No use `docker compose restart gnb ue`: desde el 02/11/2026 deja el enlace ZMQ sin muestras y el UE nunca envía el Registration Request (falla F2-13). En `docker-compose.yml` el UE declara `depends_on: gnb` con `restart: true`, así que recrear el gNB también reinicia el UE.
 * **Si se reinicia o recrea solo el Core** (`open5gs`), el gNB restablece N2 pero el UE pierde su contexto en el AMF y queda sin sesión PDU: ejecute después `restart-ran`.
 * **`Pool overlaps with other one on this address space` al hacer `up`:** otra red de Docker del equipo ya usa la subred de `SUBRED_DOCKER`. Ejecute `python -m banco verificar` (o `.\manage_lab.ps1 verificar`): detecta el choque y sugiere una subred libre. Cambie `SUBRED_DOCKER` y las IP (`MONGO_IP` ... `WEBUI_IP`) en el `.env` local; las plantillas toman los valores nuevos sin tocar otros archivos.
 * Si se modifica `init-mongo.js` o el suscriptor de `.env`, el cambio solo se aplica con un volumen nuevo (`.\manage_lab.ps1 clean` y luego `up`).

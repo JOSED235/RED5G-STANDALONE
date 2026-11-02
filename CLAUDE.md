@@ -39,6 +39,10 @@ convención o parámetro).
 - Antes de levantar la red en un equipo nuevo: `python -m banco verificar` (`up` la ejecuta).
 - Las pruebas se implementan una sola vez en el banco de Python (`banco/`, solo biblioteca
   estándar); `manage_lab.ps1` y `Makefile` solo lo invocan.
-- Con ZMQ el gNB y el UE se reinician siempre juntos (Falla #8).
+- Con ZMQ el gNB y el UE se reinician siempre juntos (Falla #8) y **recreándolos**
+  (`restart-ran`, `Compose.reiniciar_ran()`), nunca con `docker compose restart` (F2-13).
+- Las gráficas (matplotlib) viven en `analisis/`, no en `banco/`, para que el banco siga sin
+  dependencias externas. No se dejan scripts sueltos en la raíz: todo código va en `banco/`,
+  `analisis/` o `docker/` y se invoca desde `manage_lab.ps1`/`Makefile`.
 - Los parsers de `banco/parsers.py` llevan prueba unitaria en `banco/tests/`
   (`python -m unittest discover -s banco/tests -t .`).

@@ -1,5 +1,5 @@
 .PHONY: verificar up build down restart restart-ran logs logs-gnb logs-ue logs-core ps status \
-        test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro test-banco clean
+        test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro analisis test-banco clean
 
 # Intérprete del banco de pruebas y opciones extra, p. ej.: make p7 ARGS="--tasas 2,5,10"
 PYTHON ?= python3
@@ -31,7 +31,7 @@ restart: .env
 
 # Falla #8 de la Fase 1: con ZMQ siempre se reinician gNB y UE en conjunto
 restart-ran:
-	docker compose restart gnb ue
+	docker compose up -d --force-recreate --no-deps gnb ue
 
 logs:
 	docker compose logs -f
@@ -78,6 +78,11 @@ pcap:
 
 pcap-registro:
 	$(BANCO) pcap --segundos 60 --registro $(ARGS)
+
+# Paso 3: estadística (IC 95 %) y gráficas de una carpeta, p. ej. make analisis ARGS=resultados/<carpeta>
+# (requiere: pip install -r analisis/requirements.txt)
+analisis:
+	$(PYTHON) -m analisis.graficas $(ARGS)
 
 # Pruebas unitarias de los intérpretes de salidas (no requieren Docker)
 test-banco:

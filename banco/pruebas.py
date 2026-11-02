@@ -325,7 +325,7 @@ def _p9_corrida(ctx: Contexto, args, corrida: int) -> None:
             elif args.recuperar and ahora - sin_ip_desde > args.umbral_recuperacion:
                 evento("recuperacion_reinicio_ran")
                 print("    ! Reiniciando gNB + UE juntos para recuperar la sesión (--recuperar)")
-                ctx.compose.ejecutar("restart", "gnb", "ue", timeout=180)
+                ctx.compose.reiniciar_ran()
                 sin_ip_desde = None
         elif sin_ip_desde is not None:
             evento("ue_recupera_sesion_pdu", round(ahora - sin_ip_desde, 1))
@@ -550,9 +550,12 @@ def captura(compose: Compose, segundos: int, registro: bool) -> None:
     time.sleep(2)
     if registro:
         print(">>> Reiniciando gNB y UE juntos para registrar NG Setup, Registration y PDU Session...")
-        compose.ejecutar("restart", "gnb", "ue", timeout=180)
+        compose.reiniciar_ran()
     print(f">>> Capturando... espere {segundos} s")
     time.sleep(segundos)
     ruta = DIR_CAPTURAS / archivo
+    # Se copia explícitamente: con el repositorio en una unidad en la nube (Google Drive, OneDrive)
+    # lo que el contenedor escribe en el montaje ./capturas no siempre llega al host (falla F2-14).
+    compose.ejecutar("cp", f"open5gs:/capturas/{archivo}", str(ruta), verificar=False, timeout=60)
     tamano = ruta.stat().st_size if ruta.exists() else 0
     print(f">>> Captura finalizada: {ruta.relative_to(RAIZ)} ({tamano / 1024:.1f} KiB)")

@@ -16,12 +16,12 @@ en la configuración, los logs o las capturas: no supongas.
 | :--- | :--- | :--- |
 | Core | Open5GS v2.8.0 compilado desde fuente, 11 NF (NRF, SCP, AMF, SMF, UPF, AUSF, UDM, UDR, PCF, NSSF, BSF) | `docker/open5gs/` |
 | gNB | srsRAN Project commit `4bf1543936` (25.10, rama `main`), `-march=native` | `docker/gnb/` |
-| UE | srsUE (srsRAN_4G commit `bef8680d5`), USIM `soft` Milenage | `docker/ue/` |
+| UE | srsUE 26.10 (srsRAN_4G commit `06f0b1e23`, rama `release_26_10`), USIM `soft` Milenage | `docker/ue/` (`ARG SRSRAN_4G_COMMIT`) |
 | PLMN / TAC / slice / DNN | 001/01 (pruebas, nunca 732), TAC 7, SST 1 sin SD, `internet` | `.env` |
 | Celda | Banda n3 FDD, DL ARFCN 368500 (1842,5 MHz), SSB ARFCN 368410, 20 MHz, SCS 15 kHz (µ=0), 106 PRB, PCI 1 | `gnb_zmq.yaml` |
 | Muestreo | 23,04 MS/s (ZMQ, puertos 2000 gNB TX / 2001 UE TX) | `gnb_zmq.yaml`, `ue_zmq.conf` |
 | MCS | Tabla `qam64` en PDSCH/PUSCH; rango `PDSCH/PUSCH_MIN/MAX_MCS` (0..28) | `.env` |
-| Seguridad NAS | Integridad NIA2 primero; cifrado NEA0 primero (ver §4, hallazgo de NEA) | `.env` |
+| Seguridad NAS | Integridad NIA2 y cifrado NEA2 primero (verificado en traza el 2026-11-02) | `.env` |
 | Red Docker | `10.53.0.0/24`: MongoDB .2, Core .3, gNB .4, UE .5, WebUI .6 | `.env` |
 | UE / N6 | Subred 10.45.0.0/16, pasarela 10.45.0.1 (`ogstun`) con NAT MASQUERADE | yaml por defecto SMF/UPF |
 
@@ -37,7 +37,8 @@ equipo principal (`C:\Program Files\Wireshark\tshark.exe`).
 Secuencia esperada (≈ 0,6 s desde InitialUEMessage en el equipo i7): NGSetupRequest/Response →
 InitialUEMessage + Registration Request (SUCI con esquema nulo: `suci-0-001-01-0000-0-0-<MSIN>`) →
 Authentication Request (RAND, AUTN, ngKSI, ABBA) → Authentication Response (RES*) → Security Mode
-Command (algoritmos NIA/NEA seleccionados, capacidades repetidas del UE) → Security Mode Complete →
+Command (algoritmos NIA/NEA seleccionados, capacidades repetidas del UE; con NEA2 lo que sigue va cifrado —
+`security_header_type` 2— y se lee en `ue_nas.pcap` o poniendo NEA0 primero) → Security Mode Complete →
 InitialContextSetup → Registration Accept/Complete → PDU Session Establishment Request → PFCP
 Session Establishment (PDR/FAR/QER, F-TEID del UPF) → PDUSessionResourceSetup (TEID GTP-U de N3) →
 PDU Session Establishment Accept (IP 10.45.0.x, QoS 5QI 9, AMBR) → tráfico GTP-U.
@@ -66,7 +67,9 @@ Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_
 | Síntoma | Causa | Acción |
 | :--- | :--- | :--- |
 | NG Setup falla `unknown-PLMN-or-SNPN` | PLMN de AMF/NRF distinto del gNB | Revisar `MCC/MNC` en `.env` y las plantillas |
-| UE se autentica pero tras el Security Mode Command se libera y no hay sesión PDU | srsUE `bef8680d5` no completa el registro con NEA1/2/3 y no deja limitar sus algoritmos | `AMF_CIPHERING_ORDER=NEA0, NEA2, NEA1` en ZMQ; NEA2 primero solo con terminal comercial |
+| UE se autentica pero tras el Security Mode Command se libera y no hay sesión PDU (con NEA1/2/3) | srsUE `bef8680d5` (25.10) no descifraba el NAS: NAS COUNT con el desplazamiento de LTE (srsRAN_4G #1392, F2-15) | srsUE 26.10 (`06f0b1e23`); con un srsUE viejo, `AMF_CIPHERING_ORDER=NEA0, NEA2, NEA1` |
+| Tras `docker compose restart gnb ue` el UE queda en `Attaching UE...` y el gNB en `Waiting for reading samples. Completed 0` | El reinicio en sitio deja el ZMQ sin muestras (F2-13, causa no determinada) | Recrear: `restart-ran` (`up -d --force-recreate --no-deps gnb ue`) |
+| `pcap` da 0,0 KiB y `capturas/` no cambia, pero el archivo existe dentro del contenedor | Repo en `G:\` (Google Drive): el montaje no propaga escrituras al host (F2-14) | El banco usa `docker compose cp`; a mano: `docker compose cp open5gs:/capturas/<archivo> capturas/` |
 | Registro bien, PDU rechazada (`No 5QI`) | Suscriptor con el esquema viejo (`pcn`) | `init-mongo.js` usa `qos`; volumen nuevo (`clean`, `up`) |
 | `RAR Timer expired` | PRACH no atendido | `prach_config_index: 1` |
 | El UE no sincroniza tras reiniciar uno solo | ZMQ exige reiniciar gNB y UE juntos (Falla #8) | `restart-ran`; el UE tiene `depends_on: gnb` con `restart: true` |

@@ -131,7 +131,15 @@ class Compose:
                 estado[partes[0]] = {"estado": partes[1], "reinicios": int(partes[2]), "inicio": partes[3]}
         return estado
 
-    def recrear_ran(self, env_extra: dict | None = None, timeout_ue: float = 240) -> str:
-        """Recrea gNB y UE juntos (Falla #8: ZMQ exige reiniciar ambos) y espera la sesión PDU."""
+    def reiniciar_ran(self, env_extra: dict | None = None) -> None:
+        """Recrea gNB y UE juntos sin esperar la sesión PDU (Falla #8: ZMQ exige reiniciar ambos).
+
+        Se recrean en lugar de 'docker compose restart gnb ue': desde el 2026-11-02 el restart deja
+        el enlace ZMQ sin muestras y el UE nunca envía el Registration Request (falla F2-13).
+        """
         self.ejecutar("up", "-d", "--force-recreate", "--no-deps", "gnb", "ue", env_extra=env_extra, timeout=300)
+
+    def recrear_ran(self, env_extra: dict | None = None, timeout_ue: float = 240) -> str:
+        """Recrea gNB y UE juntos y espera la sesión PDU; devuelve la IP del UE."""
+        self.reiniciar_ran(env_extra)
         return self.esperar_ue(timeout_ue)

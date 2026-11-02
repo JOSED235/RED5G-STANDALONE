@@ -12,6 +12,7 @@ Uso (desde la raíz del repositorio):
   python -m banco campana --pruebas ping,iperf,p7,p10 --corridas 5                  (repeticiones)
   python -m banco pcap   [--segundos 60] [--registro]
   python -m banco enlace [--atenuacion 60,70,80] [--ptx 0] [--distancia 0]          (presupuesto de enlace, Fase 3)
+  python -m banco estadistica [resultados/<carpeta>]                                (media, desv., IC 95 %)
 
 Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv y crudos/.
 """
@@ -19,7 +20,7 @@ Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv 
 import argparse
 import sys
 
-from . import enlace, pruebas, verificacion
+from . import enlace, estadistica, pruebas, verificacion
 from .compose import Compose, ErrorCompose
 from .config import asegurar_env
 from .parsers import ErrorIperf
@@ -118,6 +119,9 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--alfa", type=float, default=0.6, help="factor del Shannon atenuado (TR 36.942)")
     p.add_argument("--prx-max", type=float, default=-15,
                    help="potencia máxima admisible en el receptor en dBm (verificar en la hoja de datos)")
+
+    p = sub.add_parser("estadistica", help="paso 3: media, desviación e IC 95 %% (t-Student) de una carpeta (no usa Docker)")
+    p.add_argument("carpeta", nargs="?", help="carpeta de resultados; por defecto la más reciente")
     return parser
 
 
@@ -140,6 +144,9 @@ def main(argv=None) -> int:
             return verificacion.verificar()
         if args.comando == "enlace":
             return enlace.calcular(args)
+        if args.comando == "estadistica":
+            estadistica.analizar(args.carpeta)
+            return 0
         compose = Compose()
         if args.comando == "estado":
             pruebas.estado(compose)

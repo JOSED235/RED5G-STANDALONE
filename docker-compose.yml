@@ -142,7 +142,8 @@ services:
       gnb:
         condition: service_started
         # Falla #8: con ZMQ el UE pierde la sincronía si el gNB se reinicia solo;
-        # así 'docker compose restart gnb' (o recrearlo) reinicia también el UE.
+        # así recrear el gNB reinicia también el UE. Para reiniciar la RAN use 'restart-ran'
+        # (recrea ambos): 'docker compose restart gnb ue' deja el ZMQ sin muestras (falla F2-13).
         restart: true
     environment:
       <<: *suscriptor

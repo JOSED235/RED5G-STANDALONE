@@ -14,6 +14,7 @@ El objetivo principal de este proyecto de curso es diseñar, simular, implementa
 
 La arquitectura integra:
 * **Red de Acceso Radio (gNB):** Implementada con [srsRAN Project](https://github.com/srsran/srsRAN_Project) (versión 25.10.0, rama `main`).
+* **Equipo de usuario emulado (UE):** srsUE de [srsRAN 4G](https://github.com/srsran/srsRAN_4G) (versión 26.10.0, commit `06f0b1e23`), con USIM por software (Milenage).
 * **Núcleo de Red 5G (5GC):** Desplegado con [Open5GS](https://open5gs.org/) (versión 2.8.0) bajo un modelo de funciones de red virtualizadas (NFV) con base de datos MongoDB.
 * **Interfaz Radio y Transmisión:**
   * **Fases 1 y 2 (Zero-RF):** Emulación de canal radio por software mediante **ZeroMQ (ZMQ)** vía sockets TCP locales, permitiendo pruebas exhaustivas extremo a extremo sin radiación electromagnética ni riesgo regulatorio.
@@ -29,7 +30,7 @@ El proyecto se estructura en tres fases progresivas alineadas con la rúbrica de
 | Fase | Enfoque | Hitos Principales | Estado |
 | :--- | :--- | :--- | :---: |
 | **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada** |
-| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • [Hecho] Automatización y contenerización del despliegue (Docker Compose, validado de extremo a extremo).<br>• [Hecho] Estabilización del núcleo Open5GS (11 NF activas, healthchecks y reinicio automático).<br>• [Hecho] Ruta por defecto hacia Internet desde el UE por `tun_srsue` (Falla #10 resuelta).<br>• [Hecho] Captura automatizada del flujo NG Setup → Registration → PDU Session (NGAP, NAS-5GS, PFCP, SBI).<br>• [Pendiente] Análisis exhaustivo de trazas en Wireshark (campo a campo).<br>• [Hecho] Configuración única en `.env`, Open5GS fijado en v2.8.0 e integridad NAS NIA2.<br>• [Hecho] Banco de pruebas automatizado (P5–P10, campañas de N corridas, resultados con metadatos), validado de extremo a extremo.<br>• [Pendiente] Ejecutar la campaña completa (5 corridas, P7, P8 y P9 de 30 min) y su análisis estadístico con intervalos de confianza. | **En curso** |
+| **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • [Hecho] Automatización y contenerización del despliegue (Docker Compose, validado de extremo a extremo).<br>• [Hecho] Estabilización del núcleo Open5GS (11 NF activas, healthchecks y reinicio automático).<br>• [Hecho] Ruta por defecto hacia Internet desde el UE por `tun_srsue` (Falla #10 resuelta).<br>• [Hecho] Captura automatizada del flujo NG Setup → Registration → PDU Session (NGAP, NAS-5GS, PFCP, SBI).<br>• [Pendiente] Análisis exhaustivo de trazas en Wireshark (campo a campo).<br>• [Hecho] Configuración única en `.env`, Open5GS fijado en v2.8.0 e integridad NAS NIA2.<br>• [Hecho] Cifrado NAS NEA2 + integridad NIA2 con el srsUE 26.10 (verificado en la traza, 02/11/2026).<br>• [Hecho] Estadística (media, desviación, IC 95 % t-Student, BLER agregada) y gráficas para el informe (`analisis`).<br>• [Hecho] Banco de pruebas automatizado (P5–P10, campañas de N corridas, resultados con metadatos), validado de extremo a extremo.<br>• [Pendiente] Ejecutar la campaña completa (5 corridas, P7, P8 y P9 de 30 min) y su análisis estadístico con intervalos de confianza. | **En curso** |
 | **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• [Hecho] Calculadora de presupuesto de enlace (`python -m banco enlace`): Prx, SNR, MCS y caudal teóricos por atenuación.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y contraste con el presupuesto de enlace. | **Preparación por software** |
 
 ---
@@ -153,6 +154,9 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 | F2-10 | Scripts rotos al clonar en Windows | `core.autocrlf=true` convierte los `.sh` a CRLF | `.gitattributes` con `eol=lf` y normalización `sed 's/\r$//'` en los Dockerfiles |
 | F2-11 | Captura PCAP corrupta desde PowerShell | La redirección `>` de PowerShell 5.1 reescribe el binario en UTF-16 | `tcpdump -w` dentro del contenedor sobre el volumen `./capturas` |
 | F2-12 | `Pool overlaps with other one on this address space` al hacer `up` | Docker asigna solo las subredes 172.17–172.31 a las redes de otros proyectos Compose, y `172.20.0.0/24` chocaba con una de ellas (incluso sin contenedores) | Subred por defecto `10.53.0.0/24`, fuera de ese rango; configurable en `.env` y detectada por `python -m banco verificar`. Las IP 172.20.0.x de F2-4 y F2-6 corresponden al direccionamiento anterior |
+| F2-13 | Tras `docker compose restart gnb ue` el UE se queda en `Attaching UE...` y el gNB registra `Waiting for reading samples. Completed 0` (sin InitialUEMessage) | El reinicio en sitio deja el enlace ZMQ sin muestras; reproducido 5 de 5 veces el 02/11/2026 con ambas versiones del srsUE (25.10 y 26.10), mientras que recrear los contenedores funcionó todas las veces. La causa exacta no se determinó; los registros previos (28/10) con `restart` sí funcionaban | `restart-ran`, `pcap --registro` y `p9 --recuperar` recrean gNB y UE (`up -d --force-recreate --no-deps gnb ue`, método `Compose.reiniciar_ran()`) |
+| F2-14 | `pcap` informa una captura de 0,0 KiB y `capturas/` no muestra archivos nuevos, aunque dentro del contenedor existen | El repositorio está en `G:\` (Google Drive para escritorio): las escrituras de los contenedores en el montaje `./capturas` no llegan a Windows | El banco copia la traza con `docker compose cp`. Para los demás archivos: `docker compose cp open5gs:/capturas/<archivo> capturas/`. Solución de fondo: clonar el repositorio en un disco local |
+| F2-15 | Con `NEA2` (o NEA1/NEA3) primero en el AMF, el UE se libera tras el Security Mode Command y no obtiene sesión PDU | El srsUE `bef8680d5` (25.10) calculaba la NAS COUNT de descifrado con el desplazamiento de LTE, así que no podía descifrar el Registration Accept (issue #1392 de srsRAN_4G) | srsUE 26.10 (`06f0b1e23`, incluye la corrección `2144cb589`) y `AMF_CIPHERING_ORDER=NEA2, NEA1, NEA0`. Traza: Security Mode Command con NEA2 + NIA2 y sesión PDU establecida |
 
 ---
 
@@ -190,11 +194,11 @@ La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el 
 * **Configuración única en `.env`:** PLMN, TAC, slice, DNN, seguridad NAS, credenciales del suscriptor, IP de la red Docker, rango de MCS y versión de Open5GS se definen una sola vez. Los archivos de configuración de Core, gNB y UE son plantillas que se rellenan al arrancar. `.env` no se versiona (en la Fase 3 guardará las claves de la SIM física); la plantilla es [`.env.example`](.env.example) y `manage_lab.ps1` / `make` la copian si falta.
 * **MongoDB automatizado:** Registra de forma inmediata el suscriptor definido en `.env` con perfil eMBB (SST: 1, 5QI: 9) y DNN `internet`.
 * **Open5GS v2.8.0 NFV:** compilado desde la etiqueta `v2.8.0` del código fuente (igual que la WebUI), en lugar del PPA `latest`, que cambia de versión sin aviso. 11 funciones de red, interfaz `ogstun`, `ip_forward` y NAT MASQUERADE automáticos; healthcheck sobre NGAP/SCTP.
-* **Seguridad NAS configurable** (`AMF_INTEGRITY_ORDER` / `AMF_CIPHERING_ORDER` en `.env`): la integridad prioriza NIA2 (AES-CMAC). El cifrado prioriza NEA0 porque el srsUE usado (srsRAN_4G `bef8680d5`) no completa el registro si el AMF elige NEA1, NEA2 o NEA3, y no permite limitar los algoritmos que anuncia (verificado el 28/10/2026). Con el terminal comercial de la Fase 3 se cambia a `NEA2, NEA1, NEA0`.
+* **Seguridad NAS configurable** (`AMF_INTEGRITY_ORDER` / `AMF_CIPHERING_ORDER` en `.env`): integridad NIA2 (AES-CMAC) y cifrado NEA2 (AES-CTR) primero. Requiere el srsUE 26.10 (srsRAN_4G `06f0b1e23`): el anterior (`bef8680d5`) no descifraba el NAS con NEA1/2/3 y no completaba el registro (falla F2-15). Verificado el 02/11/2026: el Security Mode Command de la traza lleva NEA2 + NIA2 y la sesión PDU se establece. El commit del UE se cambia con `--build-arg SRSRAN_4G_COMMIT=...` (ver `docker/ue/Dockerfile`).
 * **WebUI** en [http://localhost:9999](http://localhost:9999) (`admin` / `1423`), en su propio contenedor.
 * **srsRAN gNB & srsUE (ZeroMQ):** Emulación de canal radio por software entre contenedores; el gNB publica cada segundo una tabla de métricas (CQI, MCS, caudal, ACK/NACK) en `docker compose logs gnb`.
 * **Falla #10 resuelta:** El UE reemplaza la ruta por defecto por `default dev tun_srsue`, así que todo su tráfico sale por la red 5G.
-* **Evidencia automática en `./capturas`:** `gnb_ngap.pcap`, `ue_nas.pcap`, `gnb.log`, `ue.log` y las trazas `fase2_traza_*.pcap` del Core.
+* **Evidencia automática en `./capturas`:** `gnb_ngap.pcap`, `ue_nas.pcap`, `gnb.log`, `ue.log` y las trazas `fase2_traza_*.pcap` del Core. Si el repositorio está en una unidad en la nube (p. ej. `G:\` de Google Drive), lo que escriben los contenedores en `./capturas` puede no llegar a Windows (falla F2-14): el banco copia la traza con `docker compose cp`; los demás archivos se sacan con `docker compose cp open5gs:/capturas/<archivo> capturas/`.
 * **Banco de pruebas automatizado ([`banco/`](banco), Python 3.10+ sin dependencias externas):** cada medición guarda en `resultados/<fecha>_<prueba>/` los datos crudos (ping, JSON de iperf3, logs), un `resumen.csv` en formato largo listo para la estadística y un `metadata.json` con el equipo, la CPU, la versión del código, la configuración y las imágenes usadas. Durante cada medición también se recoge la tabla de métricas del gNB (MCS, CQI, SNR, BLER).
 
 | Prueba | PowerShell | Make (Linux / WSL) |
@@ -210,8 +214,10 @@ La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el 
 | 5 repeticiones de varias pruebas | `.\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5` | `make campana ARGS="--corridas 5"` |
 | Captura PCAP (N s / registro completo) | `.\manage_lab.ps1 pcap -Seconds 60` / `pcap-registro` | `make pcap` / `make pcap-registro` |
 | Presupuesto de enlace para la Fase 3 (sin Docker) | `.\manage_lab.ps1 banco enlace --atenuacion 60,70,80` | `python -m banco enlace` |
+| Paso 3: estadística de una carpeta (media, desviación, IC 95 %, BLER agregada; sin Docker) | `.\manage_lab.ps1 banco estadistica resultados\<carpeta>` | `python -m banco estadistica` |
+| Paso 3: estadística + gráficas PDF/PNG para el informe (requiere `pip install -r analisis/requirements.txt`) | `.\manage_lab.ps1 analisis resultados\<carpeta>` | `make analisis ARGS=resultados/<carpeta>` |
 
-Todas las pruebas aceptan `--corridas N`, `--equipo <etiqueta>` y `--help`. El manual completo del banco está en [`docker/README.md`](docker/README.md#4-banco-de-pruebas-de-la-fase-2).
+Todas las pruebas aceptan `--corridas N`, `--equipo <etiqueta>` y `--help`. `estadistica` escribe `estadistica.csv` en la carpeta analizada (sin argumento usa la más reciente); `analisis` además genera `graficas/` con P5 (RTT), P6 (caudal TCP), P7 (caudal y pérdida frente a la tasa ofrecida), P8 (caudal frente al MCS) y P10 (CPU por contenedor), con barras de error del IC 95 %. El manual completo del banco está en [`docker/README.md`](docker/README.md#4-banco-de-pruebas-de-la-fase-2).
 
 ### Validación del despliegue (27 de octubre de 2026)
 
@@ -233,9 +239,9 @@ Ejecutado en el equipo menos potente del proyecto (portátil Intel Core i5-8250U
 ### Pendiente para completar la Fase 2
 El detalle actualizado de lo hecho y lo pendiente está en [`BITACORA.md`](BITACORA.md). En resumen:
 1. **Ejecutar la campaña de mediciones** con el banco (P5–P10, 5 corridas, en un mismo equipo).
-2. **Análisis estadístico:** media, desviación e intervalo de confianza del 95 % a partir de `resumen.csv`, y gráficas para el informe.
+2. **Análisis estadístico:** herramienta lista (`banco estadistica` y `analisis`); falta aplicarla a la campaña definitiva.
 3. **Análisis de protocolos en Wireshark:** documentar campo a campo la captura `pcap-registro` (SUCI/SUPI, RAND/AUTN, RES*, algoritmos NIA/NEA, TEID GTP-U, PDU Session Establishment Accept con la IP asignada, reglas PDR/FAR de PFCP).
-4. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-12.
+4. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-15.
 
 Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](docker/README.md).
 
@@ -252,7 +258,8 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 * [`docker-compose.yml`](docker-compose.yml): Orquestador principal de contenedores para la Fase 2.
 * [`manage_lab.ps1`](manage_lab.ps1): Script de control en PowerShell para Windows (ciclo de vida y acceso al banco de pruebas).
 * [`Makefile`](Makefile): Comandos abreviados para entornos Linux / WSL.
-* [`banco/`](banco): Banco de pruebas automatizado en Python (P5–P10, campañas, captura PCAP, calculadora de presupuesto de enlace de la Fase 3) con pruebas unitarias en `banco/tests/`.
+* [`banco/`](banco): Banco de pruebas automatizado en Python (P5–P10, campañas, captura PCAP, estadística con IC 95 %, calculadora de presupuesto de enlace de la Fase 3) con pruebas unitarias en `banco/tests/`.
+* [`analisis/`](analisis): Gráficas del informe (`python -m analisis.graficas`); va aparte del banco porque necesita matplotlib (`analisis/requirements.txt`).
 * `resultados/`: Salida del banco de pruebas (no versionada; copie a `docs/` lo que use en el informe).
 * [`docker/README.md`](docker/README.md): Manual operativo de la infraestructura Docker.
 * [`docs/Enunciado.txt`](docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.

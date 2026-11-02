@@ -2,8 +2,8 @@
 
 Registro cronológico de cada cambio realizado en el repositorio: qué se hizo, por qué, cómo se
 verificó y qué quedó pendiente. **Es obligatorio añadir una entrada por cada sesión de trabajo
-que modifique el repositorio** (ver [`CLAUDE.md`](CLAUDE.md)). Las entradas más recientes van
-primero, debajo de "Pendientes vigentes".
+que modifique el repositorio** (ver [`CLAUDE.md`](CLAUDE.md)). Las entradas van en orden
+cronológico, debajo de "Pendientes vigentes": la más reciente queda al final.
 
 La bitácora técnica de fallas (F1-1 a F1-10 y F2-1 a F2-11) se mantiene en el
 [`README.md`](README.md#6-bitácora-técnica-de-hallazgos-y-soluciones-troubleshooting); aquí se
@@ -21,11 +21,14 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Portabilidad entre equipos: subred por defecto 10.53.0.0/24 y `verificar` (chequeo previo).
 - [x] Skills de Claude Code del proyecto (`.claude/skills/`) y documentación `.md` al día.
 - [ ] Primer `up` en el portátil menos potente (i5-8250U): `git pull`, `EQUIPO=` en `.env`, `verificar`, `up` (compila sus propias imágenes) y una `campana` corta para confirmar.
-- [ ] Ejecutar la campaña completa en **un mismo equipo**: `campana --pruebas ping,iperf,p7,p10 --corridas 5`, más `p8` y `p9` (30 min).
-- [ ] Paso 3: análisis estadístico (media, desviación, IC 95 % con t-Student) y gráficas desde `resumen.csv`.
+- [ ] Ejecutar la campaña completa en **un mismo equipo** (ya con el srsUE 26.10 y NEA2): `campana --pruebas ping,iperf,p7,p10 --corridas 5`, más `p8` y `p9` (30 min).
+- [x] Paso 3 (herramienta): `python -m banco estadistica` (IC 95 % t-Student, BLER agregada) y `python -m analisis.graficas` (2026-11-02).
+- [ ] Paso 3 (aplicación): correr `analisis` sobre la campaña definitiva y revisar las figuras para el informe.
 - [ ] Paso 4: análisis de protocolos semiautomático con `tshark` (SUCI, RAND/AUTN, RES*, NIA/NEA, TEID, IP, PDR/FAR, tiempos de cada procedimiento) y diagrama de secuencia.
 - [ ] Paso 5: informe de la Fase 2 en LaTeX (IEEE), alimentado por las tablas y figuras de los pasos 3 y 4.
-- [ ] Cifrado NAS con srsUE: el commit `bef8680d5` no completa el registro con NEA1/2/3 (ver entrada del 2026-10-28). Investigar la causa (log NAS en `debug`) o probar un commit más reciente de srsRAN_4G; mientras tanto, NEA0 + NIA2.
+- [x] Cifrado NAS con srsUE: srsUE 26.10 (`06f0b1e23`) registra con NEA2 + NIA2, verificado en traza (2026-11-02, F2-15).
+- [ ] Probar `docker compose build ue` con el nuevo valor por defecto del Dockerfile cuando Docker Desktop vuelva a resolver Docker Hub (la imagen en uso se compiló con `--build-arg` y el mismo commit).
+- [ ] Investigar la causa de F2-13 (`compose restart` deja el ZMQ sin muestras); por ahora se recrea.
 - [ ] Evaluar seguridad AS en el gNB (`cu_cp.security`, NEA2/NIA2 en RRC/PDCP) y su compatibilidad con srsUE.
 - [x] Revisar el cambio sin commit en `docs/informe_fase1_corregido.tex` (resuelto en `fe6cea5`).
 - [x] Skill `ingeniero-telecom-5g`: sección de RDS/SDN y NFV (2026-11-02).
@@ -41,7 +44,8 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 ### Calidad
 - [ ] CI en GitHub Actions: `shellcheck`, `yamllint`, `docker compose config`, pruebas unitarias del banco.
 - [ ] Borrar `.git_roto_20261029/` (respaldo del `.git` dañado por OneDrive) cuando se confirme que el repositorio funciona bien.
-- [ ] Valorar sacar el repositorio de OneDrive o mantenerlo siempre en el dispositivo.
+- [ ] Sacar el repositorio de la unidad en la nube (`G:\` es Google Drive): F2-14 impide ver en Windows lo que los contenedores escriben en `capturas/`. Clonar en un disco local (p. ej. `C:\proyectos\RED5G-STANDALONE`).
+- [ ] Las carpetas `resultados/20261028_224037_ping_validacion` a `..._224219_p7_validacion` tienen datos anteriores a la corrección de iperf3 `-O` (P7 UL con caudal negativo): no usarlas en el informe.
 
 ---
 
@@ -319,3 +323,88 @@ pedido del usuario, y corregir los errores encontrados al revisarlo.
 
 **Pendiente / siguientes pasos:**
 - Los de "Pendientes vigentes".
+
+---
+
+## 2026-11-02 — Cifrado NAS NEA2 con srsUE 26.10, paso 3 (estadística y gráficas) y fallas F2-13 a F2-15
+
+**Objetivo:** aprovechar una sesión larga para (1) cerrar el hueco de seguridad de la Fase 2: el
+cifrado NAS iba en NEA0 porque el srsUE no completaba el registro con NEA1/2/3; (2) construir
+la herramienta del paso 3 (estadística con IC 95 % y gráficas) para que la campaña definitiva
+salga lista para el informe.
+
+**Cambios realizados — cifrado NAS (F2-15):**
+- Investigación: el commit fijado del UE (`bef8680d5`) era el `master` de srsRAN_4G (versión
+  25.10). La rama `release_26_10` (`06f0b1e23`, publicada el 2026-11-02) trae `2144cb589`, *nas: fix
+  NAS COUNT used for deciphering of 5G NAS messages* (issue #1392). El srsUE recalculaba la NAS
+  COUNT de descifrado con el byte 5 de la PDU, que en LTE es el número de secuencia, pero en 5G es
+  el último byte de la MAC (el SN está en el byte 6). El resultado era un *keystream* erróneo y un
+  Registration Accept indescifrable con NEA1/2/3. Coincide con el síntoma del 2026-10-28.
+- `docker/ue/Dockerfile`: el commit pasa a ser `ARG SRSRAN_4G_COMMIT` (por defecto `06f0b1e23`),
+  para probar otro sin editar el archivo; se añade `-DENABLE_SKIQ=OFF` (Sidekiq, nuevo y opcional en
+  la 26.10).
+- `.env.example`: `AMF_CIPHERING_ORDER=NEA2, NEA1, NEA0` (antes NEA0 primero), con el motivo.
+- La imagen anterior se conserva como `red5g-ue:bef8680d5` (respaldo local, no se borra); la nueva
+  es `red5g-ue:latest` (= `red5g-ue:srs2610`).
+
+**Cambios realizados — paso 3:**
+- `banco/estadistica.py` (nuevo, solo biblioteca estándar) y subcomando `python -m banco
+  estadistica [carpeta]`. Agrupa `resumen.csv` por (prueba, parámetro, valor, métrica) y escribe
+  `estadistica.csv` con n, media, desviación muestral (n−1), IC 95 % con t-Student (tabla de
+  cuantiles; un gl no tabulado usa el inferior, que es conservador), mín y máx. La BLER se agrega
+  aparte desde `metricas_gnb.csv` sumando ACK/NACK (`dl/ul_bler_agregada_pct`), porque promediar
+  porcentajes da el mismo peso a una corrida con 10 bloques que a una con 1000.
+- `banco/tests/test_estadistica.py`: 5 pruebas con valores comprobables a mano (IC de
+  [28..32] = 30 ± 1,963; BLER agregada 10,40 % frente al 30 % del promedio ingenuo).
+- `analisis/graficas.py` (nuevo paquete con `requirements.txt` propio: matplotlib). Va fuera de
+  `banco/` para que el banco siga sin dependencias externas. Regenera `estadistica.csv` y escribe
+  `graficas/*.pdf` (para LaTeX) y `*.png`: P5 RTT, P6 caudal TCP, P7 caudal y pérdida frente a la
+  tasa ofrecida (con la diagonal ideal), P8 caudal frente al MCS y P10 CPU por contenedor. DL
+  siempre azul y UL naranja; barras de error = IC 95 %.
+- `manage_lab.ps1` (acción `analisis`; `Invoke-Banco` acepta el módulo) y `Makefile` (objetivo
+  `analisis`).
+
+**Cambios realizados — fallas encontradas al probar:**
+- **F2-13:** tras `docker compose restart gnb ue` el UE se quedaba en `Attaching UE...` (el gNB en
+  `Waiting for reading samples. Completed 0`), con las dos versiones del UE; recrear los
+  contenedores funcionó siempre. `banco/compose.py` separa `reiniciar_ran()` (recrea sin
+  esperar) de `recrear_ran()` (recrea y espera la sesión PDU, lo que ya usaba P8). `pcap
+  --registro` y `p9 --recuperar` usan ahora `reiniciar_ran()`; `restart-ran` (ps1 y make) recrea.
+  Comentario de `docker-compose.yml` actualizado.
+- **F2-14:** `G:\` es Google Drive para escritorio. Desde el 29/10, lo que escriben los contenedores
+  en `./capturas` no llega a Windows (dentro del contenedor el PCAP medía 51 KB; en el host no
+  existía). `pcap` copia la traza con `docker compose cp`.
+- Datos viejos: `resultados/20261028_224219_p7_validacion` muestra en P7 UL un caudal de
+  −10 Mbit/s y una pérdida del 119 %. Es anterior a la corrección de iperf3 `-O`; el parser actual
+  rechaza ese crudo (`Contadores UDP incoherentes`). No es un error vigente.
+
+**Documentación:** `README.md` (UE 26.10, NEA2, comandos de estadística y análisis, F2-13 a F2-15,
+estado, estructura), `docker/README.md` (UE, capturas en una unidad en la nube, NAS cifrado,
+banco, problemas conocidos), skills `ingeniero-telecom-5g` y `desarrollador-fullstack`,
+`CLAUDE.md` (recrear la RAN; dónde va cada código). Se corrige el encabezado de esta bitácora: las
+entradas van en orden cronológico, no al revés.
+
+**Verificación:**
+- `python -m unittest discover -s banco/tests -t .`: 26 pruebas OK.
+- Compilación de `release_26_10` con `--build-arg` (unos 15 min, 8 CPU): `srsue --version` →
+  `Version 26.10.0`.
+- Con NEA2 primero y el UE 26.10: `pcap --registro` (ya con recreación) → traza de 100,6 KiB
+  copiada al host. En el Security Mode Command, `nas_sec_algo_enc = 2` (NEA2) y
+  `nas_sec_algo_ip = 2` (NIA2); los mensajes siguientes llevan `security_header_type = 2`; hay
+  PDUSessionResourceSetup 0,33 s después del InitialUEMessage y el UE queda sano con IP 10.45.0.2.
+- Regresión de una corrida (`resultados/20261102_171157_ping_ue2610_nea2` y el iperf siguiente):
+  RTT al UPF de 31,7 ms, a Internet de 51,6 ms, TCP UL 10,8 Mbit/s y DL 47,7 Mbit/s, sin pérdidas.
+  No es comparable estadísticamente (n = 1).
+- F2-13: 3 restarts fallidos con el UE 26.10 y 2 con el 25.10 y NEA0 (configuración conocida); 3
+  recreaciones correctas en 5 s.
+- `python -m analisis.graficas` sobre tres carpetas de validación y `manage_lab.ps1 analisis` en
+  PowerShell 5.1 (con `-ExecutionPolicy Bypass` en la prueba); revisión visual de las PNG de P6 y P7.
+  Error controlado (sin traza) ante una carpeta inexistente.
+- `docker compose config --quiet` OK.
+- **No verificado:** `docker compose build ue` con el nuevo valor por defecto, porque Docker Desktop
+  no resolvía `registry-1.docker.io` (`no such host`) aunque el DNS del host sí. La imagen en uso se
+  compiló con el mismo commit por `--build-arg`. Tampoco se determinó la causa raíz de F2-13.
+
+**Pendiente / siguientes pasos:**
+- Los de "Pendientes vigentes" (campaña completa con NEA2, `analisis` sobre ella, sacar el repo
+  de Google Drive, seguridad AS en el gNB).

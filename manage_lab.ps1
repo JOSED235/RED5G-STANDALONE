@@ -5,6 +5,7 @@
 #   Pruebas (banco de pruebas en Python, guarda resultados en .\resultados):
 #     .\manage_lab.ps1 test-ping | test-iperf | p7 | p8 | p9 | p10 | campana  [opciones del banco]
 #     .\manage_lab.ps1 pcap [-Seconds 60] | pcap-registro [-Seconds 60]
+#   Análisis (paso 3, requiere matplotlib):  .\manage_lab.ps1 analisis [resultados\<carpeta>]
 #   Ejemplos:
 #     .\manage_lab.ps1 p7 --tasas 2,5,10,20 --sentidos dl
 #     .\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5
@@ -13,7 +14,7 @@
 param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
-                 "p7", "p8", "p9", "p10", "campana", "banco", "pcap", "pcap-registro", "clean")]
+                 "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean")]
     [string]$Action = "up",
     [int]$Seconds = 60,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -48,13 +49,13 @@ function Get-Python {
     return $null
 }
 
-function Invoke-Banco([string[]]$Argumentos) {
+function Invoke-Banco([string[]]$Argumentos, [string]$Modulo = "banco") {
     $Python = Get-Python
     if (-not $Python) {
         Write-Error "Se requiere Python 3.10 o superior para el banco de pruebas (https://www.python.org/downloads/)."
         exit 1
     }
-    & $Python[0] @($Python | Select-Object -Skip 1) -m banco @Argumentos
+    & $Python[0] @($Python | Select-Object -Skip 1) -m $Modulo @Argumentos
     exit $LASTEXITCODE
 }
 
@@ -94,9 +95,10 @@ switch ($Action) {
         & $DockerBin compose up -d
     }
     "restart-ran" {
-        # Falla #8 de la Fase 1: con ZMQ siempre se reinician gNB y UE en conjunto
-        Write-Host ">>> Reiniciando gNB y UE juntos..." -ForegroundColor Yellow
-        & $DockerBin compose restart gnb ue
+        # Falla #8 de la Fase 1: con ZMQ siempre se reinician gNB y UE en conjunto.
+        # Se recrean: 'compose restart' deja el enlace ZMQ sin muestras (falla F2-13).
+        Write-Host ">>> Recreando gNB y UE juntos..." -ForegroundColor Yellow
+        & $DockerBin compose up -d --force-recreate --no-deps gnb ue
     }
     "logs" {
         & $DockerBin compose logs -f
@@ -111,6 +113,7 @@ switch ($Action) {
     "p10"           { Invoke-Banco (@("p10") + $Opciones) }
     "campana"       { Invoke-Banco (@("campana") + $Opciones) }
     "banco"         { Invoke-Banco $Opciones }
+    "analisis"      { Invoke-Banco $Opciones "analisis.graficas" }
     "pcap"          { Invoke-Banco (@("pcap", "--segundos", "$Seconds") + $Opciones) }
     "pcap-registro" { Invoke-Banco (@("pcap", "--segundos", "$Seconds", "--registro") + $Opciones) }
     "clean" {

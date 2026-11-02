@@ -16,13 +16,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Clonar commit verificado de srsRAN 4G / srsUE (commit bef8680d5)
+# Commit verificado de srsRAN 4G / srsUE: 06f0b1e23 (rama release_26_10, versión 26.10.0).
+# Incluye 2144cb589 ("nas: fix NAS COUNT used for deciphering of 5G NAS messages"), sin el cual el
+# srsUE anterior (bef8680d5, 25.10) no completaba el registro con NEA1/2/3 (falla F2-15).
+# Se puede probar otro con --build-arg SRSRAN_4G_COMMIT=...
+ARG SRSRAN_4G_COMMIT=06f0b1e23
 WORKDIR /src
 RUN git clone https://github.com/srsran/srsRAN_4G.git && \
     cd srsRAN_4G && \
-    git checkout bef8680d5 && \
+    git checkout ${SRSRAN_4G_COMMIT} && \
     mkdir build && cd build && \
-    cmake ../ -DENABLE_UHD=OFF -DENABLE_BLADERF=OFF -DENABLE_SOAPYSDR=OFF -DENABLE_GUI=OFF && \
+    cmake ../ -DENABLE_UHD=OFF -DENABLE_BLADERF=OFF -DENABLE_SOAPYSDR=OFF -DENABLE_SKIQ=OFF -DENABLE_GUI=OFF && \
     make -j$(nproc) && \
     make install
 

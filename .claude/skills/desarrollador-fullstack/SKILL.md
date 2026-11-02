@@ -17,7 +17,8 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
 | `docker-compose.yml` | Servicios; valores `${VAR}` desde `.env`; anclas `x-identidad-red` y `x-suscriptor` |
 | `docker/<servicio>/` | Dockerfile, entrypoint y plantilla de configuración de cada contenedor |
 | `docker/comun/renderizar_plantilla.sh` | `envsubst` restringido a las variables definidas; aborta si queda `${...}` |
-| `banco/` | Banco de pruebas: `config`, `compose`, `parsers` (funciones puras), `resultados`, `pruebas`, `verificacion`, `__main__` (CLI) |
+| `banco/` | Banco de pruebas: `config`, `compose`, `parsers` (funciones puras), `resultados`, `pruebas`, `verificacion`, `enlace`, `estadistica` (IC 95 %), `__main__` (CLI) |
+| `analisis/` | Gráficas del informe (matplotlib, `requirements.txt` propio); consume `banco.estadistica` |
 | `banco/tests/` | `unittest` de la biblioteca estándar, con fixtures de salidas reales |
 | `manage_lab.ps1`, `Makefile` | Envolturas finas: ciclo de vida de Compose y llamadas al banco |
 | `resultados/`, `capturas/` | Salidas en ejecución (no versionadas) |
@@ -62,6 +63,14 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   10.53.0.0/24. `python -m banco verificar` detecta choques.
 - **iperf3 3.9 (Ubuntu 22.04):** no uses `-O` con UDP; el caudal UDP se calcula a partir de los
   paquetes recibidos.
+- **Reiniciar la RAN = recrear:** usa `Compose.reiniciar_ran()` (sin esperar) o `recrear_ran()` (espera la
+  sesión PDU). Nunca `docker compose restart gnb ue`: deja el ZMQ sin muestras (F2-13).
+- **Repositorio en Google Drive (`G:\`):** lo que un contenedor escribe en un montaje (`./capturas`) puede no
+  llegar a Windows (F2-14). Para traer un archivo generado en un contenedor usa `docker compose cp`, no
+  el montaje. Lo que escribe Python en el host (`resultados/`) no se ve afectado.
+- **Docker Hub inaccesible desde Docker Desktop** (`lookup registry-1.docker.io: no such host` con el DNS
+  del host funcionando): el `build` falla al resolver `ubuntu:22.04` aunque la imagen esté local.
+  Reiniciar Docker Desktop; mientras tanto, las imágenes ya construidas siguen sirviendo.
 - **Repositorio dentro de OneDrive:** con *Files On-Demand*, OneDrive puede dejar objetos de
   `.git/objects` como "solo en la nube" y git falla con `fatal: mmap failed: Invalid argument`
   (o se cuelga). Mantenga la carpeta "siempre en este dispositivo" (`attrib +P -U /S /D`). Si ya
