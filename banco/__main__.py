@@ -11,6 +11,7 @@ Uso (desde la raíz del repositorio):
   python -m banco p10    [--duracion 30] [--carga dl|ul|ninguna]                    (CPU por núcleo)
   python -m banco campana --pruebas ping,iperf,p7,p10 --corridas 5                  (repeticiones)
   python -m banco pcap   [--segundos 60] [--registro]
+  python -m banco enlace [--atenuacion 60,70,80] [--ptx 0] [--distancia 0]          (presupuesto de enlace, Fase 3)
 
 Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv y crudos/.
 """
@@ -18,7 +19,7 @@ Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv 
 import argparse
 import sys
 
-from . import pruebas, verificacion
+from . import enlace, pruebas, verificacion
 from .compose import Compose, ErrorCompose
 from .config import asegurar_env
 from .parsers import ErrorIperf
@@ -101,6 +102,22 @@ def construir_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("pcap", help="captura NGAP, GTP-U, PFCP y SBI en el Core (./capturas)")
     p.add_argument("--segundos", type=int, default=60)
     p.add_argument("--registro", action="store_true", help="reinicia gNB + UE para capturar el registro completo")
+
+    p = sub.add_parser("enlace", help="presupuesto de enlace: Prx, SNR, MCS y caudal teóricos (no usa Docker)")
+    p.add_argument("--atenuacion", default="60,65,70,75,80", help="dB de atenuadores; lista separada por comas")
+    p.add_argument("--ptx", type=float, default=0, help="potencia de transmisión en dBm")
+    p.add_argument("--gtx", type=float, default=0, help="ganancia de la antena de TX en dBi")
+    p.add_argument("--grx", type=float, default=0, help="ganancia de la antena de RX en dBi")
+    p.add_argument("--perdidas", type=float, default=1, help="pérdidas de cables y conectores en dB")
+    p.add_argument("--distancia", type=float, default=0, help="metros por aire; 0 = conducido (sin FSPL)")
+    p.add_argument("--frecuencia", type=float, default=1842.5, help="MHz (n3 DL de este proyecto)")
+    p.add_argument("--prb", type=int, default=106)
+    p.add_argument("--scs", type=float, default=15, help="separación entre subportadoras en kHz")
+    p.add_argument("--nf", type=float, default=7, help="figura de ruido del receptor en dB")
+    p.add_argument("--overhead", type=float, default=0.14, help="TS 38.306: 0,14 DL / 0,08 UL en FR1")
+    p.add_argument("--alfa", type=float, default=0.6, help="factor del Shannon atenuado (TR 36.942)")
+    p.add_argument("--prx-max", type=float, default=-15,
+                   help="potencia máxima admisible en el receptor en dBm (verificar en la hoja de datos)")
     return parser
 
 
@@ -121,6 +138,8 @@ def main(argv=None) -> int:
     try:
         if args.comando == "verificar":
             return verificacion.verificar()
+        if args.comando == "enlace":
+            return enlace.calcular(args)
         compose = Compose()
         if args.comando == "estado":
             pruebas.estado(compose)

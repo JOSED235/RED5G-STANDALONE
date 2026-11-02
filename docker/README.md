@@ -125,6 +125,7 @@ Las pruebas se ejecutan con el banco de pruebas en Python ([`../banco`](../banco
 | P10 | `.\manage_lab.ps1 p10 [--duracion 30] [--carga dl\|ul\|ninguna]` | CPU global y por núcleo (`/proc/stat` de la VM de Docker) y CPU/memoria por contenedor (`docker stats`) |
 | Campaña | `.\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5` | Varias pruebas repetidas N veces en una misma carpeta (base de la estadística) |
 | Captura | `.\manage_lab.ps1 pcap -Seconds 60` / `pcap-registro` | PCAP de NGAP, GTP-U, PFCP y SBI en el Core; `pcap-registro` reinicia gNB + UE para capturar el registro completo |
+| Enlace (Fase 3) | `.\manage_lab.ps1 banco enlace [--atenuacion 60,70,80] [--ptx 0] [--distancia 0]` | Presupuesto de enlace sin Docker: FSPL, Prx, RSRP, ruido térmico, SNR, Shannon, MCS teórico (TS 38.214 qam64 con Shannon atenuado α = 0,6) y caudal TS 38.306 por cada atenuación; avisa si Prx supera `--prx-max` |
 
 Opciones comunes: `--corridas N`, `--pausa S` (entre corridas), `--equipo <etiqueta>` (por defecto `EQUIPO` de `.env` o el nombre del host) y `--etiqueta <sufijo>` para la carpeta. En Linux/WSL: `make p7 ARGS="--tasas 2,5,10"`.
 

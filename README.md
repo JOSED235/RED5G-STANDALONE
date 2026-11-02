@@ -30,7 +30,7 @@ El proyecto se estructura en tres fases progresivas alineadas con la rúbrica de
 | :--- | :--- | :--- | :---: |
 | **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada** |
 | **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • [Hecho] Automatización y contenerización del despliegue (Docker Compose, validado de extremo a extremo).<br>• [Hecho] Estabilización del núcleo Open5GS (11 NF activas, healthchecks y reinicio automático).<br>• [Hecho] Ruta por defecto hacia Internet desde el UE por `tun_srsue` (Falla #10 resuelta).<br>• [Hecho] Captura automatizada del flujo NG Setup → Registration → PDU Session (NGAP, NAS-5GS, PFCP, SBI).<br>• [Pendiente] Análisis exhaustivo de trazas en Wireshark (campo a campo).<br>• [Hecho] Configuración única en `.env`, Open5GS fijado en v2.8.0 e integridad NAS NIA2.<br>• [Hecho] Banco de pruebas automatizado (P5–P10, campañas de N corridas, resultados con metadatos), validado de extremo a extremo.<br>• [Pendiente] Ejecutar la campaña completa (5 corridas, P7, P8 y P9 de 30 min) y su análisis estadístico con intervalos de confianza. | **En curso** |
-| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y cálculo de presupuesto de enlace. | **Planificada** |
+| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• [Hecho] Calculadora de presupuesto de enlace (`python -m banco enlace`): Prx, SNR, MCS y caudal teóricos por atenuación.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y contraste con el presupuesto de enlace. | **Preparación por software** |
 
 ---
 
@@ -52,8 +52,8 @@ El sistema opera bajo el estándar 3GPP Release 15/16 en topología Standalone p
                     |   =======================v======================v===================   |
                     |                          |                      |                      |
                     |                      +---+---+              +---+---+                  |
-                    |                      |  AMF  |<---N4 (PFCP)-|  SMF  |                  |
-                    |                      +---+---+    :8805     +---+---+                  |
+                    |                      |  AMF  |<---N11 SBI-->|  SMF  |                  |
+                    |                      +---+---+              +---+---+                  |
                     +--------------------------|----------------------|----------------------+
                                                |                      |
                                          N2 (NGAP/SCTP)         N4 (PFCP)
@@ -77,6 +77,13 @@ El sistema opera bajo el estándar 3GPP Release 15/16 en topología Standalone p
 * **N4:** Control del plano de usuario entre SMF y UPF utilizando el protocolo **PFCP** sobre UDP (puerto `8805`).
 * **N6:** Interfaz de datos entre el UPF y la Red de Datos externa (DN) mediante la interfaz virtual `ogstun` y reglas de `iptables MASQUERADE`.
 * **SBI (N7, N8, N10, N11, N12, N13):** Bus de servicios internos del núcleo basado en **HTTP/2 con serialización JSON** sobre el puerto `7777`.
+
+### Enfoque SDN / NFV
+El 5G Core aplica los principios de las Redes Definidas por Software (RDS/SDN) y de la virtualización de funciones de red (NFV), y este laboratorio los muestra en la práctica:
+* **Separación de planos (CUPS):** el SMF (plano de control) programa al UPF (plano de datos) por N4/PFCP con reglas *match-action* (PDR → FAR/QER/URR), de forma análoga a un controlador SDN que instala flujos OpenFlow en un conmutador. La PFCP Session Establishment de la traza es la evidencia.
+* **Arquitectura basada en servicios:** las NF exponen APIs REST sobre HTTP/2 (SBI), el equivalente de la interfaz *northbound* de un controlador.
+* **NFV:** las 11 NF, el gNB y el UE son software sobre hardware genérico en contenedores; Docker Compose hace de orquestador mínimo y `.env` de descriptor del despliegue.
+* **Slicing:** un único *slice* eMBB (SST 1). La desagregación O-RAN del gNB (CU/DU, near-RT RIC con E2) es posible con srsRAN pero no está habilitada.
 
 ---
 
@@ -145,7 +152,6 @@ Durante el despliegue de la Fase 1 se identificaron y solventaron 10 fallas crí
 | F2-9 | Caudal reducido y cola de logs desbordada | PHY/MAC en `info` (~20 MB/min) y PCAP de N3 por paquete en el gNB | Logs en `warning` (señalización en `info`) y N3 capturado desde el Core |
 | F2-10 | Scripts rotos al clonar en Windows | `core.autocrlf=true` convierte los `.sh` a CRLF | `.gitattributes` con `eol=lf` y normalización `sed 's/\r$//'` en los Dockerfiles |
 | F2-11 | Captura PCAP corrupta desde PowerShell | La redirección `>` de PowerShell 5.1 reescribe el binario en UTF-16 | `tcpdump -w` dentro del contenedor sobre el volumen `./capturas` |
-
 | F2-12 | `Pool overlaps with other one on this address space` al hacer `up` | Docker asigna solo las subredes 172.17–172.31 a las redes de otros proyectos Compose, y `172.20.0.0/24` chocaba con una de ellas (incluso sin contenedores) | Subred por defecto `10.53.0.0/24`, fuera de ese rango; configurable en `.env` y detectada por `python -m banco verificar`. Las IP 172.20.0.x de F2-4 y F2-6 corresponden al direccionamiento anterior |
 
 ---
@@ -203,6 +209,7 @@ La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el 
 | P10 CPU global, por núcleo y por contenedor | `.\manage_lab.ps1 p10 --carga dl` | `make p10` |
 | 5 repeticiones de varias pruebas | `.\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5` | `make campana ARGS="--corridas 5"` |
 | Captura PCAP (N s / registro completo) | `.\manage_lab.ps1 pcap -Seconds 60` / `pcap-registro` | `make pcap` / `make pcap-registro` |
+| Presupuesto de enlace para la Fase 3 (sin Docker) | `.\manage_lab.ps1 banco enlace --atenuacion 60,70,80` | `python -m banco enlace` |
 
 Todas las pruebas aceptan `--corridas N`, `--equipo <etiqueta>` y `--help`. El manual completo del banco está en [`docker/README.md`](docker/README.md#4-banco-de-pruebas-de-la-fase-2).
 
@@ -228,7 +235,7 @@ El detalle actualizado de lo hecho y lo pendiente está en [`BITACORA.md`](BITAC
 1. **Ejecutar la campaña de mediciones** con el banco (P5–P10, 5 corridas, en un mismo equipo).
 2. **Análisis estadístico:** media, desviación e intervalo de confianza del 95 % a partir de `resumen.csv`, y gráficas para el informe.
 3. **Análisis de protocolos en Wireshark:** documentar campo a campo la captura `pcap-registro` (SUCI/SUPI, RAND/AUTN, RES*, algoritmos NIA/NEA, TEID GTP-U, PDU Session Establishment Accept con la IP asignada, reglas PDR/FAR de PFCP).
-4. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-11.
+4. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-12.
 
 Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](docker/README.md).
 
@@ -240,12 +247,12 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 * [`BITACORA.md`](BITACORA.md): Registro de cada cambio realizado (qué, por qué, cómo se verificó) y pendientes vigentes.
 * [`SKILLS.md`](SKILLS.md): Competencias técnicas necesarias, perfiles de especialidad y directriz estricta de idioma (Español).
 * [`CLAUDE.md`](CLAUDE.md): Instrucciones de trabajo para el asistente (idioma, bitácora obligatoria, convenciones).
-* [`.claude/skills/`](.claude/skills): Skills de Claude Code del proyecto: [`ingeniero-telecom-5g`](.claude/skills/ingeniero-telecom-5g/SKILL.md) (redes 5G SA, diagnóstico, mediciones, Fase 3) y [`desarrollador-fullstack`](.claude/skills/desarrollador-fullstack/SKILL.md) (código, Docker, banco de pruebas, convenciones del repositorio).
+* [`.claude/skills/`](.claude/skills): Skills de Claude Code del proyecto: [`ingeniero-telecom-5g`](.claude/skills/ingeniero-telecom-5g/SKILL.md) (redes 5G SA, SDN/NFV, diagnóstico, mediciones, Fase 3) y [`desarrollador-fullstack`](.claude/skills/desarrollador-fullstack/SKILL.md) (código, Docker, banco de pruebas, convenciones del repositorio).
 * [`.env.example`](.env.example): Plantilla de la configuración única del laboratorio (se copia a `.env`, no versionado).
 * [`docker-compose.yml`](docker-compose.yml): Orquestador principal de contenedores para la Fase 2.
 * [`manage_lab.ps1`](manage_lab.ps1): Script de control en PowerShell para Windows (ciclo de vida y acceso al banco de pruebas).
 * [`Makefile`](Makefile): Comandos abreviados para entornos Linux / WSL.
-* [`banco/`](banco): Banco de pruebas automatizado en Python (P5–P10, campañas, captura PCAP) con pruebas unitarias en `banco/tests/`.
+* [`banco/`](banco): Banco de pruebas automatizado en Python (P5–P10, campañas, captura PCAP, calculadora de presupuesto de enlace de la Fase 3) con pruebas unitarias en `banco/tests/`.
 * `resultados/`: Salida del banco de pruebas (no versionada; copie a `docs/` lo que use en el informe).
 * [`docker/README.md`](docker/README.md): Manual operativo de la infraestructura Docker.
 * [`docs/Enunciado.txt`](docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.

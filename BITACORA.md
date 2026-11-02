@@ -27,17 +27,21 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Paso 5: informe de la Fase 2 en LaTeX (IEEE), alimentado por las tablas y figuras de los pasos 3 y 4.
 - [ ] Cifrado NAS con srsUE: el commit `bef8680d5` no completa el registro con NEA1/2/3 (ver entrada del 2026-10-28). Investigar la causa (log NAS en `debug`) o probar un commit más reciente de srsRAN_4G; mientras tanto, NEA0 + NIA2.
 - [ ] Evaluar seguridad AS en el gNB (`cu_cp.security`, NEA2/NIA2 en RRC/PDCP) y su compatibilidad con srsUE.
-- [ ] Revisar el cambio sin commit en `docs/informe_fase1_corregido.tex` (eliminó las líneas `% ====` del encabezado; parece accidental).
+- [x] Revisar el cambio sin commit en `docs/informe_fase1_corregido.tex` (resuelto en `fe6cea5`).
+- [x] Skill `ingeniero-telecom-5g`: sección de RDS/SDN y NFV (2026-11-02).
 
 ### Fase 3 — Preparación por software (sin hardware)
 - [ ] Paso 6: `gnb_b210.yaml` (n3 FDD y n78 TDD), imagen con UHD como perfil `sdr` de Compose.
 - [ ] Con el terminal comercial, cambiar `AMF_CIPHERING_ORDER=NEA2, NEA1, NEA0` y verificar en la traza el cifrado NAS.
 - [ ] Script de alta de suscriptores reales (IMSI/K/OPc de la SIM física, fuera de git).
-- [ ] Calculadora de presupuesto de enlace (FSPL, atenuadores 60–80 dB, SNR esperada, MCS teórico).
+- [x] Calculadora de presupuesto de enlace: `python -m banco enlace` (2026-11-02).
+- [ ] Calibrar la calculadora con el hardware real: Ptx, NF y potencia máxima de entrada del SDR y del teléfono según sus hojas de datos.
 - [ ] Plan de pruebas de la Fase 3 y lista de verificación de hardware (teléfono con SA en n3/n78, USB en WSL2 con `usbipd-win` o Linux nativo).
 
 ### Calidad
 - [ ] CI en GitHub Actions: `shellcheck`, `yamllint`, `docker compose config`, pruebas unitarias del banco.
+- [ ] Borrar `.git_roto_20261029/` (respaldo del `.git` dañado por OneDrive) cuando se confirme que el repositorio funciona bien.
+- [ ] Valorar sacar el repositorio de OneDrive o mantenerlo siempre en el dispositivo.
 
 ---
 
@@ -250,3 +254,68 @@ corrigió antes de subir (nunca llegó a GitHub).
 - Borrar `.git_roto_20261029/` cuando se confirme que el repositorio funciona bien.
 - Valorar sacar el repositorio de OneDrive (o dejarlo siempre en el dispositivo) para evitar que
   se repita.
+
+## 2026-11-02 — Skill de RDS/SDN y NFV, y calculadora de presupuesto de enlace
+
+**Objetivo:** retomar el proyecto donde quedó; que la skill `ingeniero-telecom-5g` cubra
+también Redes Definidas por Software (RDS/SDN) y NFV, que el enunciado menciona ("servicios
+tipo NFV") y que la skill no trataba; y, en una sesión corta, la calculadora de presupuesto de
+enlace pendiente de la Fase 3.
+
+**Cambios realizados:**
+- `.claude/skills/ingeniero-telecom-5g/SKILL.md`: nueva sección 6 "Redes Definidas por Software
+  (RDS/SDN) y NFV en 5G": correspondencia SDN/NFV con este despliegue (CUPS SMF↔UPF, PFCP como
+  interfaz *southbound* con PDR/FAR/QER/URR, SBA como *northbound*, NF como CNF, Docker Compose
+  como orquestador mínimo, *slicing* con SST 1), PFCP frente a OpenFlow y P4, O-RAN (división
+  CU/DU, near-RT RIC, E2SM-KPM/RC, xApps, agente E2 de srsRAN) y controladores (ONOS,
+  OpenDaylight, Ryu, Mininet/Open vSwitch). La antigua sección 6 pasa a ser la 7. La descripción
+  de la skill menciona el nuevo alcance.
+- `BITACORA.md`: marcado como hecho el pendiente del `.tex` (resuelto en `fe6cea5`); pasan a
+  "Pendientes vigentes" los dos pendientes de la sesión anterior (borrar `.git_roto_20261029/`
+  y valorar sacar el repositorio de OneDrive).
+
+- `banco/enlace.py` (nuevo) y subcomando `python -m banco enlace` en `banco/__main__.py`:
+  calculadora de presupuesto de enlace para la Fase 3. Por cada atenuación (por defecto
+  60–80 dB) calcula FSPL (0 si es conducido), Prx, RSRP aproximada, ruido térmico en el ancho
+  ocupado (106 PRB · 12 · 15 kHz), SNR, capacidad de Shannon, MCS teórico (mayor MCS de la
+  tabla 5.1.3.1-1 de TS 38.214 cuya eficiencia cabe en el Shannon atenuado de TR 36.942,
+  α = 0,6) y caudal por TS 38.306 (una capa, FDD). Avisa si Prx supera `--prx-max`. No usa
+  Docker; con PowerShell: `.\manage_lab.ps1 banco enlace`.
+- `banco/tests/test_enlace.py` (nuevo): 5 pruebas (FSPL, ruido, MCS en los extremos, caudal
+  máximo de 85,1 Mbit/s con MCS 28, presupuesto conducido).
+- `docker/README.md` §4: fila "Enlace (Fase 3)" en la tabla del banco.
+
+**Verificación:** el repositorio estaba limpio y al día con `origin/main` (`94107c0`). La skill se
+recarga con la nueva descripción. `python -m unittest discover -s banco/tests -t .`: 21 pruebas
+OK. `python -m banco enlace` con los valores por defecto da SNR de 33,2 a 13,2 dB y MCS de 28 a 17
+entre 60 y 80 dB de atenuación (Ptx 0 dBm, NF 7 dB); el MCS 28 da 85,1 Mbit/s, que coincide con
+el máximo de TS 38.306 para 106 PRB y µ = 0. Los valores por defecto de Ptx, NF y `--prx-max`
+(−15 dBm) son supuestos y no se contrastaron con hojas de datos. No se verificaron en el código del commit `4bf1543936` los
+nombres de los parámetros de la sección `e2:` del gNB; la skill lo advierte explícitamente.
+
+**Pendiente / siguientes pasos:**
+- Los de "Pendientes vigentes"; lo siguiente en orden es la campaña completa en un mismo equipo
+  (requiere levantar la red) y luego el paso 3 (estadística y gráficas).
+
+## 2026-11-02 — README raíz al día y regla para mantenerlo
+
+**Objetivo:** que el `README.md` raíz explique siempre bien el contexto, qué se hace y cómo, a
+pedido del usuario, y corregir los errores encontrados al revisarlo.
+
+**Cambios realizados:**
+- `README.md`:
+  - el diagrama de arquitectura rotulaba AMF↔SMF como N4/PFCP; es N11 sobre SBI (N4 es SMF↔UPF);
+  - nueva subsección "Enfoque SDN / NFV" en §3 (CUPS con PFCP, SBI como *northbound*, NF en
+    contenedores, *slicing* y O-RAN no habilitado);
+  - Fase 3 en "Preparación por software", con la calculadora de enlace como hecha;
+  - fila de `banco enlace` en la tabla de pruebas;
+  - una línea en blanco partía la tabla F2 antes de F2-12;
+  - el informe de la Fase 2 cubre F2-1 a F2-12, no F2-11;
+  - §9 menciona la calculadora y el alcance SDN/NFV de la skill.
+- `CLAUDE.md`: nueva sección "README siempre al día" con la regla.
+
+**Verificación:** revisión visual del diagrama (alineación de columnas) y de las tablas con
+`sed`/`grep`. No se renderizó el Markdown en GitHub.
+
+**Pendiente / siguientes pasos:**
+- Los de "Pendientes vigentes".

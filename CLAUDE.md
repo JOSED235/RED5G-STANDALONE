@@ -16,6 +16,12 @@ dar el trabajo por terminado. La entrada sigue la plantilla del propio archivo e
 Además, se actualiza la sección **"Pendientes vigentes"** al inicio de `BITACORA.md`
 (marcar lo terminado, añadir lo nuevo) para que siempre refleje el estado actual.
 
+## README siempre al día
+El [`README.md`](README.md) raíz debe explicar en todo momento el contexto del proyecto, qué se
+hace y cómo se hace (arquitectura, herramientas, comandos y estado por fase). Cada cambio que añada
+una herramienta o prueba, o que cambie el estado del proyecto, se refleja también en el README
+(no solo en `docker/README.md` o en `BITACORA.md`).
+
 ## Skills del proyecto
 En `.claude/skills/` hay dos skills: `ingeniero-telecom-5g` (red 5G: Core, gNB, UE, trazas,
 mediciones, Fase 3) y `desarrollador-fullstack` (código y automatización del repositorio).

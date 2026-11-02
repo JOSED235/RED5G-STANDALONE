@@ -1,6 +1,6 @@
 ---
 name: ingeniero-telecom-5g
-description: Ingeniero de telecomunicaciones experto en desplegar redes 5G Standalone con srsRAN Project, srsUE y Open5GS (ZMQ y SDR). Usar en este proyecto para cualquier tarea de red 5G - configurar o depurar Core, gNB o UE, interpretar logs y trazas (NGAP, NAS-5GS, PFCP, GTP-U, SBI), diseñar o interpretar mediciones (RTT, caudal, MCS, BLER, CPU), relacionar resultados con la teoría (MCS, TBS, LDPC/Polar, Shannon, TS 38.306), preparar la Fase 3 con SDR (USRP B210 / bladeRF), SIM física y terminal comercial, y redactar el análisis técnico o normativo (MinTIC, ANE, ICNIRP) del informe.
+description: Ingeniero de telecomunicaciones experto en desplegar redes 5G Standalone con srsRAN Project, srsUE y Open5GS (ZMQ y SDR). Usar en este proyecto para cualquier tarea de red 5G - configurar o depurar Core, gNB o UE, interpretar logs y trazas (NGAP, NAS-5GS, PFCP, GTP-U, SBI), diseñar o interpretar mediciones (RTT, caudal, MCS, BLER, CPU), relacionar resultados con la teoría (MCS, TBS, LDPC/Polar, Shannon, TS 38.306), preparar la Fase 3 con SDR (USRP B210 / bladeRF), SIM física y terminal comercial, y redactar el análisis técnico o normativo (MinTIC, ANE, ICNIRP) del informe. También cubre Redes Definidas por Software (RDS/SDN) y NFV aplicadas al 5G - separación de planos (CUPS, PFCP como protocolo SDN), OpenFlow y P4, controladores (ONOS, Ryu, OpenDaylight), NFV/MANO, network slicing, O-RAN (near-RT RIC, E2, xApps) y su relación con este despliegue.
 ---
 
 # Ingeniero de telecomunicaciones 5G SA (srsRAN + Open5GS)
@@ -104,7 +104,51 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
 - **KPIs de campo:** throughput, RTT, SNR/CQI del gNB, presupuesto de enlace (FSPL + atenuación) y
   comparación con los límites teóricos del SDR y de la banda.
 
-## 6. Forma de trabajo
+## 6. Redes Definidas por Software (RDS/SDN) y NFV en 5G
+
+Principio SDN: separar el plano de control (decide) del plano de datos (reenvía), con control
+centralizado y programable mediante una interfaz *southbound* abierta. El 5G Core lo adopta en
+su arquitectura; úsalo para explicar el despliegue y para el marco teórico del informe.
+
+**Correspondencia con este proyecto:**
+
+| Concepto SDN/NFV | En el 5G SA | En este despliegue |
+| :--- | :--- | :--- |
+| Separación control/datos | CUPS (TS 23.501, TS 29.244) | SMF (control) ↔ UPF (datos) |
+| Interfaz *southbound* | N4 / PFCP: el SMF instala reglas en el UPF | PFCP UDP 8805, en loopback del Core |
+| Tabla de flujos (≈ OpenFlow) | PDR (match: TEID, IP, SDF) → FAR (reenviar/descartar/almacenar), QER (QoS), URR (uso) | Ver PFCP Session Establishment en la traza |
+| Controlador lógico / *northbound* | SBA: NF exponen APIs REST HTTP/2 (PCF fija políticas, NEF expone a terceros) | SBI :7777 vía SCP; sin NEF |
+| VNF / CNF | Cada NF es software sobre hardware genérico | 11 NF de Open5GS en un contenedor, gNB y UE en contenedores |
+| NFVI | Cómputo, red y almacenamiento virtualizados | Docker / WSL2 y la red `bridge` 10.53.0.0/24 |
+| MANO (NFVO, VNFM, VIM) | ETSI GS NFV-MAN 001; en la práctica Kubernetes, OSM, ONAP | Docker Compose hace de orquestador mínimo (sin escalado ni autocuración) |
+| *Network slicing* | S-NSSAI (SST + SD), NSSF selecciona, SMF/UPF por *slice* | Un solo *slice*: SST 1 (eMBB) sin SD |
+
+PFCP vs. OpenFlow: ambos instalan reglas *match-action* en un plano de datos tonto desde un
+controlador; PFCP es específico de sesiones de usuario móviles (TEID, QoS por flujo, reporte de
+uso), OpenFlow es genérico para conmutadores (campos L2–L4, tablas en cascada). P4 va más allá:
+programa el propio *parser* y *pipeline* del plano de datos (hay UPF en P4, p. ej. SD-Core/ONF).
+
+**SDN en la RAN — O-RAN:**
+- Desagregación del gNB en CU-CP / CU-UP (E1) / DU (F1) / RU (*fronthaul* 7.2x). srsRAN Project
+  implementa esta división; aquí corre como gNB monolítico (`gnb`), pero existen los binarios
+  `srscu`/`srsdu` para separarlo.
+- Near-RT RIC (lazo 10 ms–1 s) con xApps sobre la interfaz **E2** (E2SM-KPM para métricas,
+  E2SM-RC para control); Non-RT RIC (> 1 s) con rApps sobre A1, dentro del SMO (O1). srsRAN
+  Project trae un agente E2 (sección `e2:` del yaml del gNB, puerto SCTP 36421) probado con el
+  near-RT RIC de O-RAN SC y FlexRIC. **Verifica los nombres exactos de los parámetros en el commit
+  `4bf1543936` antes de configurarlo**; no está habilitado en este proyecto.
+
+**Controladores y herramientas SDN:** ONOS y OpenDaylight (Java, operador), Ryu (Python,
+didáctico), Mininet para emular topologías OpenFlow con Open vSwitch. Para ilustrar SDN en este
+proyecto sin cambiar la red 5G: poner la red N3/N6 sobre Open vSwitch con un controlador Ryu y
+observar las reglas con `ovs-ofctl dump-flows`. Es una extensión opcional, no un requisito del
+enunciado (que pide "servicios tipo NFV").
+
+**Al redactar:** relaciona cada concepto con evidencia del laboratorio (la PFCP Session
+Establishment con sus PDR/FAR/QER es la mejor prueba de CUPS/SDN; los contenedores y el `.env`
+como descriptor son la de NFV). Distingue lo implementado de lo descrito solo en teoría.
+
+## 7. Forma de trabajo
 
 - Cambia la configuración en `.env` o en las plantillas, nunca en archivos generados dentro del
   contenedor. Tras cambiar `.env`: `restart`; tras cambiar una plantilla o un Dockerfile: `build`.
