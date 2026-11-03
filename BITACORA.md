@@ -29,7 +29,8 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Paso 4 (herramienta): `python -m banco protocolos` con tshark (SUCI, 5G-AKA, NEA/NIA, TEID, IP, PDR/FAR/QER, tiempos y diagrama Mermaid) (2026-11-02).
 - [x] Paso 4 (aplicación): prueba `registro` con 5 corridas (AS nea2 y nea0) e IC 95 % de cada procedimiento (2026-11-02).
 - [ ] Interpretación del paso 4 para el informe (tiempos por procedimiento frente a TS 23.502).
-- [ ] Paso 5: informe de la Fase 2 en LaTeX (IEEE), alimentado por las tablas y figuras de los pasos 3 y 4.
+- [x] Paso 5: informe de la Fase 2 (`docs/informe_fase2.tex` / `.pdf`, 8 páginas) (2026-11-02).
+- [ ] Revisión del informe de la Fase 2 por el autor antes de la entrega.
 - [x] Cifrado NAS con srsUE: srsUE 26.10 (`06f0b1e23`) registra con NEA2 + NIA2, verificado en traza (2026-11-02, F2-15).
 - [x] `docker compose build ue` con el valor por defecto del Dockerfile (2026-11-02).
 - [ ] Investigar la causa de F2-13 (`compose restart` deja el ZMQ sin muestras); por ahora se recrea.
@@ -722,3 +723,41 @@ por segundo y P5 dos, y se midió con la red ya optimizada en memoria; no se ana
 - Cuantificar la sobrecarga de la capa física y del scheduler (log MAC del gNB) para explicar el
   56–62 % de P8.
 - Evidenciar el algoritmo AS negociado (log `debug` temporal o PCAP MAC).
+
+---
+
+## 2026-11-02 — Informe de la Fase 2 (paso 5)
+
+**Objetivo:** redactar el informe de la Fase 2 con el formato del informe de la Fase 1 y los datos
+de esta fase.
+
+**Cambios realizados:**
+- `docs/informe_fase2.tex` (nuevo): IEEEtran *conference*, mismo preámbulo, estilo y datos del
+  encabezado que `docs/informe_fase1_corregido.tex` (Jose David Rodríguez Pinilla, A00407151,
+  Sistemas y Comunicaciones 2, Universidad Icesi, docente Andrés Navarro Cadavid, PhD). Se corrigió
+  el `\uqad` del encabezado de la Fase 1 (no existe en LaTeX) por `\quad`.
+- Estructura según la rúbrica de la Fase 2 (hoja "Fase 2" de `docs/Rúbricas de Evaluación proyecto
+  5G (2).xlsx`): Core Open5GS (ABET 2), gNB srsRAN (ABET 1, 2), análisis de protocolos (ABET 1) y
+  gestión técnica (ABET 4), con tabla de trazabilidad.
+- Contenido: arquitectura contenerizada (figura TikZ), versiones, NF del núcleo, perfil del
+  suscriptor, seguridad NAS (NEA2/NIA2, F2-15) y AS, celda y NG Setup, memoria del gNB, análisis de
+  protocolos (diagrama de secuencia con los tiempos medidos de una traza real, tabla de campos:
+  SUCI, RAND, AUTN desglosado en SQN⊕AK/AMF/MAC, RES*, ABBA, TEID, PDR/FAR/QER), tiempos de los
+  procedimientos con AS nea2 y nea0, metodología estadística, resultados P5–P10 (tablas y figuras
+  pgfplots de P7 y P8 con barras de IC), análisis de la brecha frente a TS 38.306, P9, decisiones,
+  las 15 fallas F2, optimización de recursos, preparación de la Fase 3 y conclusiones.
+- `docs/informe_fase2.pdf`: PDF compilado.
+- README: estado del paso 5 y entrada en la estructura del repositorio.
+
+**Verificación:** compilado dos veces con `pdflatex` en el contenedor `texlive/texlive:latest-full`
+(sin LaTeX instalado en Windows): 8 páginas, sin errores, sin `Overfull` y sin referencias sin
+resolver (solo avisos `Underfull` de columnas estrechas). Revisión visual de las 8 páginas renderizadas
+con Ghostscript; se corrigieron etiquetas superpuestas en la Fig. 1, el ancho del diagrama de
+secuencia, los RAND/RES* que desbordaban su celda y el espaciado de las tablas anchas. Todas las
+cifras salen de las carpetas de `resultados/` citadas en las entradas anteriores. **No verificado:**
+compilación en Overleaf (misma distribución TeX Live, no debería diferir) y revisión del autor.
+El informe de la Fase 1 no menciona el uso de asistentes de IA; este tampoco lo hace (decisión del
+autor).
+
+**Pendiente / siguientes pasos:**
+- Revisión del autor y ajustes de redacción antes de la entrega.

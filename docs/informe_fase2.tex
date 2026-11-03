@@ -1,0 +1,639 @@
+
+% Informe Fase 2 - Proyecto 5G (srsRAN + Open5GS + SDR)
+% Autor: Jose David Rodriguez Pinilla (A00407151)
+% Curso: Sistemas y Comunicaciones 2 - Universidad Icesi
+% Docente: Andres Navarro Cadavid, PhD
+% Plantilla: IEEEtran (conference), mismo formato que el informe de la Fase 1.
+% Compilar con pdfLaTeX en Overleaf. Las cifras provienen del banco de pruebas del
+% repositorio (python -m banco), ejecutado el 2 de noviembre de 2026 en un portatil
+% Intel Core i7-13620H con Docker Desktop (WSL2, 8 CPU, 8 GB). Las carpetas de
+% resultados se citan en BITACORA.md.
+
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+\usepackage{listings}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\def\IEEEkeywordsname{Palabras clave}
+\setlength{\tabcolsep}{3.5pt}
+
+\lstset{
+  basicstyle=\ttfamily\fontsize{6.5}{7.5}\selectfont,
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  xleftmargin=2pt,
+  xrightmargin=2pt,
+  aboveskip=4pt,
+  belowskip=4pt
+}
+
+\begin{document}
+
+\title{Implementación del Núcleo 5G y de la Red de Acceso sin Radiofrecuencia (Zero-RF): Despliegue Contenerizado de Open5GS y srsRAN con Análisis de Protocolos}
+
+\author{
+\IEEEauthorblockN{Jose David Rodríguez Pinilla\IEEEauthorrefmark{1}}
+\IEEEauthorblockA{\IEEEauthorrefmark{1}Universidad Icesi, Cali, Colombia\\
+Código: A00407151 \quad Correo: jdrpjd@gmail.com\\
+Curso: Sistemas y Comunicaciones 2 --- Docente: Andrés Navarro Cadavid, PhD}
+}
+
+\maketitle
+
+\begin{abstract}
+Este informe documenta la Fase 2 (Implementación del Core y de la Red de Acceso, Zero-RF) del proyecto de curso que despliega una red 5G Standalone (SA) con \textit{srsRAN Project} como red de acceso y \textit{Open5GS} como núcleo 5G con servicios virtualizados tipo NFV. El despliegue se automatizó con Docker Compose en cinco contenedores, con una configuración única versionable y un banco de pruebas en Python que guarda resultados trazables. El núcleo ejecuta once funciones de red con la base de datos MongoDB aprovisionada con el perfil 5G del suscriptor, y el gNB se enlaza al AMF por NGAP/SCTP con el túnel GTP-U estable. Se habilitó el cifrado NAS 128-NEA2 con integridad 128-NIA2 tras identificar y corregir, actualizando el srsUE, un defecto de descifrado que antes obligaba a usar NEA0, y se parametrizó la seguridad AS del gNB. El análisis de las trazas del registro y de la sesión PDU, automatizado con \textit{tshark}, extrae el SUCI, el vector 5G-AKA, los algoritmos negociados, los TEID de N3 contrastados entre NGAP y PFCP, y la duración de cada procedimiento: el registro completo hasta la sesión PDU tardó $471.6\pm32.3$~ms (IC 95\,\%, $n=5$). Con cinco corridas por prueba se midió un RTT al UPF de $31.9\pm0.9$~ms, un caudal TCP de $48.6\pm1.4$~Mbps en descendente y $11.6\pm0.5$~Mbps en ascendente, un máximo UDP descendente de $56.3\pm1.2$~Mbps y treinta minutos de operación sin cortes. El barrido de MCS fijo muestra que el caudal es el 54--62\,\% de la cota de TS 38.306 en todos los MCS, lo que atribuye la brecha a la sobrecarga de capa física y de planificación y no a la CPU. Se documentan quince fallas corregidas, las decisiones técnicas y la preparación de la Fase 3.
+\end{abstract}
+
+\begin{IEEEkeywords}
+5G NR, Standalone, Open5GS, srsRAN, ZeroMQ, Docker, NGAP, NAS-5GS, PFCP, GTP-U, 5G-AKA, NEA2, análisis de protocolos.
+\end{IEEEkeywords}
+
+%=====================================================================
+\section{Introducción}
+\label{sec:intro}
+
+\subsection{Contexto}
+En la Fase 1 se seleccionaron Open5GS y srsRAN Project, se definió la arquitectura lógica con las interfaces N1, N2, N3, N4 y N6 y se validó el banco de simulación sin radiofrecuencia basado en ZeroMQ (ZMQ) \cite{srsran,open5gs,zeromq}. Esa validación se hizo con una instalación manual sobre WSL2 y dejó pendientes la conectividad a Internet del UE, las pruebas P7--P9 y el análisis de las trazas. La Fase 2 convierte ese banco en un despliegue reproducible y lo valida a fondo, todavía sin hardware de radio.
+
+\subsection{Objetivos}
+El \textbf{objetivo general de la Fase 2} es desplegar de forma lógica el sistema completo (núcleo, gNB y UE) sin hardware de radio y verificar su señalización NAS/AS y su plano de usuario. Los objetivos específicos son:
+\begin{enumerate}
+  \item Desplegar el núcleo Open5GS con todas sus funciones de red y la base de datos de suscriptores configurada con seguridad 5G.
+  \item Configurar el gNB de srsRAN y vincularlo al núcleo por NGAP/SCTP, con un túnel GTP-U estable hacia el UPF.
+  \item Capturar e interpretar campo a campo la señalización del registro y de la sesión PDU.
+  \item Medir latencia, caudal, MCS, estabilidad y consumo de recursos con rigor estadístico, y contrastarlos con la teoría.
+  \item Documentar las decisiones técnicas, las fallas y su solución, y preparar la integración con SDR (Fase 3).
+\end{enumerate}
+
+\subsection{Alcance y trazabilidad con la rúbrica}
+La radio sigue siendo virtual (ZMQ) y el UE es el emulador srsUE; el SDR y el terminal comercial se integran en la Fase 3. La Tabla~\ref{tab:trazabilidad} relaciona cada criterio de la rúbrica de la Fase 2 con la sección que lo atiende.
+
+\begin{table}[!t]
+\caption{Trazabilidad entre la rúbrica de la Fase 2 y este informe}
+\label{tab:trazabilidad}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{2.3cm}p{4.9cm}p{0.8cm}}
+\toprule
+\textbf{Criterio} & \textbf{Evidencia incluida} & \textbf{Secc.} \\
+\midrule
+Core Open5GS (ABET 2) & 11 NF activas y registradas en el NRF, MongoDB aprovisionado con el perfil 5G, seguridad NAS NIA2/NEA2 y AS, estabilidad de 30 min & \ref{sec:core} \\
+gNB srsRAN (ABET 1, 2) & NG Setup por NGAP/SCTP, parámetros de celda, túnel GTP-U con TEID verificados, caudal y MCS medidos frente a la teoría & \ref{sec:gnb}, \ref{sec:res} \\
+Análisis de protocolos (ABET 1) & Registration y PDU Session campo a campo (SUCI, RAND/AUTN/RES*, ABBA, NEA/NIA, TEID, PDR/FAR/QER, IP), diagrama de secuencia medido y tiempos con IC 95\,\% & \ref{sec:proto} \\
+Gestión técnica (ABET 4) & Decisiones justificadas, 15 fallas resueltas, flujo de trabajo (git, bitácora, CI), optimización de recursos y preparación de la Fase 3 & \ref{sec:gestion} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Arquitectura del despliegue}
+\label{sec:arq}
+
+\subsection{Contenerización y red}
+Cada componente corre en su propio contenedor Docker, orquestado con Docker Compose \cite{docker} (Fig.~\ref{fig:arq}). Docker Compose actúa como un orquestador NFV mínimo: describe las funciones como unidades desplegables, las conecta y las reinicia si fallan, aunque sin escalado ni autocuración avanzada (que en producción aportarían Kubernetes, OSM u ONAP). Los contenedores comparten la red \texttt{red5g\_net} (10.53.0.0/24). Esta subred se eligió fuera del rango 172.17--172.31 que Docker reparte a otros proyectos, tras un choque real de direcciones (falla F2-12).
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth,
+  cont/.style={draw,rounded corners=2pt,fill=gray!10,minimum width=17mm,minimum height=7mm,align=center},
+  nf/.style={draw,fill=white,minimum width=7.5mm,minimum height=3.6mm,font=\tiny,inner sep=1pt}]
+% Núcleo
+\node[draw,rounded corners=2pt,fill=blue!5,minimum width=46mm,minimum height=27mm,anchor=north west] (core) at (0,0) {};
+\node[anchor=north west,font=\scriptsize\bfseries] at (0.05,-0.02) {open5gs (10.53.0.3)};
+\node[nf] at (0.55,-0.75) {NRF};  \node[nf] at (1.35,-0.75) {SCP};  \node[nf] at (2.15,-0.75) {AMF};
+\node[nf] at (2.95,-0.75) {SMF};  \node[nf] at (3.75,-0.75) {UPF};
+\node[nf] at (0.55,-1.30) {AUSF}; \node[nf] at (1.35,-1.30) {UDM};  \node[nf] at (2.15,-1.30) {UDR};
+\node[nf] at (2.95,-1.30) {PCF};  \node[nf] at (3.75,-1.30) {NSSF};
+\node[nf] at (0.55,-1.85) {BSF};
+\node[font=\tiny,align=left,anchor=west] at (1.0,-1.88) {SBI HTTP/2 :7777 vía SCP\\PFCP SMF$\leftrightarrow$UPF en loopback};
+\node[font=\tiny,anchor=west] at (0.1,-2.45) {ogstun 10.45.0.1/16 + NAT (N6)};
+% Otros contenedores
+\node[cont] (mongo) at (6.6,-0.55) {mongodb\\10.53.0.2};
+\node[cont] (webui) at (6.6,-1.85) {webui :9999\\10.53.0.6};
+\node[cont] (gnb) at (1.2,-4.0) {gnb\\10.53.0.4};
+\node[cont] (ue) at (5.4,-4.0) {ue (srsUE)\\10.53.0.5};
+\node[font=\tiny,anchor=north] at (ue.south) {tun\_srsue 10.45.0.x};
+% Enlaces
+\draw[<->] (core.east |- mongo) -- node[above=1pt,font=\tiny]{UDR, PCF} (mongo.west);
+\draw[<->] (webui.north) -- (mongo.south);
+\draw[<->,blue!70!black] (1.0,-2.7) -- node[left,font=\tiny,align=right]{N2 NGAP/SCTP :38412\\N3 GTP-U :2152} (1.0,-3.65);
+\draw[<->,red!60!black,thick] (gnb.east) -- node[above,font=\tiny]{Uu virtual (ZMQ I/Q)}
+  node[below,font=\tiny]{23.04 MS/s} (ue.west);
+\end{tikzpicture}
+\caption{Despliegue contenerizado de la Fase 2. El servicio \texttt{gnb-sdr} (perfil \texttt{sdr}, 10.53.0.7) queda preparado para la Fase 3 con la misma imagen del gNB.}
+\label{fig:arq}
+\end{figure}
+
+\subsection{Configuración única y reproducibilidad}
+Todos los valores del despliegue (PLMN, TAC, \textit{slice}, DNN, algoritmos de seguridad, suscriptor, direcciones, rango de MCS, memoria del gNB) se definen una sola vez en un archivo \texttt{.env}. Los archivos de configuración de cada contenedor son plantillas con marcadores \texttt{\$\{VARIABLE\}} que se rellenan al arrancar, y el arranque aborta si queda un marcador sin valor. El archivo \texttt{.env} no se versiona porque en la Fase 3 contendrá las claves de la SIM física (Ley 1581 de 2012 \cite{ley1581}); en el repositorio se versiona la plantilla \texttt{.env.example}. La Tabla~\ref{tab:versiones} fija las versiones, que se compilan desde el código fuente para que el despliegue no cambie sin aviso.
+
+\begin{table}[!t]
+\caption{Componentes y versiones fijadas}
+\label{tab:versiones}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{p{1.7cm}p{3.5cm}p{2.5cm}}
+\toprule
+\textbf{Componente} & \textbf{Versión} & \textbf{Observación} \\
+\midrule
+Núcleo 5G & Open5GS v2.8.0 (fuente) & 11 NF en un contenedor \\
+Base de datos & MongoDB 6.0 & Volumen persistente \\
+gNB & srsRAN Project \texttt{4bf1543936} (25.10) & ZMQ y UHD en un binario \\
+UE & srsUE 26.10 (\texttt{06f0b1e23}) & USIM por software \\
+Orquestación & Docker Compose (Docker 29.9) & WSL2, 8 CPU, 8 GB \\
+Análisis & Python 3.12, tshark 4.6.9 & Banco sin dependencias \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Núcleo Open5GS}
+\label{sec:core}
+
+\subsection{Funciones de red y arranque}
+El contenedor del núcleo arranca las once funciones de red (NRF, SCP, AMF, SMF, UPF, AUSF, UDM, UDR, PCF, NSSF y BSF). Cada una escucha su interfaz SBI en una dirección de \textit{loopback} propia (por ejemplo, NRF en 127.0.0.10 y AMF en 127.0.0.5), y todas se comunican por HTTP/2 a través del SCP (127.0.0.200:7777). Hacia la red Docker solo se exponen NGAP del AMF (10.53.0.3:38412/SCTP) y GTP-U del UPF (10.53.0.3:2152/UDP). El \textit{entrypoint} configura la interfaz \texttt{ogstun} (10.45.0.1/16), el reenvío IP y el NAT de N6. Si una función de red muere, el contenedor termina para que Docker lo reinicie completo, y el \textit{healthcheck} declara el núcleo sano solo cuando el AMF escucha NGAP. El gNB arranca únicamente después (\texttt{depends\_on: service\_healthy}); en la versión inicial se sondeaba NGAP por TCP, lo que fallaba porque NGAP usa SCTP (F2-5) \cite{rfc4960}.
+
+\subsection{Base de datos y perfil del suscriptor}
+MongoDB se inicializa con un \textit{script} que crea el suscriptor de prueba a partir de \texttt{.env} (Tabla~\ref{tab:suscriptor}). El esquema sigue el de Open5GS 2.8: la QoS de la sesión va en el campo \texttt{qos}. El esquema antiguo (\texttt{pcn}) producía un registro exitoso con la sesión PDU rechazada por ``No 5QI'' (F2-8). El \textit{script} borra e inserta por IMSI, así que repetir el alta es seguro. El mismo archivo se reutiliza para dar de alta la SIM física de la Fase 3 (\texttt{python -m banco suscriptor}), de modo que el esquema existe en un solo lugar. Las claves pasan al contenedor por variables de entorno y nunca aparecen en la línea de comandos ni en los resultados.
+
+\begin{table}[!t]
+\caption{Perfil del suscriptor aprovisionado en MongoDB}
+\label{tab:suscriptor}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{p{2.6cm}p{5.0cm}}
+\toprule
+\textbf{Campo} & \textbf{Valor} \\
+\midrule
+SUPI (IMSI) & 001010123456780 (PLMN de pruebas 001/01) \\
+Autenticación & 5G-AKA con Milenage; K y OPc de prueba; AMF = 8000; SQN inicial 0 \\
+\textit{Slice} (S-NSSAI) & SST = 1 (eMBB), sin SD; \textit{slice} por defecto \\
+DNN y tipo de PDU & \texttt{internet}, IPv4 \\
+QoS por defecto & 5QI = 9, ARP 8 (con capacidad y vulnerabilidad de preferencia) \\
+Session-AMBR / UE-AMBR & 1~Gbps DL / 1~Gbps UL \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Seguridad 5G}
+La seguridad del estrato de no acceso (NAS) entre el UE y el AMF se configura por orden de preferencia de algoritmos \cite{ts33501}. La integridad usa 128-NIA2 (AES-CMAC) y el cifrado 128-NEA2 (AES-CTR). En las primeras pruebas el cifrado debía quedarse en NEA0 (sin cifrar): con NEA1, NEA2 o NEA3 el UE se liberaba justo después del \textit{Security Mode Command}. La causa estaba en el srsUE 25.10: para descifrar los mensajes NAS de 5G recalculaba el contador NAS COUNT con la posición del número de secuencia que usa LTE, pero en 5G ese byte es el último de la MAC. El \textit{keystream} resultante era erróneo y el \textit{Registration Accept} no se podía descifrar (issue \#1392 de srsRAN\_4G, falla F2-15). La versión 26.10 del srsUE \cite{srsran4g} incluye la corrección y, con ella, el registro completa con NEA2 + NIA2, como verifica la traza de la Sección~\ref{sec:proto}.
+
+La seguridad del estrato de acceso (AS) protege RRC y PDCP en la interfaz radio y es independiente de la NAS. srsRAN Project prefiere por defecto \texttt{nea0}, es decir, radio sin cifrar aunque el NAS sí lo esté. En este despliegue se parametrizó con \texttt{GNB\_NEA\_PREF\_LIST=nea2,nea1,nea3,nea0}. Con esa preferencia el UE registra y pasa tráfico. La comparación de los tiempos de registro con \texttt{nea0} y \texttt{nea2} no muestra una penalización medible (Sección~\ref{sec:proto}). El gNB solo registra el algoritmo AS negociado en el nivel de depuración, que puede volcar claves derivadas; esa evidencia queda pendiente para una prueba controlada.
+
+%=====================================================================
+\section{gNB srsRAN y enlace con el núcleo}
+\label{sec:gnb}
+
+\subsection{Configuración de la celda}
+La Tabla~\ref{tab:celda} resume la celda. La radio virtual ZMQ intercambia muestras I/Q entre el gNB y el UE por TCP: cada extremo enlaza su puerto de transmisión y se conecta al del otro. En la primera versión los puertos estaban cruzados y no había radio (F2-6). El rango de MCS del planificador se toma de \texttt{.env}; al fijar el mínimo igual al máximo se obtiene la prueba P8.
+
+\begin{table}[!t]
+\caption{Parámetros de la celda NR y del enlace con el núcleo}
+\label{tab:celda}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{p{2.8cm}p{4.8cm}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Banda / modo dúplex & n3 / FDD \\
+DL-ARFCN / SSB-ARFCN & 368500 (1842.5~MHz) / 368410 \\
+Ancho de banda / SCS & 20~MHz / 15~kHz ($\mu=0$), 106 PRB \\
+PCI / TAC / PLMN & 1 / 7 / 001-01 \\
+Tabla MCS (PDSCH, PUSCH) & \texttt{qam64}, MCS 0--28 \\
+PRACH & \texttt{prach\_config\_index} = 1 \\
+Muestreo ZMQ & 23.04~MS/s \\
+N2 (NGAP) & SCTP 10.53.0.4 $\rightarrow$ 10.53.0.3:38412 \\
+N3 (GTP-U) & 10.53.0.4:2152 $\leftrightarrow$ 10.53.0.3:2152 \\
+\textit{Buffer pool} & 131\,072 segmentos de 2048~B (256~MiB) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{NG Setup y túnel GTP-U}
+Al arrancar, el gNB abre la asociación SCTP con el AMF y envía \textit{NGSetupRequest} \cite{ts38413} con su identificador, el TAC y el PLMN soportados. El AMF responde \textit{NGSetupResponse} con su nombre, la GUAMI y los S-NSSAI soportados. En las cinco corridas de la prueba de registro el procedimiento tardó $18.7\pm7.0$~ms. Un error de PLMN entre el AMF y el gNB produce \textit{NGSetupFailure} con la causa \texttt{unknown-PLMN-or-SNPN} (F2-3).
+
+El túnel GTP-U de N3 requería que el UPF y el gNB enlazaran las direcciones de la red Docker. Con los valores por defecto (0.0.0.0 en el UPF y 127.0.0.1 en el gNB) el plano de usuario era inalcanzable (F2-4). Con la corrección, los TEID que intercambian NGAP y PFCP coinciden (Sección~\ref{sec:proto}), y durante 30 minutos de tráfico continuo no hubo un solo corte (Sección~\ref{sec:res}).
+
+\subsection{Ruta del UE hacia Internet}
+El pendiente de la Fase 1 era la conectividad del UE a Internet. Dentro del contenedor, la ruta por defecto de Docker ganaba a la del túnel 5G, de modo que el ping a Internet ``funcionaba'' sin pasar por la red 5G (F2-7). El contenedor del UE reemplaza la ruta por defecto por \texttt{tun\_srsue} en cuanto recibe dirección y la vigila de forma permanente. Así, todo el tráfico de usuario recorre Uu, N3 y N6.
+
+\subsection{Memoria del gNB}
+El gNB ocupaba 2.44~GB con un solo UE. En el código del \textit{commit} fijado, el \textit{buffer pool} reserva por defecto $1\,048\,576\times2048$~B = 2~GiB al arrancar. Una cola RLC llena de 16\,384 SDU de 1500~B cabe en unos 32~MiB, así que se redujo a 256~MiB. El gNB pasó a 0.69~GB (72\,\% menos) y el caudal TCP descendente no cambió ($49.7\pm1.2$ frente a $48.6\pm1.4$~Mbps). El ahorro resultó decisivo: con la memoria de Windows al límite las mediciones perdían precisión (Sección~\ref{sec:res}).
+
+%=====================================================================
+\section{Análisis de protocolos}
+\label{sec:proto}
+
+\subsection{Método de captura}
+La captura se hace en el contenedor del núcleo con \texttt{tcpdump -i any}, que ve N2 y N3 en la interfaz de la red Docker y N4 y la SBI en \textit{loopback}. El filtro es \texttt{sctp or udp port 2152 or udp port 8805 or tcp port 7777}. El banco recrea juntos el gNB y el UE para capturar el registro desde el principio. Recrear los contenedores es necesario: un \texttt{docker compose restart} dejaba el enlace ZMQ sin muestras (F2-13). La traza se interpreta con \textit{tshark} \cite{wireshark} mediante un analizador del banco (\texttt{python -m banco protocolos}) que extrae los campos de cada mensaje, contrasta los TEID entre NGAP y PFCP y mide la duración de cada procedimiento. La Fig.~\ref{fig:seq} muestra la secuencia medida en una de las trazas.
+
+\begin{figure*}[!t]
+\centering
+\newcounter{seqn}
+\setcounter{seqn}{0}
+\newcommand{\seqmsg}[6][]{\stepcounter{seqn}%
+  \node[font=\tiny,circle,draw,inner sep=0.5pt] at (-0.75,#4) {\theseqn};%
+  \node[font=\tiny,anchor=east] at (-1.05,#4) {#6};%
+  \draw[->,#1] (#2,#4) -- node[above,inner sep=1pt,font=\tiny] {#5} (#3,#4);}
+\begin{tikzpicture}[x=1cm,y=-0.42cm,font=\scriptsize,>=Stealth,
+  lf/.style={draw,fill=gray!15,minimum width=16mm,minimum height=5mm,font=\scriptsize\bfseries},
+  nas/.style={blue!70!black},
+  pfcp/.style={green!50!black,densely dashed},
+  cif/.style={blue!70!black,densely dotted},
+  data/.style={very thick,<->,red!60!black}]
+\node[lf] at (0,0) {UE};
+\node[lf] at (3.4,0) {gNB};
+\node[lf] at (7.8,0) {AMF};
+\node[lf] at (11.3,0) {SMF};
+\node[lf] at (14.6,0) {UPF};
+\node[font=\tiny\bfseries,anchor=east] at (-1.05,0) {$t$ (ms)};
+\foreach \x in {0,3.4,7.8,11.3,14.6} {\draw[dotted,gray] (\x,0.9) -- (\x,20.4);}
+\seqmsg{3.4}{7.8}{1.5}{NGSetupRequest (TAC 7, PLMN 00101)}{$-685$}
+\seqmsg{7.8}{3.4}{2.6}{NGSetupResponse}{$-671$}
+\seqmsg[nas]{0}{7.8}{3.7}{InitialUEMessage [Registration Request, SUCI null-scheme]}{0}
+\seqmsg[nas]{7.8}{0}{4.8}{Authentication Request (RAND, AUTN, ngKSI, ABBA)}{29}
+\seqmsg[nas]{0}{7.8}{5.9}{Authentication Response (RES*)}{64}
+\seqmsg[nas]{7.8}{0}{7.0}{Security Mode Command (128-NEA2, 128-NIA2)}{78}
+\seqmsg[cif]{0}{7.8}{8.1}{Security Mode Complete \textit{(cifrado)}}{--}
+\seqmsg{7.8}{3.4}{9.2}{InitialContextSetupReq. [Reg. Accept cifrado]}{127}
+\seqmsg{3.4}{7.8}{10.3}{InitialContextSetupResponse}{198}
+\seqmsg[cif]{0}{7.8}{11.4}{Registration Complete + PDU Session Est. Request \textit{(cifrados)}}{--}
+\seqmsg[pfcp]{11.3}{14.6}{12.5}{PFCP Sess. Estab. Req. (PDR/FAR/QER)}{341}
+\seqmsg[pfcp]{14.6}{11.3}{13.6}{PFCP Sess. Estab. Resp. (F-TEID N3)}{342}
+\seqmsg{7.8}{3.4}{14.7}{PDUSessionResourceSetupReq. (TEID UPF, 5QI 9)}{346}
+\seqmsg{3.4}{7.8}{15.8}{PDUSessionResourceSetupResp. (TEID gNB)}{476}
+\seqmsg[pfcp]{11.3}{14.6}{16.9}{PFCP Sess. Modification Req. (TEID gNB)}{478}
+\stepcounter{seqn}
+\node[font=\tiny,circle,draw,inner sep=0.5pt] at (-0.75,18.6) {\theseqn};
+\draw[data] (0,18.6) -- node[above,inner sep=1pt,font=\tiny] {Tráfico de usuario: Uu (ZMQ) + N3 (GTP-U, TEID 0x0000cd8a / 0x00000001) + N6} (14.6,18.6);
+\draw[gray] (15.5,3.4) -- (15.5,11.6);
+\node[font=\tiny,rotate=90,anchor=south] at (15.5,7.5) {Registro};
+\draw[gray] (15.5,12.2) -- (15.5,17.2);
+\node[font=\tiny,rotate=90,anchor=south] at (15.5,14.7) {Sesión PDU};
+\node[font=\tiny,anchor=west,blue!70!black] at (0,21.4) {Azul: NAS-5GS (N1 sobre NGAP)};
+\node[font=\tiny,anchor=west] at (4.6,21.4) {Negro: NGAP (N2)};
+\node[font=\tiny,anchor=west,green!50!black] at (8.0,21.4) {Verde: PFCP (N4)};
+\node[font=\tiny,anchor=west,blue!70!black] at (11.0,21.4) {Punteado: NAS cifrado con NEA2};
+\end{tikzpicture}
+\caption{Secuencia medida del registro y de la sesión PDU (traza del 2 de noviembre de 2026, corrida 1). Tiempos relativos al \textit{Registration Request}. La señalización SBI (HTTP/2) entre el AMF, la AUSF/UDM y el SMF también está en la traza, pero se omite por claridad.}
+\label{fig:seq}
+\end{figure*}
+
+\subsection{Registro: identidad, autenticación y seguridad}
+La Tabla~\ref{tab:campos} resume los campos extraídos de la traza.
+
+\textbf{Identidad.} El \textit{Registration Request} lleva un SUCI con formato IMSI, MCC 001, MNC 01, indicador de enrutamiento 0000, esquema de protección nulo (0) y MSIN 0123456780. El esquema nulo deja el MSIN legible en la traza, lo que es aceptable en un laboratorio con PLMN de pruebas pero no en una red comercial, donde se usaría el perfil A o B de ECIES con la clave pública de la red local \cite{ts33501}. El UE anuncia soporte de 5G-EA0 a 5G-EA3 y de 128-5G-IA1 a IA3 (sin IA0).
+
+\textbf{5G-AKA.} El \textit{Authentication Request} transporta RAND (128 bits) y AUTN, este último desglosado en SQN$\oplus$AK (48 bits), el campo AMF = 8000 y MAC (64 bits). El bit de separación del campo AMF está activo, como exige 5G-AKA para distinguir los vectores 5G de los de EPS. ABBA vale 0000. El UE calcula RES* a partir de K, OPc y RAND (Milenage) \cite{milenage}, y lo devuelve en el \textit{Authentication Response}. La AUSF lo compara con el XRES* que generó el UDM. Este intercambio tardó $29.9\pm5.0$~ms.
+
+\textbf{Seguridad NAS.} El \textit{Security Mode Command} selecciona 128-NEA2 y 128-NIA2 y repite las capacidades de seguridad del UE para evitar ataques de degradación. A partir de ahí los mensajes NAS llevan cabecera de seguridad tipo 2 (integridad y cifrado) \cite{ts24501}: en cada traza hay 7 mensajes cifrados, entre ellos el \textit{Registration Accept}, el \textit{Registration Complete} y el intercambio de la sesión PDU. Su contenido no puede leerse en la captura del núcleo. Para inspeccionarlo hay que usar la captura NAS que guarda el propio UE o, temporalmente, NEA0. En las trazas de octubre, con NEA0, la cabecera era también tipo 2 pero el contenido era legible. El analizador distingue ambos casos según el algoritmo negociado.
+
+\begin{table}[!t]
+\caption{Campos extraídos de la traza del registro (corrida 1)}
+\label{tab:campos}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{p{2.4cm}p{5.2cm}}
+\toprule
+\textbf{Campo} & \textbf{Valor observado} \\
+\midrule
+SUCI & formato IMSI, 001/01, RI 0000, esquema nulo, MSIN 0123456780 \\
+RAND & {\scriptsize\texttt{6a9e82c734214c669a02c4b6a6bfce01}} \\
+AUTN & SQN$\oplus$AK \texttt{b6cfed53b033}, AMF \texttt{8000}, MAC \texttt{eb0e59f200567fe3} \\
+RES* & {\scriptsize\texttt{2fb00cbedf66b7b967083ca5b99525e0}} \\
+ABBA & \texttt{0000} \\
+Algoritmos NAS & 128-NEA2 (cifrado), 128-NIA2 (integridad) \\
+Mensajes NAS cifrados & 7 de 8 protegidos \\
+IP del UE (PFCP) & 10.45.0.5 \\
+TEID N3 del UPF & \texttt{0x0000cd8a} en 10.53.0.3 (NGAP y PFCP) \\
+TEID N3 del gNB & \texttt{0x00000001} en 10.53.0.4 (NGAP y PFCP) \\
+QoS & 5QI 9, QFI 1 \\
+Reglas PFCP & PDR 1--4, FAR 1--3, QER 1, URR 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Sesión PDU y plano de usuario}
+La petición de sesión PDU llega cifrada dentro de un \textit{UplinkNASTransport} \cite{ts23502}. El AMF la entrega al SMF por la SBI, y el SMF instala las reglas en el UPF por N4 con una \textit{PFCP Session Establishment Request}. En términos de redes definidas por software (SDN), esa petición es la evidencia de la separación de planos (CUPS) \cite{ts29244}. El SMF actúa como controlador e instala reglas \textit{match-action} en el plano de datos:
+\begin{itemize}
+  \item \textbf{PDR 1} (origen \textit{Core}, interfaz N6, \textit{network instance} \texttt{internet}): tráfico de bajada dirigido a la IP del UE (10.45.0.5), asociado a la FAR 1, la QER 1 y la URR 1.
+  \item \textbf{PDR 2} (origen \textit{Access}, N3, con \textit{CHOOSE ID} para que el UPF asigne el F-TEID): tráfico de subida con QFI 1. Retira la cabecera GTP-U/UDP/IP y lo reenvía con la FAR 2.
+  \item \textbf{PDR 3 y 4}: reglas de control entre el UPF y el plano de control, por ejemplo para los mensajes de descubrimiento de enrutador.
+\end{itemize}
+La respuesta trae el F-TEID asignado por el UPF (\texttt{0x0000cd8a}, 10.53.0.3), que el AMF envía al gNB en la \textit{PDUSessionResourceSetupRequest} junto con la QoS (5QI 9). El gNB contesta con su propio TEID (\texttt{0x00000001}, 10.53.0.4), y el SMF lo instala en el UPF con una \textit{PFCP Session Modification}, que crea la cabecera GTP-U externa hacia el gNB \cite{ts29281}. El analizador comprueba que los dos TEID coinciden en NGAP y en PFCP. Una versión inicial tomaba por error la \textit{Outer Header Creation} de la primera petición PFCP, que apunta al SMF (127.0.0.4, TEID 2) y no al gNB.
+
+\subsection{Tiempos de los procedimientos}
+La prueba de registro se repitió cinco veces con la seguridad AS en \texttt{nea2} y otras cinco con \texttt{nea0}. Cada corrida recrea la RAN, captura el registro y lo analiza. La Tabla~\ref{tab:tiempos} presenta las medias con su intervalo de confianza del 95\,\% (t de Student, 4 grados de libertad).
+
+\begin{table}[!t]
+\caption{Duración de los procedimientos de señalización (ms, media $\pm$ IC 95\,\%, $n=5$)}
+\label{tab:tiempos}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{p{3.6cm}rr}
+\toprule
+\textbf{Procedimiento} & \textbf{AS \texttt{nea2}} & \textbf{AS \texttt{nea0}} \\
+\midrule
+NG Setup & $18.7\pm7.0$ & --- \\
+Autenticación 5G-AKA & $29.9\pm5.0$ & $35.9\pm12.8$ \\
+Contexto inicial (N2) & $76.2\pm10.1$ & $98.0\pm30.6$ \\
+PFCP Session Establishment & $1.4\pm0.8$ & --- \\
+Recursos de la sesión PDU (N2) & $126.4\pm35.4$ & $120.5\pm45.6$ \\
+Registro hasta contexto & $196.0\pm18.7$ & $306.3\pm107$ \\
+Registro hasta sesión PDU & $\mathbf{471.6\pm32.3}$ & $598\pm133$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tres observaciones. Primera, los intervalos de \texttt{nea2} y \texttt{nea0} se solapan, así que cifrar RRC y PDCP no impone una penalización medible: la variabilidad la domina la carga del equipo. Segunda, el núcleo es rápido (la PFCP tarda unos 1.4~ms). Los procedimientos lentos son los que atraviesan la radio emulada: el contexto inicial y los recursos de la sesión PDU incluyen la reconfiguración RRC del UE sobre ZMQ. Esto coincide con la conclusión de la Fase 1 de que la latencia se origina en la ruta radio. Tercera, el total de unos 0.47~s es comparable con los 0.51~s medidos en la Fase 1 con una sola traza.
+
+%=====================================================================
+\section{Banco de pruebas y resultados}
+\label{sec:res}
+
+\subsection{Metodología}
+Las pruebas están implementadas una sola vez en un paquete de Python que solo usa la biblioteca estándar. Las acciones \texttt{manage\_lab.ps1} (Windows) y \texttt{make} (Linux) solo lo invocan. Cada ejecución crea una carpeta de resultados con:
+\begin{itemize}
+  \item \texttt{metadata.json}: equipo, CPU, \textit{commit} de git, configuración sin las claves secretas, imágenes usadas y reinicios de contenedores;
+  \item \texttt{resumen.csv}: una fila por métrica;
+  \item las series detalladas y las salidas originales de ping, iperf3 y los logs, para auditar los cálculos.
+\end{itemize}
+Durante cada medición se registra también la tabla de métricas del gNB (CQI, MCS, SNR, ACK/NACK). Para cada métrica se calculan la media, la desviación estándar muestral y el intervalo de confianza del 95\,\% con t de Student ($n-1$ grados de libertad). La BLER se agrega sumando los ACK/NACK de todas las corridas y no promediando porcentajes, porque una corrida con pocos bloques pesaría igual que una con muchos. Los intérpretes de las salidas tienen 40 pruebas unitarias con salidas reales, y una integración continua en GitHub las ejecuta en cada \textit{push}.
+
+Todas las mediciones se hicieron en el mismo equipo. El canal ZMQ es síncrono: si la CPU no procesa 23.04~MS/s, el tiempo emulado transcurre más lento que el real y el caudal y el RTT empeoran en la misma proporción. Por eso las cifras de distintos equipos no son comparables. También se comprobó que la memoria del anfitrión influye: una serie de P7 medida con Windows sin memoria libre dio una pérdida de $6.0\pm10.0$\,\% a 40~Mbps. Repetida con la memoria del gNB reducida, dio $0.21\pm0.03$\,\%. Solo se informa esta última.
+
+\subsection{Latencia, caudal y recursos (P5, P6, P10)}
+La Tabla~\ref{tab:resultados} resume la campaña principal: cinco corridas por prueba, srsUE 26.10 y NAS NEA2.
+
+\begin{table}[!t]
+\caption{Resultados de la campaña (media $\pm$ IC 95\,\%, $n=5$)}
+\label{tab:resultados}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{p{1.0cm}p{3.6cm}p{2.9cm}}
+\toprule
+\textbf{Prueba} & \textbf{Métrica} & \textbf{Resultado} \\
+\midrule
+P5 & RTT medio al UPF (N6) & $31.9\pm0.9$~ms \\
+   & RTT p95 al UPF & $40.5\pm1.5$~ms \\
+   & RTT medio a Internet (8.8.8.8) & $49.4\pm4.5$~ms \\
+   & Pérdida de paquetes & 0\,\% \\
+P6 & TCP DL (MCS medio 27.7) & $48.6\pm1.4$~Mbps \\
+   & TCP UL (MCS medio 6.4) & $11.6\pm0.5$~Mbps \\
+   & BLER agregada DL / UL & 0\,\% / 0.85\,\% \\
+P7 & UDP DL máximo & $56.3\pm1.2$~Mbps \\
+   & UDP UL máximo & $10.5\pm0.2$~Mbps \\
+P10 & CPU global (carga DL) & $52.8\pm2.0$\,\% \\
+    & gNB / UE / núcleo & 241 / 168 / 7.8\,\% de un núcleo \\
+    & Núcleos saturados ($\ge95$\,\%) & 0 de 8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El RTT hacia Internet supera al del UPF en unos 17~ms, lo que corresponde al tramo N6 más la red externa. El enlace ascendente está limitado por el srsUE: la SNR del PUSCH es de apenas 0.7--3.5~dB y el MCS ronda 6. Se trata de una limitación conocida del emulador, ya observada en la Fase 1, y no del núcleo. En P10 el gNB y el UE consumen 2.4 y 1.7 núcleos y el núcleo 5G apenas 0.08, sin ningún núcleo saturado. La virtualización de las funciones del núcleo resulta, por tanto, barata frente al procesamiento de la capa física.
+
+\subsection{Saturación con UDP (P7)}
+La Fig.~\ref{fig:p7} muestra el caudal recibido frente a la tasa ofrecida. En el sentido descendente, el canal entrega sin pérdidas hasta 40~Mbps (0.21\,\% de pérdida). A partir de 50~Mbps se satura, con un máximo de $56.3\pm1.2$~Mbps, el 66\,\% de la cota teórica, y la pérdida crece hasta el 31\,\% a 80~Mbps. En el ascendente la saturación llega a unos 10~Mbps, con una pérdida inferior al 1\,\% solo hasta 5~Mbps.
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  height=5.2cm, width=0.95\columnwidth,
+  xlabel={Tasa UDP ofrecida (Mbps)}, ylabel={Caudal recibido (Mbps)},
+  xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
+  tick label style={font=\footnotesize},
+  xmin=0, xmax=82, ymin=0, ymax=82,
+  grid=major, grid style={gray!20},
+  legend style={font=\scriptsize, at={(0.03,0.97)}, anchor=north west}]
+\addplot[gray,dashed,domain=0:80] {x};
+\addplot[blue!70!black,thick,mark=*,mark size=1.4pt,error bars/.cd,y dir=both,y explicit]
+  coordinates {(2,2.03) +- (0,0.02) (5,5.04) +- (0,0.01) (10,10.06) +- (0,0.01) (15,15.10) +- (0,0.01)
+  (20,20.13) +- (0,0.01) (30,30.15) +- (0,0.02) (40,40.19) +- (0,0.04) (50,49.52) +- (0,1.30)
+  (60,53.39) +- (0,3.29) (70,53.83) +- (0,3.68) (80,55.84) +- (0,1.92)};
+\addplot[orange!85!black,thick,mark=square*,mark size=1.4pt,error bars/.cd,y dir=both,y explicit]
+  coordinates {(2,1.98) +- (0,0.01) (5,4.97) +- (0,0.01) (10,9.31) +- (0,0.26) (15,9.67) +- (0,0.56)
+  (20,10.14) +- (0,0.18) (30,10.47) +- (0,0.25) (40,10.16) +- (0,0.11)};
+\legend{Ideal, DL, UL}
+\end{axis}
+\end{tikzpicture}
+\caption{P7: caudal UDP recibido frente a la tasa ofrecida (media $\pm$ IC 95\,\%, $n=5$). De 2 a 40~Mbps, campaña principal; de 40 a 80~Mbps en DL, barrido repetido con la red optimizada.}
+\label{fig:p7}
+\end{figure}
+
+\subsection{Caudal frente a MCS (P8)}
+En P8 se fija el MCS del PDSCH (mínimo igual a máximo) y se recrean el gNB y el UE para cada valor. El gNB aplicó exactamente el MCS configurado \cite{ts38214} en las tres corridas, con BLER descendente del 0\,\%. La cota teórica de cada MCS se calcula con TS 38.306 \cite{ts38306}:
+\begin{equation}
+R_{\max} = 10^{-6}\,\nu\,Q_m\,R\,\frac{12\,N_{PRB}}{T_s^{\mu}}\,(1-OH),
+\end{equation}
+con una capa ($\nu=1$), $N_{PRB}=106$, $T_s^{\mu}=10^{-3}/14$~s y $OH=0.14$. La Fig.~\ref{fig:p8} y la Tabla~\ref{tab:p8} comparan ambos valores.
+
+\begin{table}[!t]
+\caption{P8: caudal TCP DL con MCS fijo frente a la cota de TS 38.306}
+\label{tab:p8}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{MCS} & $\mathbf{Q_m}$ & $\mathbf{R\cdot1024}$ & \textbf{Teórico} & \textbf{Medido ($n=3$)} & \textbf{\%} \\
+\midrule
+0 & 2 & 120 & 3.6 & $2.18\pm0.07$ & 61 \\
+5 & 2 & 379 & 11.3 & $6.75\pm0.21$ & 60 \\
+10 & 4 & 340 & 20.3 & $12.53\pm0.07$ & 62 \\
+15 & 4 & 616 & 36.9 & $21.01\pm3.31$ & 57 \\
+20 & 6 & 567 & 50.9 & $27.61\pm3.29$ & 54 \\
+25 & 6 & 822 & 73.8 & $40.81\pm2.49$ & 55 \\
+28 & 6 & 948 & 85.1 & $47.83\pm3.31$ & 56 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  height=5.0cm, width=0.95\columnwidth,
+  xlabel={Índice MCS fijo (tabla \texttt{qam64})}, ylabel={Caudal DL (Mbps)},
+  xlabel style={font=\footnotesize}, ylabel style={font=\footnotesize},
+  tick label style={font=\footnotesize},
+  xmin=-1, xmax=29, ymin=0, ymax=90, xtick={0,5,10,15,20,25,28},
+  grid=major, grid style={gray!20},
+  legend style={font=\scriptsize, at={(0.03,0.97)}, anchor=north west}]
+\addplot[gray,thick,dashed,mark=o,mark size=1.4pt]
+  coordinates {(0,3.6) (5,11.3) (10,20.3) (15,36.9) (20,50.9) (25,73.8) (28,85.1)};
+\addplot[blue!70!black,thick,mark=*,mark size=1.4pt,error bars/.cd,y dir=both,y explicit]
+  coordinates {(0,2.18) +- (0,0.07) (5,6.75) +- (0,0.21) (10,12.53) +- (0,0.07) (15,21.01) +- (0,3.31)
+  (20,27.61) +- (0,3.29) (25,40.81) +- (0,2.49) (28,47.83) +- (0,3.31)};
+\legend{Cota TS 38.306 ($OH=0.14$), Medido TCP}
+\end{axis}
+\end{tikzpicture}
+\caption{P8: caudal TCP descendente con MCS fijo frente a la cota teórica (media $\pm$ IC 95\,\%, $n=3$).}
+\label{fig:p8}
+\end{figure}
+
+\textbf{Análisis de la brecha.} Tras la campaña se planteó como hipótesis que la diferencia con la teoría se debía al procesamiento en tiempo real (CPU). P8 la desmiente como causa principal: la fracción medida/teórica es casi constante, entre el 54 y el 62\,\%, en todos los MCS, incluso en MCS 0 con 2~Mbps, donde la CPU no puede limitar (P10 tampoco muestra núcleos saturados). Una fracción constante indica una sobrecarga estructural mayor que el 14\,\% que supone la norma para FR1. Entre sus componentes probables están el PDCCH, los símbolos DMRS, el SSB y los SIB, los slots que el planificador no asigna a datos y las cabeceras TCP/IP/GTP-U, además de la dinámica de TCP. La ligera caída del 60 al 55\,\% en los MCS altos sí podría deberse a la carga de procesamiento. Esto concuerda con lo que la Fase 1 ya planteó como hipótesis: la brecha no se explicaba por saturación global de la CPU. Cuantificar cada componente requiere el registro MAC del gNB (PRB y símbolos asignados por slot) y queda como trabajo futuro.
+
+\subsection{Estabilidad (P9)}
+Durante 30 minutos se envió un ping por segundo al UPF con una carga UDP descendente de fondo de 5~Mbps. Se recibieron 1799 de 1800 respuestas (pérdida del 0.06\,\%), con RTT medio de 23.2~ms (p95 35.3~ms, p99 43.0~ms) y un único pico de 1.1~s. No hubo cortes, reinicios de contenedores ni recuperaciones automáticas, el gNB no registró \textit{underflows}, \textit{overflows} ni avisos de tiempo real, y la carga de 5~Mbps se entregó completa. El criterio de estabilidad se cumple: el gNB mantiene la conexión con el AMF y el túnel GTP-U sin micro-cortes.
+
+%=====================================================================
+\section{Gestión técnica}
+\label{sec:gestion}
+
+\subsection{Flujo de trabajo}
+El proyecto se gestiona en un repositorio git con cuatro prácticas:
+\begin{itemize}
+  \item una bitácora obligatoria (\texttt{BITACORA.md}) en la que cada cambio registra qué se hizo, por qué, cómo se verificó y qué no se pudo verificar, junto con una lista viva de pendientes;
+  \item un README que describe en todo momento el estado y el modo de uso;
+  \item pruebas unitarias;
+  \item una integración continua en GitHub Actions que, en cada \textit{push}, ejecuta las pruebas en Python 3.10 y 3.12, \texttt{shellcheck}, \texttt{yamllint} sobre las plantillas ya renderizadas y la validación de Docker Compose.
+\end{itemize}
+Las conclusiones técnicas se apoyan en evidencia citable (carpeta de resultados, línea de log o trama), y cuando una medición desmiente una conclusión previa, la corrección queda registrada, como ocurrió con P8. El repositorio se trasladó de una unidad en la nube a un disco local porque la sincronización impedía ver en Windows lo que escribían los contenedores (F2-14) y había dañado el directorio \texttt{.git}.
+
+\subsection{Decisiones técnicas}
+La Tabla~\ref{tab:decisiones} recoge las decisiones principales con su justificación.
+
+\begin{table*}[!t]
+\caption{Registro de decisiones técnicas de la Fase 2}
+\label{tab:decisiones}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{6.6cm}>{\raggedright\arraybackslash}p{6.4cm}}
+\toprule
+\textbf{Decisión} & \textbf{Justificación} & \textbf{Alternativa descartada} \\
+\midrule
+Contenedores separados con Docker Compose & Reproducible en cualquier equipo, con dependencias y orden de arranque declarados y reinicio automático & Instalación manual en WSL2 de la Fase 1 (no reproducible) \\
+Open5GS v2.8.0 compilado desde fuente & Versión fija y sin el paquete \texttt{open5gs-webui}, que no existe en apt (F2-1) & PPA \texttt{latest}, que cambia de versión sin aviso \\
+Configuración única en \texttt{.env} con plantillas & Un valor se cambia en un solo lugar; las claves de la SIM quedan fuera de git & Valores repetidos en cada archivo YAML \\
+srsUE 26.10 para habilitar NEA2 & Corrige el descifrado NAS de 5G (F2-15); se compiló sin sustituir la imagen anterior y se verificó en la traza & Mantener NEA0 (NAS sin cifrar) \\
+Recrear gNB y UE en lugar de reiniciarlos & El reinicio en sitio dejaba el ZMQ sin muestras (F2-13, 5 de 5 veces) & \texttt{docker compose restart} \\
+Banco de pruebas en Python sin dependencias & Una sola implementación, resultados trazables y estadística con IC 95\,\% & Scripts separados en PowerShell y bash \\
+\textit{Buffer pool} del gNB de 256~MiB & 72\,\% menos memoria sin pérdida de caudal & Valor por defecto de 2~GiB \\
+Una imagen del gNB con ZMQ y UHD & Una sola compilación de srsRAN para la Fase 2 y la Fase 3 & Imagen separada para SDR (segunda compilación) \\
+Compilación acotada en memoria & Trabajos de \texttt{make} según la memoria disponible, \texttt{ccache} y compilación en serie: la compilación ya no se queda sin memoria & \texttt{make -j\$(nproc)} con la red levantada \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Fallas encontradas y su solución}
+Las quince fallas de la Tabla~\ref{tab:fallas} se encontraron al validar la contenerización y las mediciones. Cada una tiene su diagnóstico detallado en la bitácora técnica del repositorio.
+
+\begin{table*}[!t]
+\caption{Fallas de la Fase 2: síntoma, causa y corrección}
+\label{tab:fallas}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{p{0.7cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{5.4cm}}
+\toprule
+\textbf{\#} & \textbf{Síntoma} & \textbf{Causa} & \textbf{Corrección} \\
+\midrule
+F2-1 & La imagen del núcleo no construía & \texttt{open5gs-webui} no existe como paquete apt & WebUI en su contenedor, compilada desde fuente \\
+F2-2 & UDR/PCF sin base de datos & YAML del paquete con \texttt{mongodb://localhost} & El \textit{entrypoint} apunta al contenedor \texttt{mongodb} \\
+F2-3 & PLMN 999/70 o configuración rechazada & Formatos antiguos y nuevos mezclados en \texttt{amf.yaml}/\texttt{nrf.yaml} & YAML reescritos en formato 2.8 con PLMN 001/01 \\
+F2-4 & GTP-U inalcanzable & UPF en 0.0.0.0 y gNB en 127.0.0.1 & Ambos enlazan su IP de la red Docker \\
+F2-5 & El gNB esperaba al AMF indefinidamente & Sondeo de NGAP por TCP (NGAP usa SCTP) & \textit{Healthcheck} sobre SCTP y \texttt{service\_healthy} \\
+F2-6 & Sin radio entre gNB y UE & Puertos ZMQ cruzados & Cada extremo enlaza su TX y se conecta al TX del otro \\
+F2-7 & Ping a Internet ``funcionaba'' sin 5G & La ruta por defecto de Docker ganaba & Ruta por defecto por \texttt{tun\_srsue}, vigilada \\
+F2-8 & Sesión PDU rechazada (``No 5QI'') & Suscriptor con el esquema antiguo (\texttt{pcn}) & Esquema de Open5GS 2.8 (\texttt{qos}) \\
+F2-9 & Caudal bajo y cola de logs desbordada & PHY/MAC en \texttt{info} y PCAP de N3 en el gNB & Logs en \texttt{warning}; N3 capturado en el núcleo \\
+F2-10 & Scripts rotos al clonar en Windows & Conversión a CRLF de los \texttt{.sh} & \texttt{.gitattributes} y normalización en los Dockerfiles \\
+F2-11 & PCAP corrupto desde PowerShell & La redirección \texttt{>} reescribe el binario en UTF-16 & \texttt{tcpdump -w} dentro del contenedor \\
+F2-12 & \textit{Pool overlaps} al levantar la red & Subred 172.20.0.0/24 en el rango de otros proyectos & Subred 10.53.0.0/24 y verificación previa automática \\
+F2-13 & UE en \textit{Attaching} tras reiniciar la RAN & \texttt{compose restart} deja el ZMQ sin muestras & Recrear gNB y UE juntos \\
+F2-14 & Capturas invisibles en Windows & Repositorio en una unidad de Google Drive & Copia con \texttt{docker compose cp} y repositorio en disco local \\
+F2-15 & UE liberado tras el \textit{Security Mode Command} con NEA2 & srsUE 25.10 descifraba el NAS de 5G con la NAS COUNT de LTE & srsUE 26.10 (\texttt{06f0b1e23}) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Optimización de recursos}
+Una compilación de srsRAN se interrumpió por falta de memoria con la red levantada. Se identificaron tres causas: el \textit{buffer pool} de 2~GiB del gNB, \texttt{make} con 8 trabajos simultáneos y la compilación en paralelo del gNB y del UE. Las medidas tomadas fueron:
+\begin{itemize}
+  \item reducir el \textit{buffer pool} a 256~MiB;
+  \item calcular el número de trabajos de \texttt{make} según la memoria disponible, a unos 1.5~GiB por trabajo;
+  \item compilar el gNB y el UE en serie, deteniéndolos antes;
+  \item usar \texttt{ccache};
+  \item compilar el gNB una sola vez, con ZMQ y UHD;
+  \item compilar del UE solo el binario y el controlador de radio que se usan.
+\end{itemize}
+Con estos cambios el gNB compiló en unos 16~min con dos trabajos, el UE completo en 193~s, y la red pasó de unos 3.6 a 1.85~GB.
+
+\subsection{Preparación de la Fase 3}
+Sin hardware se dejaron listos y verificados:
+\begin{itemize}
+  \item el servicio \texttt{gnb-sdr} con la misma imagen del gNB;
+  \item dos plantillas para la USRP B210, en n3 FDD y en n78 TDD (20~MHz, 30~kHz, patrón de 10 slots con 6 DL + 8 símbolos y 3 UL), con sus parámetros comprobados contra el código del \textit{commit} fijado. Con ellas el gNB acepta la configuración completa y solo falla al no encontrar la radio;
+  \item el alta de la SIM física sin exponer K ni OPc;
+  \item la calculadora de presupuesto de enlace, con la fracción de tiempo TDD;
+  \item un plan de pruebas con criterios de aceptación, lista de verificación del hardware y riesgos.
+\end{itemize}
+El plan fija las pruebas conducidas, con atenuadores o caja de apantallamiento, y el PLMN de pruebas hasta contar con el permiso de MinTIC para emisiones al aire.
+
+%=====================================================================
+\section{Conclusiones}
+\label{sec:concl}
+
+\begin{enumerate}
+  \item El núcleo Open5GS quedó totalmente funcional y reproducible: once funciones de red, MongoDB aprovisionado con el perfil 5G del suscriptor (5G-AKA con Milenage, SST 1, 5QI 9) y seguridad NAS con cifrado 128-NEA2 e integridad 128-NIA2. Habilitar el cifrado requirió diagnosticar un defecto de descifrado del emulador y actualizarlo.
+  \item El gNB de srsRAN se vincula al núcleo por NGAP/SCTP ($18.7\pm7.0$~ms de NG Setup) y mantiene estable el túnel GTP-U: treinta minutos de tráfico sin cortes ni reinicios, con TEID coherentes entre NGAP y PFCP.
+  \item El análisis de las trazas del registro y de la sesión PDU, automatizado con \textit{tshark}, interpreta cada campo relevante (SUCI, RAND, AUTN, RES*, ABBA, algoritmos, TEID, reglas PDR/FAR/QER, IP) y mide cada procedimiento. El registro completo tarda $471.6\pm32.3$~ms, dominado por los pasos que cruzan la radio emulada. La PFCP es casi instantánea y cifrar RRC/PDCP no añade una demora medible.
+  \item Las mediciones con rigor estadístico dan un RTT de $31.9\pm0.9$~ms al UPF y caudales TCP de $48.6\pm1.4$ (DL) y $11.6\pm0.5$~Mbps (UL), con un máximo UDP DL de $56.3\pm1.2$~Mbps. El barrido de MCS muestra un caudal del 54--62\,\% de la cota teórica en todos los MCS, lo que atribuye la brecha a la sobrecarga de capa física y de planificación y no a la CPU. El UL lo limita el emulador srsUE.
+  \item La gestión técnica dejó trazabilidad completa: quince fallas resueltas con causa y corrección, decisiones justificadas, bitácora, pruebas unitarias e integración continua. La optimización de memoria redujo a la mitad el consumo de la red y estabilizó las mediciones.
+  \item \textbf{Trabajo futuro:} cuantificar la sobrecarga de capa física con el registro MAC del gNB, evidenciar el algoritmo AS negociado y, en la Fase 3, integrar la USRP B210 y el terminal comercial con la configuración y el plan ya preparados.
+\end{enumerate}
+
+%=====================================================================
+\begin{thebibliography}{00}
+\bibitem{ts23501} 3GPP, ``System architecture for the 5G System (5GS); Stage 2,'' TS 23.501.
+\bibitem{ts23502} 3GPP, ``Procedures for the 5G System (5GS); Stage 2,'' TS 23.502.
+\bibitem{ts24501} 3GPP, ``Non-Access-Stratum (NAS) protocol for 5G System (5GS); Stage 3,'' TS 24.501.
+\bibitem{ts38413} 3GPP, ``NG-RAN; NG Application Protocol (NGAP),'' TS 38.413.
+\bibitem{ts29244} 3GPP, ``Interface between the Control Plane and the User Plane nodes (PFCP),'' TS 29.244.
+\bibitem{ts29281} 3GPP, ``General Packet Radio System (GPRS) Tunnelling Protocol User Plane (GTPv1-U),'' TS 29.281.
+\bibitem{ts33501} 3GPP, ``Security architecture and procedures for 5G System,'' TS 33.501.
+\bibitem{ts38214} 3GPP, ``NR; Physical layer procedures for data,'' TS 38.214.
+\bibitem{ts38306} 3GPP, ``NR; User Equipment (UE) radio access capabilities,'' TS 38.306.
+\bibitem{milenage} 3GPP, ``Specification of the MILENAGE algorithm set,'' TS 35.206.
+\bibitem{rfc4960} R. Stewart, ``Stream Control Transmission Protocol,'' IETF RFC 4960, 2007.
+\bibitem{srsran} Software Radio Systems, ``srsRAN Project documentation.'' [Online]. Available: \url{https://docs.srsran.com}
+\bibitem{srsran4g} Software Radio Systems, ``srsRAN 4G (srsUE),'' release 26.10. [Online]. Available: \url{https://github.com/srsran/srsRAN_4G}
+\bibitem{open5gs} Open5GS, ``Open5GS: Open source implementation of 5GC and EPC,'' v2.8.0. [Online]. Available: \url{https://open5gs.org}
+\bibitem{zeromq} ZeroMQ, ``ZeroMQ: distributed messaging.'' [Online]. Available: \url{https://zeromq.org}
+\bibitem{docker} Docker Inc., ``Docker Compose documentation.'' [Online]. Available: \url{https://docs.docker.com/compose/}
+\bibitem{wireshark} Wireshark Foundation, ``tshark: terminal-based Wireshark,'' v4.6. [Online]. Available: \url{https://www.wireshark.org}
+\bibitem{ley1581} Congreso de Colombia, ``Ley 1581 de 2012 (protección de datos personales).''
+\end{thebibliography}
+
+\end{document}

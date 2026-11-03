@@ -248,7 +248,7 @@ El detalle actualizado de lo hecho y lo pendiente está en [`BITACORA.md`](BITAC
 1. **Campaña de mediciones:** completa (P5–P10 y registro, srsUE 26.10 con NEA2; ver `BITACORA.md`, 2026-11-02). P8: el gNB aplica el MCS fijado y el caudal TCP DL va de 2,2 Mbit/s (MCS 0) a 47,8 Mbit/s (MCS 28), un 54–62 % de la cota de TS 38.306 en todos los MCS. P9: 30 min estables (0 cortes, pérdida 0,06 %, RTT medio 23,2 ms).
 2. **Análisis estadístico:** aplicado a la campaña definitiva (`estadistica.csv` y `graficas/` en su carpeta de `resultados/`). Resultados principales: RTT al UPF 31,9 ± 0,9 ms; TCP DL 48,6 ± 1,4 Mbit/s y UL 11,6 ± 0,5 Mbit/s; UDP DL máximo 56,3 ± 1,2 Mbit/s con saturación entre 40 y 50 Mbit/s ofrecidos (66 % de la cota de 85,1 Mbit/s de TS 38.306); registro completo en 471,6 ± 32,3 ms.
 3. **Análisis de protocolos:** `banco protocolos` ya extrae SUCI, RAND/AUTN/RES*, NEA/NIA, TEID N3 (contrastados entre NGAP y PFCP), IP del UE, PDR/FAR/QER, tiempos por procedimiento y un diagrama de secuencia Mermaid. Falta redactar la interpretación para el informe.
-4. **Informe de la Fase 2** (LaTeX, formato IEEE) con la bitácora de fallas F2-1 a F2-15.
+4. **Informe de la Fase 2:** redactado en [`docs/informe_fase2.tex`](docs/informe_fase2.tex) (IEEE, mismo formato que la Fase 1; PDF en [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf)). Pendiente: revisión del autor antes de la entrega.
 
 Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](docker/README.md).
 
@@ -274,5 +274,6 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 * [`docs/Enunciado.txt`](docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.
 * [`docs/SyC2ProyectoFinal.pdf`](docs/SyC2ProyectoFinal.pdf): Informe formal completo de la Fase 1 generado bajo formato IEEE Transactions.
 * [`docs/informe_fase1_corregido.tex`](docs/informe_fase1_corregido.tex): Código fuente en LaTeX del informe de la Fase 1 (compatible con compilación en Overleaf / pdfLaTeX).
+* [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf): Informe de la Fase 2 (IEEEtran, 8 páginas): despliegue contenerizado, núcleo y seguridad 5G, gNB, análisis de protocolos, resultados con IC 95 % y gestión técnica. Las figuras son TikZ/pgfplots con los datos dentro del `.tex`, así que compila en Overleaf sin archivos externos.
 * `docs/Rúbricas de Evaluación proyecto 5G (2).xlsx`: Matriz de evaluación académica y criterios ABET para las Fases 1, 2 y 3.
 
