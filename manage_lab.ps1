@@ -5,7 +5,7 @@
 #   Pruebas (banco de pruebas en Python, guarda resultados en .\resultados):
 #     .\manage_lab.ps1 test-ping | test-iperf | p7 | p8 | p9 | p10 | registro | campana  [opciones del banco]
 #     .\manage_lab.ps1 pcap [-Seconds 60] | pcap-registro [-Seconds 60]
-#   Fase 3 (SDR):   .\manage_lab.ps1 build-sdr | up-sdr   (gNB con USRP B210; ver docs/fase3_plan_pruebas.md)
+#   Fase 3 (SDR):   .\manage_lab.ps1 up-sdr   (gNB con USRP B210, misma imagen; ver docs/fase3_plan_pruebas.md)
 #   Análisis (paso 3, requiere matplotlib):  .\manage_lab.ps1 analisis [resultados\<carpeta>]
 #   Ejemplos:
 #     .\manage_lab.ps1 p7 --tasas 2,5,10,20 --sentidos dl
@@ -16,7 +16,7 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
                  "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean",
-                 "build-sdr", "up-sdr", "registro")]
+                 "up-sdr", "registro")]
     [string]$Action = "up",
     [int]$Seconds = 60,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -83,7 +83,15 @@ switch ($Action) {
         Write-Host ">>> Verifique el estado con: .\manage_lab.ps1 status" -ForegroundColor Green
     }
     "build" {
+        # La compilación de srsRAN necesita varios GB: se detienen antes gNB y UE (unos 1-3 GB con la
+        # red levantada). Las imágenes nuevas se aplican después con restart.
+        Write-Host ">>> Deteniendo gNB y UE para liberar memoria durante la compilación..." -ForegroundColor Yellow
+        & $DockerBin compose stop gnb ue
         Write-Host ">>> Reconstruyendo imágenes (aplica cambios en Dockerfiles, plantillas y entrypoints)..." -ForegroundColor Cyan
+        # gNB y UE compilan srsRAN: uno tras otro (compose build los haría en paralelo y duplicaría
+        # la memoria); después el resto, ya con gNB y UE en caché.
+        & $DockerBin compose build gnb
+        & $DockerBin compose build ue
         & $DockerBin compose build
         Write-Host ">>> Aplique las imágenes nuevas con: .\manage_lab.ps1 restart" -ForegroundColor Green
     }
@@ -91,11 +99,6 @@ switch ($Action) {
         Write-Host ">>> Deteniendo red 5G..." -ForegroundColor Yellow
         # --profile sdr: detiene también el gNB con SDR si estaba levantado
         & $DockerBin compose --profile sdr down
-    }
-    "build-sdr" {
-        # Compila srsRAN Project con UHD (imagen red5g-gnb-sdr); no toca la imagen ZMQ
-        Write-Host ">>> Construyendo el gNB con soporte UHD (USRP B210)..." -ForegroundColor Cyan
-        & $DockerBin compose --profile sdr build gnb-sdr
     }
     "up-sdr" {
         # Fase 3: Core + gNB con SDR, sin el gNB ni el UE de ZMQ. Plantilla: GNB_CONFIG en .env

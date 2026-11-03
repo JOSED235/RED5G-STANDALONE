@@ -23,7 +23,8 @@ en la configuración, los logs o las capturas: no supongas.
 | MCS | Tabla `qam64` en PDSCH/PUSCH; rango `PDSCH/PUSCH_MIN/MAX_MCS` (0..28) | `.env` |
 | Seguridad NAS | Integridad NIA2 y cifrado NEA2 primero (verificado en traza el 2026-11-02) | `.env` |
 | Seguridad AS (gNB) | `cu_cp.security.nea_pref_list` / `nia_pref_list` (por defecto de srsRAN: nea0 primero); aquí `GNB_NEA_PREF_LIST=nea2,...` | `.env`, plantillas del gNB |
-| Fase 3 | `gnb-sdr` (perfil `sdr`, UHD), `gnb_b210_n3.yaml` / `gnb_b210_n78.yaml` (TDD 10 slots: 6 DL + 8 símb., 3 UL), `SDR_*` y `SIM_*` en `.env` | `docs/fase3_plan_pruebas.md` |
+| Memoria del gNB | `buffer_pool.nof_segments` (srsRAN reserva 2 GiB por defecto); aquí `GNB_BUFFER_POOL_SEGMENTS=131072` (256 MiB) | `.env`, plantillas del gNB |
+| Fase 3 | `gnb-sdr` (perfil `sdr`, misma imagen `red5g-gnb` con ZMQ + UHD), `gnb_b210_n3.yaml` / `gnb_b210_n78.yaml` (TDD 10 slots: 6 DL + 8 símb., 3 UL), `SDR_*` y `SIM_*` en `.env` | `docs/fase3_plan_pruebas.md` |
 | Red Docker | `10.53.0.0/24`: MongoDB .2, Core .3, gNB .4, UE .5, WebUI .6 | `.env` |
 | UE / N6 | Subred 10.45.0.0/16, pasarela 10.45.0.1 (`ogstun`) con NAT MASQUERADE | yaml por defecto SMF/UPF |
 

@@ -36,6 +36,8 @@ convención o parámetro).
 - Cambiar `.env` solo requiere `restart`; cambiar una plantilla, un entrypoint o un Dockerfile
   requiere `build` (las plantillas se copian en la imagen). `up` no reconstruye: solo construye
   las imágenes que falten, para no recompilar srsRAN si Docker descarta su caché.
+- `build` detiene gNB y UE y compila primero el gNB y luego el UE (nunca en paralelo): srsRAN
+  necesita varios GB. `BUILD_JOBS` en `.env` limita `make -j`; no se mide mientras se compila.
 - Antes de levantar la red en un equipo nuevo: `python -m banco verificar` (`up` la ejecuta).
 - Las pruebas se implementan una sola vez en el banco de Python (`banco/`, solo biblioteca
   estándar); `manage_lab.ps1` y `Makefile` solo lo invocan.

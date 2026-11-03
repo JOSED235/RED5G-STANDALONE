@@ -100,6 +100,8 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         comun: ./docker/comun
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-}
     image: red5g-gnb:latest
     container_name: red5g-gnb
     restart: unless-stopped
@@ -116,6 +118,7 @@ services:
       UE_IP: ${UE_IP}
       GNB_NEA_PREF_LIST: ${GNB_NEA_PREF_LIST:-nea2,nea1,nea3,nea0}
       GNB_NIA_PREF_LIST: ${GNB_NIA_PREF_LIST:-nia2,nia1,nia3}
+      GNB_BUFFER_POOL_SEGMENTS: ${GNB_BUFFER_POOL_SEGMENTS:-131072}
       PDSCH_MIN_MCS: ${PDSCH_MIN_MCS:-0}
       PDSCH_MAX_MCS: ${PDSCH_MAX_MCS:-28}
       PUSCH_MIN_MCS: ${PUSCH_MIN_MCS:-0}
@@ -127,17 +130,11 @@ services:
         ipv4_address: ${GNB_IP}
 
   # Fase 3: gNB con USRP B210 (UHD). Solo arranca con el perfil 'sdr' (manage_lab.ps1 up-sdr /
-  # make up-sdr), que no levanta el gNB ni el UE de ZMQ. Misma receta que 'gnb' con ENABLE_UHD=ON.
+  # make up-sdr), que no levanta el gNB ni el UE de ZMQ. Usa la misma imagen que 'gnb' (el binario
+  # trae ZMQ y UHD; la plantilla elige el driver), así que no se compila aparte.
   gnb-sdr:
     profiles: ["sdr"]
-    build:
-      context: ./docker/gnb
-      dockerfile: Dockerfile
-      additional_contexts:
-        comun: ./docker/comun
-      args:
-        ENABLE_UHD: "ON"
-    image: red5g-gnb-sdr:latest
+    image: red5g-gnb:latest
     container_name: red5g-gnb-sdr
     restart: "no"   # con hardware real, un fallo de RF se revisa a mano antes de reintentar
     tty: true
@@ -162,6 +159,7 @@ services:
       SDR_TX_GAIN: ${SDR_TX_GAIN:-50}
       SDR_RX_GAIN: ${SDR_RX_GAIN:-40}
       PCI: ${PCI:-1}
+      GNB_BUFFER_POOL_SEGMENTS: ${GNB_BUFFER_POOL_SEGMENTS:-131072}
       GNB_NEA_PREF_LIST: ${GNB_NEA_PREF_LIST:-nea2,nea1,nea3,nea0}
       GNB_NIA_PREF_LIST: ${GNB_NIA_PREF_LIST:-nia2,nia1,nia3}
       PDSCH_MIN_MCS: ${PDSCH_MIN_MCS:-0}
@@ -178,6 +176,8 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         comun: ./docker/comun
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-}
     image: red5g-ue:latest
     container_name: red5g-ue
     restart: unless-stopped

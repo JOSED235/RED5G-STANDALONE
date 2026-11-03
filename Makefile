@@ -1,6 +1,6 @@
 .PHONY: verificar up build down restart restart-ran logs logs-gnb logs-ue logs-core ps status \
         test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro analisis test-banco clean \
-        build-sdr up-sdr registro
+        up-sdr registro
 
 # Intérprete del banco de pruebas y opciones extra, p. ej.: make p7 ARGS="--tasas 2,5,10"
 PYTHON ?= python3
@@ -19,17 +19,18 @@ verificar: .env
 up: verificar
 	docker compose up -d
 
-# Reconstruir tras cambiar Dockerfiles, plantillas o entrypoints
+# Reconstruir tras cambiar Dockerfiles, plantillas o entrypoints. Se detienen antes gNB y UE para
+# dejar memoria a la compilación de srsRAN; aplique las imágenes nuevas con 'make restart'.
 build: .env
+	docker compose stop gnb ue
+	# gNB y UE uno tras otro: 'compose build' los compilaría en paralelo (doble memoria)
+	docker compose build gnb
+	docker compose build ue
 	docker compose build
 
 # --profile sdr: detiene también el gNB con SDR si estaba levantado
 down:
 	docker compose --profile sdr down
-
-# Fase 3: gNB con USRP B210 (imagen red5g-gnb-sdr, no toca la imagen ZMQ)
-build-sdr: .env
-	docker compose --profile sdr build gnb-sdr
 
 # Core + gNB con SDR, sin el gNB ni el UE de ZMQ (plantilla: GNB_CONFIG en .env)
 up-sdr: verificar

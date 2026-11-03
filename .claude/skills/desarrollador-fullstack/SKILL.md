@@ -69,9 +69,13 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   (`env_extra`); así K/OPc no quedan en la línea de comandos (ver `banco/suscriptores.py`).
 - **CI:** `.github/workflows/ci.yml` valida las plantillas **renderizadas** con `.env.example` (sin
   renderizar no son YAML válido); toda variable nueva de una plantilla debe estar en `.env.example`.
-- **Memoria al compilar:** con la red arriba (gNB 2,4 GB + UE 0,8 GB en una VM de 8 GB) un `build` de
-  srsRAN agota la memoria y Claude Code mata el proceso en segundo plano. Compila con la red
-  detenida; tampoco midas mientras compilas (el ZMQ es sensible a CPU y memoria).
+- **Memoria al compilar:** con la red arriba un `build` de srsRAN agotaba la memoria y Claude Code
+  mataba el proceso en segundo plano. `build` detiene gNB y UE; `docker/comun/trabajos_compilacion.sh`
+  elige `make -j` según la memoria de la VM (1,5 GiB por trabajo, `BUILD_JOBS` lo fuerza) y
+  `ccache` (cache mount de BuildKit) acelera las recompilaciones. La VM no ve la memoria libre de
+  Windows: con el navegador abierto use `BUILD_JOBS=3`. No midas mientras compilas.
+- **Una imagen para dos radios:** el gNB se compila con ZMQ y UHD; `gnb` y `gnb-sdr` comparten
+  `red5g-gnb` y la plantilla elige `device_driver`. El UE compila solo `srsue` y `srsran_rf_zmq`.
 - **Reiniciar la RAN = recrear:** usa `Compose.reiniciar_ran()` (sin esperar) o `recrear_ran()` (espera la
   sesión PDU). Nunca `docker compose restart gnb ue`: deja el ZMQ sin muestras (F2-13).
 - **Repositorio en Google Drive (`G:\`):** lo que un contenedor escribe en un montaje (`./capturas`) puede no

@@ -69,3 +69,9 @@ log:
 
 metrics:
   autostart_stdout_metrics: true
+
+# Memoria del gNB: el buffer pool se reserva entero al arrancar. Por defecto srsRAN Project usa
+# 1048576 segmentos x 2048 B = 2 GiB (buffer_pool_appconfig.h, commit 4bf1543936), que con un UE
+# es casi todo el consumo del contenedor. GNB_BUFFER_POOL_SEGMENTS en .env (131072 = 256 MiB).
+buffer_pool:
+  nof_segments: ${GNB_BUFFER_POOL_SEGMENTS}

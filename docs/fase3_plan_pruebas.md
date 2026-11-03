@@ -52,8 +52,8 @@ la hoja de datos y empiece con **más** atenuación y ganancia de TX baja (`SDR_
 
 ## 3. Procedimiento paso a paso
 
-1. **Imagen con UHD** (una vez por equipo; compila srsRAN Project con UHD, 20–40 min):
-   `.\manage_lab.ps1 build-sdr` (o `make build-sdr`). No modifica la imagen ZMQ de la Fase 2.
+1. **Imagen con UHD:** la imagen del gNB (`red5g-gnb`) ya trae UHD junto a ZMQ; no hay que
+   compilar nada más que el `build` normal.
 2. **Detectar la B210:**
    - Linux nativo: conectar por USB 3.0 y ejecutar
      `docker compose --profile sdr run --rm --entrypoint uhd_find_devices gnb-sdr`.
@@ -80,7 +80,7 @@ la hoja de datos y empiece con **más** atenuación y ganancia de TX baja (`SDR_
 
 | ID | Prueba | Cómo | Criterio de aceptación |
 | :- | :--- | :--- | :--- |
-| F3-1 | Detección del SDR | `uhd_find_devices` / `uhd_usrp_probe` en la imagen `red5g-gnb-sdr` | Aparece la B210 con su número de serie y carga la FPGA |
+| F3-1 | Detección del SDR | `uhd_find_devices` / `uhd_usrp_probe` en la imagen `red5g-gnb` (servicio `gnb-sdr`) | Aparece la B210 con su número de serie y carga la FPGA |
 | F3-2 | Arranque de la celda | `up-sdr` y log del gNB | NG Setup exitoso con el AMF; sin `U`/`O`/`L` persistentes durante 5 min |
 | F3-3 | Visibilidad de la celda | Búsqueda manual de redes en el teléfono | Aparece la red 001/01 |
 | F3-4 | Registro y seguridad | `pcap-registro` + `banco protocolos` | Registration Accept; SUCI con el MSIN de la SIM; Security Mode Command con NEA2 + NIA2; sesión PDU con IP 10.45.0.x |
@@ -109,7 +109,7 @@ recogiendo la tabla de métricas del gNB, que es lo que da MCS, CQI, SNR y BLER.
 | Listo y verificado sin hardware | Pendiente de verificar con hardware |
 | :--- | :--- |
 | Plantillas `gnb_b210_n3.yaml` y `gnb_b210_n78.yaml` con parámetros comprobados contra el código del commit `4bf1543936` (claves `ru_sdr`, patrón TDD explícito) | Ganancias reales, potencia de salida, ARFCN que acepte el teléfono |
-| Imagen `red5g-gnb-sdr` (perfil `sdr` de Compose, `build-sdr` / `up-sdr`) | Acceso USB desde el contenedor (en particular con Docker Desktop + usbipd) |
+| Imagen `red5g-gnb` con ZMQ y UHD (servicio `gnb-sdr`, perfil `sdr`, `up-sdr`) | Acceso USB desde el contenedor (en particular con Docker Desktop + usbipd) |
 | Cifrado NAS NEA2 + NIA2 verificado con el srsUE 26.10 | Comportamiento con el terminal comercial |
 | Alta de la SIM (`banco suscriptor`), sin exponer K/OPc | La SIM real programada |
 | Calculadora de enlace con fracción TDD | Calibración con las hojas de datos (Ptx, NF, Prx máxima) |

@@ -22,7 +22,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Skills de Claude Code del proyecto (`.claude/skills/`) y documentación `.md` al día.
 - [ ] Primer `up` en el portátil menos potente (i5-8250U): `git pull`, `EQUIPO=` en `.env`, `verificar`, `up` (compila sus propias imágenes) y una `campana` corta para confirmar.
 - [x] Campaña definitiva `campana --pruebas ping,iperf,p7,p10 --corridas 5` con srsUE 26.10 y NEA2 (2026-11-02, `resultados/20261102_181151_campana_definitiva_nea2`).
-- [ ] P8 (MCS fijo) y P9 (30 min) en el mismo equipo, con memoria suficiente (no con la red y una compilación a la vez); repetir P7 DL 40–80 Mbit/s en esas condiciones.
+- [ ] P8 (MCS fijo) y P9 (30 min) en el mismo equipo, sin compilar a la vez; repetir P7 DL 40–80 Mbit/s en esas condiciones.
 - [x] Paso 3 (herramienta): `python -m banco estadistica` (IC 95 % t-Student, BLER agregada) y `python -m analisis.graficas` (2026-11-02).
 - [x] Paso 3 (aplicación): `analisis` sobre la campaña definitiva; figuras revisadas (2026-11-02).
 - [x] Paso 4 (herramienta): `python -m banco protocolos` con tshark (SUCI, 5G-AKA, NEA/NIA, TEID, IP, PDR/FAR/QER, tiempos y diagrama Mermaid) (2026-11-02).
@@ -39,7 +39,8 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 
 ### Fase 3 — Preparación por software (sin hardware)
 - [x] Paso 6 (sin hardware): plantillas `gnb_b210_n3.yaml` / `gnb_b210_n78.yaml`, servicio `gnb-sdr` (perfil `sdr`), `build-sdr` / `up-sdr` (2026-11-02).
-- [ ] Compilar `red5g-gnb-sdr` (se cortó por falta de memoria) con la red detenida y validar las plantillas sin hardware.
+- [x] Imagen única del gNB con ZMQ + UHD y plantillas B210 validadas sin hardware (2026-11-02).
+- [x] Memoria del gNB 2,44 GB → 0,69 GB (`GNB_BUFFER_POOL_SEGMENTS`) y compilación acotada en memoria (2026-11-02).
 - [ ] Con el terminal comercial, verificar en la traza el cifrado NAS NEA2 (ya es el valor por defecto) y la seguridad AS.
 - [x] Alta de la SIM física: `python -m banco suscriptor` (SIM_* en `.env`, claves fuera de la línea de comandos) (2026-11-02).
 - [x] Calculadora de presupuesto de enlace: `python -m banco enlace` (2026-11-02).
@@ -588,3 +589,70 @@ Lectura técnica:
 - Prueba temporal de la seguridad AS negociada (log `sec_level: debug` o PCAP MAC).
 - P8 (MCS fijo) y P9 (30 min) en condiciones de memoria normales; repetir P7 DL 40–80.
 - Paso 5: informe de la Fase 2 con las tablas y figuras de esta entrada.
+
+---
+
+## 2026-11-02 — Optimización de memoria y tiempo: buffer pool del gNB, imagen única y compilación
+
+**Objetivo:** la compilación de `gnb-sdr` se cortó por falta de memoria (entrada anterior). Se
+pidió volver a intentarlo y optimizar para que compile más rápido y consuma menos RAM.
+
+**Diagnóstico:**
+- **Ejecución:** el gNB ocupaba 2,44 GB con un solo UE. En el código del commit `4bf1543936`,
+  `apps/services/buffer_pool/buffer_pool_appconfig.h` reserva por defecto 1048576 segmentos y
+  `lib/support/byte_buffer.cpp` usa 2048 B por segmento: un *buffer pool* de 2 GiB que se reserva
+  entero al arrancar.
+- **Compilación:** `make -j$(nproc)` (8 trabajos) más la red levantada en una VM de WSL2 de 8 GB;
+  además `docker compose build gnb ue` compila **los dos en paralelo**. La presión real está en
+  Windows (15,6 GB, Memory Compression 2–3 GB, navegador): la VM no la ve. Claude Code detiene
+  los procesos en segundo plano cuando Windows se queda sin memoria y la sesión está inactiva.
+- **Trabajo repetido:** `gnb-sdr` volvía a compilar srsRAN Project entero solo para añadir UHD, y el
+  UE compilaba todo srsRAN_4G (eNB, EPC y pruebas) aunque la imagen solo usa `srsue`.
+
+**Cambios realizados:**
+- Plantillas del gNB (las tres): `buffer_pool.nof_segments: ${GNB_BUFFER_POOL_SEGMENTS}`;
+  `.env.example` y Compose con `GNB_BUFFER_POOL_SEGMENTS=131072` (256 MiB).
+- `docker/gnb/Dockerfile`: `ENABLE_UHD=ON` por defecto (el binario trae ZMQ y UHD y la plantilla
+  elige `device_driver`), así `gnb` y `gnb-sdr` comparten la imagen `red5g-gnb`; `gnb-sdr` ya no
+  tiene `build` propio y desaparecen `build-sdr` (ps1, make y documentación). `libboost-dev` con
+  UHD: `libuhd-dev` con `--no-install-recommends` no trae las cabeceras de Boost y la compilación
+  fallaba (`boost/config.hpp: No such file or directory`); el intento anterior de `gnb-sdr` nunca
+  había llegado a esa etapa.
+- `docker/comun/trabajos_compilacion.sh` (nuevo, compartido por gNB y UE): `make -j` =
+  min(núcleos, memoria disponible / 1,5 GiB) o `BUILD_JOBS` (`.env`, build arg en Compose).
+- `ccache` con *cache mount* de BuildKit (`/ccache`, ids `ccache-srsran-project` y
+  `ccache-srsran-4g`) en ambos Dockerfiles.
+- `docker/ue/Dockerfile`: `-DENABLE_SRSENB=OFF -DENABLE_SRSEPC=OFF` y `make srsue srsran_rf_zmq`
+  (sin las pruebas); se copian `srsue` y `libsrsran_rf*.so*` en lugar de `make install`.
+- `manage_lab.ps1` / `Makefile`, acción `build`: detiene gNB y UE y compila `gnb`, luego `ue`, luego
+  el resto (nunca los dos srsRAN a la vez).
+- Documentación: README, `docker/README.md`, `docs/fase3_plan_pruebas.md`, skills y `CLAUDE.md`.
+
+**Verificación:**
+- Compilación del gNB (ZMQ + UHD) con `BUILD_JOBS=2`, la red detenida y monitor de memoria cada
+  3 min: 15 min 42 s, 36 % de aciertos de `ccache` (objetos del intento paralelo cancelado);
+  Windows nunca bajó de unos 390 MB libres, `vmmemWSL` ≤ 3,5 GB. Imagen de 384 MB (195 MB sin UHD);
+  `ldd` enlaza UHD y trae las imágenes FPGA B2xx.
+- Imagen del UE (solo `srsue` y plugin ZMQ, 26.10.0): 222 MB frente a 266 MB. La terminó BuildKit
+  dentro del intento paralelo cancelado; el reintento en serie lo detuvo Claude Code por memoria
+  a los 40 s (en `git clone`, con Windows al límite por otros programas) y no se relanzó. El
+  Dockerfile del UE no cambió entre ambos, así que la imagen corresponde a él. **No medido:** el
+  tiempo de compilación del UE con la receta nueva.
+- **Plantillas B210 sin hardware:** `docker compose --profile sdr run --rm --no-deps -e
+  GNB_CONFIG=... gnb-sdr` con `gnb_b210_n3.yaml` y `gnb_b210_n78.yaml`: el gNB acepta la
+  configuración completa (TDD, buffer pool, seguridad AS), lista `Available radio types: uhd and
+  zmq` y falla solo al abrir la radio (`LookupError: KeyError: No devices found ... type: b200`).
+- **Memoria en ejecución:** gNB 2,44 GB → 680–694 MB (−72 %); red completa de unos 3,6 GB a unos
+  1,85 GB; UE con sesión PDU en 5 s.
+- **Sin regresión de caudal** (`resultados/*_iperf_pool_256mib`, 3 corridas): TCP DL
+  49,74 ± 1,17 Mbit/s (campaña: 48,55 ± 1,38) y UL 11,96 ± 1,47 (11,61 ± 0,49); ningún aviso del
+  pool en el log del gNB.
+- `docker compose config` con y sin perfil, `yamllint` de plantillas renderizadas, `shellcheck`
+  (incluye `trabajos_compilacion.sh`) y parser de PowerShell: OK. 40 pruebas unitarias OK.
+
+**Pendiente / siguientes pasos:**
+- P8 y P9 y repetir P7 DL 40–80 (ahora con unos 1,8 GB menos de memoria ocupada).
+- Medir el tiempo de compilación del UE con la receta nueva en una próxima reconstrucción.
+- Para quien compile en Windows con poca RAM: `.wslconfig` con `autoMemoryReclaim=gradual`
+  (sección `[experimental]`) ayuda a que la VM devuelva la caché a Windows; es configuración del
+  equipo, no del repositorio, y no se ha probado aquí.
