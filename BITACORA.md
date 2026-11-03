@@ -21,30 +21,37 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Portabilidad entre equipos: subred por defecto 10.53.0.0/24 y `verificar` (chequeo previo).
 - [x] Skills de Claude Code del proyecto (`.claude/skills/`) y documentación `.md` al día.
 - [ ] Primer `up` en el portátil menos potente (i5-8250U): `git pull`, `EQUIPO=` en `.env`, `verificar`, `up` (compila sus propias imágenes) y una `campana` corta para confirmar.
-- [ ] Ejecutar la campaña completa en **un mismo equipo** (ya con el srsUE 26.10 y NEA2): `campana --pruebas ping,iperf,p7,p10 --corridas 5`, más `p8` y `p9` (30 min).
+- [x] Campaña definitiva `campana --pruebas ping,iperf,p7,p10 --corridas 5` con srsUE 26.10 y NEA2 (2026-11-02, `resultados/20261102_181151_campana_definitiva_nea2`).
+- [ ] P8 (MCS fijo) y P9 (30 min) en el mismo equipo, con memoria suficiente (no con la red y una compilación a la vez); repetir P7 DL 40–80 Mbit/s en esas condiciones.
 - [x] Paso 3 (herramienta): `python -m banco estadistica` (IC 95 % t-Student, BLER agregada) y `python -m analisis.graficas` (2026-11-02).
-- [ ] Paso 3 (aplicación): correr `analisis` sobre la campaña definitiva y revisar las figuras para el informe.
-- [ ] Paso 4: análisis de protocolos semiautomático con `tshark` (SUCI, RAND/AUTN, RES*, NIA/NEA, TEID, IP, PDR/FAR, tiempos de cada procedimiento) y diagrama de secuencia.
+- [x] Paso 3 (aplicación): `analisis` sobre la campaña definitiva; figuras revisadas (2026-11-02).
+- [x] Paso 4 (herramienta): `python -m banco protocolos` con tshark (SUCI, 5G-AKA, NEA/NIA, TEID, IP, PDR/FAR/QER, tiempos y diagrama Mermaid) (2026-11-02).
+- [x] Paso 4 (aplicación): prueba `registro` con 5 corridas (AS nea2 y nea0) e IC 95 % de cada procedimiento (2026-11-02).
+- [ ] Interpretación del paso 4 para el informe (tiempos por procedimiento frente a TS 23.502).
 - [ ] Paso 5: informe de la Fase 2 en LaTeX (IEEE), alimentado por las tablas y figuras de los pasos 3 y 4.
 - [x] Cifrado NAS con srsUE: srsUE 26.10 (`06f0b1e23`) registra con NEA2 + NIA2, verificado en traza (2026-11-02, F2-15).
-- [ ] Probar `docker compose build ue` con el nuevo valor por defecto del Dockerfile cuando Docker Desktop vuelva a resolver Docker Hub (la imagen en uso se compiló con `--build-arg` y el mismo commit).
+- [x] `docker compose build ue` con el valor por defecto del Dockerfile (2026-11-02).
 - [ ] Investigar la causa de F2-13 (`compose restart` deja el ZMQ sin muestras); por ahora se recrea.
-- [ ] Evaluar seguridad AS en el gNB (`cu_cp.security`, NEA2/NIA2 en RRC/PDCP) y su compatibilidad con srsUE.
+- [x] Seguridad AS parametrizada (`GNB_NEA_PREF_LIST`, nea2 primero); el srsUE registra y pasa tráfico (2026-11-02).
+- [ ] Evidenciar el algoritmo AS negociado (log `debug` temporal del logger de seguridad o PCAP MAC del gNB).
 - [x] Revisar el cambio sin commit en `docs/informe_fase1_corregido.tex` (resuelto en `fe6cea5`).
 - [x] Skill `ingeniero-telecom-5g`: sección de RDS/SDN y NFV (2026-11-02).
 
 ### Fase 3 — Preparación por software (sin hardware)
-- [ ] Paso 6: `gnb_b210.yaml` (n3 FDD y n78 TDD), imagen con UHD como perfil `sdr` de Compose.
-- [ ] Con el terminal comercial, cambiar `AMF_CIPHERING_ORDER=NEA2, NEA1, NEA0` y verificar en la traza el cifrado NAS.
-- [ ] Script de alta de suscriptores reales (IMSI/K/OPc de la SIM física, fuera de git).
+- [x] Paso 6 (sin hardware): plantillas `gnb_b210_n3.yaml` / `gnb_b210_n78.yaml`, servicio `gnb-sdr` (perfil `sdr`), `build-sdr` / `up-sdr` (2026-11-02).
+- [ ] Compilar `red5g-gnb-sdr` (se cortó por falta de memoria) con la red detenida y validar las plantillas sin hardware.
+- [ ] Con el terminal comercial, verificar en la traza el cifrado NAS NEA2 (ya es el valor por defecto) y la seguridad AS.
+- [x] Alta de la SIM física: `python -m banco suscriptor` (SIM_* en `.env`, claves fuera de la línea de comandos) (2026-11-02).
 - [x] Calculadora de presupuesto de enlace: `python -m banco enlace` (2026-11-02).
 - [ ] Calibrar la calculadora con el hardware real: Ptx, NF y potencia máxima de entrada del SDR y del teléfono según sus hojas de datos.
-- [ ] Plan de pruebas de la Fase 3 y lista de verificación de hardware (teléfono con SA en n3/n78, USB en WSL2 con `usbipd-win` o Linux nativo).
+- [x] Plan de pruebas de la Fase 3 y lista de verificación de hardware: `docs/fase3_plan_pruebas.md` (2026-11-02).
+- [ ] Adaptar el banco a las mediciones con teléfono (P5–P10 hoy miden desde el contenedor `ue`).
 
 ### Calidad
-- [ ] CI en GitHub Actions: `shellcheck`, `yamllint`, `docker compose config`, pruebas unitarias del banco.
-- [ ] Borrar `.git_roto_20261029/` (respaldo del `.git` dañado por OneDrive) cuando se confirme que el repositorio funciona bien.
-- [ ] Sacar el repositorio de la unidad en la nube (`G:\` es Google Drive): F2-14 impide ver en Windows lo que los contenedores escriben en `capturas/`. Clonar en un disco local (p. ej. `C:\proyectos\RED5G-STANDALONE`).
+- [x] CI en GitHub Actions (`.github/workflows/ci.yml`), simulada en local (2026-11-02).
+- [ ] Ver la primera ejecución de la CI en GitHub tras el próximo push.
+- [ ] Borrar `.git_roto_20261029/` (respaldo del `.git` dañado por OneDrive, solo en la copia de `G:`) cuando se confirme que el repositorio funciona bien.
+- [x] Repositorio trasladado a disco local: `C:\Users\Fa1097la\Proyectos\RED5G-STANDALONE` (2026-11-02). La copia de `G:\Mi unidad\...` queda solo como respaldo; no trabajar en ella.
 - [ ] Las carpetas `resultados/20261028_224037_ping_validacion` a `..._224219_p7_validacion` tienen datos anteriores a la corrección de iperf3 `-O` (P7 UL con caudal negativo): no usarlas en el informe.
 
 ---
@@ -408,3 +415,176 @@ entradas van en orden cronológico, no al revés.
 **Pendiente / siguientes pasos:**
 - Los de "Pendientes vigentes" (campaña completa con NEA2, `analisis` sobre ella, sacar el repo
   de Google Drive, seguridad AS en el gNB).
+
+---
+
+## 2026-11-02 — Traslado del repositorio a disco local y campaña definitiva
+
+**Objetivo:** evitar la falla F2-14 (los contenedores escriben en `./capturas` y Windows no lo ve
+porque `G:\` es Google Drive) y tener un lugar de trabajo estable antes de la campaña definitiva.
+
+**Cambios realizados:**
+- Clon del repositorio (commit `41f7bf0`) en `C:\Users\Fa1097la\Proyectos\RED5G-STANDALONE`, con `origin` apuntando a GitHub. Se
+  copiaron a mano los archivos no versionados: `.env`, `resultados/` y `capturas/`. No se usó el
+  Escritorio porque está redirigido a OneDrive
+  (`C:\Users\Fa1097la\OneDrive - Universidad Icesi\Escritorio`), que también es una unidad en la
+  nube y ya había dañado el `.git` (entrada del 2026-10-29).
+- La red se bajó en la copia de `G:` (`docker compose down`, sin `-v`: se conserva el volumen de
+  MongoDB) y se levantó en la copia local con las mismas imágenes; no hubo que recompilar.
+- La copia de `G:\Mi unidad\...` queda como respaldo y no se borró.
+
+**Verificación:** `python -m banco verificar` sin avisos; UE con sesión PDU en 10 s; el montaje
+apunta a `C:\Users\Fa1097la\Proyectos\RED5G-STANDALONE\capturas`; `pcap --registro` dejó en el host una traza de 86,9 KiB, y `ue.log` y
+`gnb.log` se actualizan en Windows (F2-14 no se reproduce en disco local).
+
+---
+
+## 2026-11-02 — Campaña definitiva (paso 3), paso 4 automatizado, Fase 3 preparada sin hardware y CI
+
+**Objetivo:** avanzar con todo lo que no necesita el hardware de la Fase 3: medir la campaña
+definitiva de la Fase 2 con el srsUE 26.10 y NEA2, automatizar el análisis de protocolos (paso 4),
+dejar lista la Fase 3 (gNB con USRP B210, SIM física, plan de pruebas) y añadir CI.
+
+### Campaña definitiva (`resultados/20261102_181151_campana_definitiva_nea2/`)
+
+`campana --pruebas ping,iperf,p7,p10 --corridas 5 --etiqueta definitiva_nea2`, en
+`portatil-i7-13620H` (Docker Desktop con 8 CPU), srsUE 26.10, NAS NEA2 + NIA2. Duró unos 23 min.
+Tabla y figuras: `estadistica.csv` y `graficas/` de esa carpeta (`analisis`). Media ± semiancho
+del IC 95 % (t-Student, 4 g.l.):
+
+| Prueba | Métrica | Resultado |
+| :--- | :--- | :--- |
+| P5 | RTT medio al UPF (N6) | 31,93 ± 0,89 ms (p95 40,5 ± 1,5 ms), 0 % de pérdida |
+| P5 | RTT medio a Internet (8.8.8.8) | 49,4 ± 4,5 ms (p95 62,3 ± 7,5 ms), 0 % de pérdida |
+| P6 | TCP DL | 48,55 ± 1,38 Mbit/s (MCS DL medio 27,7; BLER DL agregada 0 %) |
+| P6 | TCP UL | 11,61 ± 0,49 Mbit/s (MCS UL medio 6,4; SNR PUSCH 0,7 dB; BLER UL agregada 0,85 %) |
+| P7 | UDP DL | Sin saturación en el barrido: 40,19 ± 0,02 Mbit/s recibidos con 40 ofrecidos (pérdida 0,22 %) |
+| P7 | UDP UL | Punto de saturación (pérdida < 1 %) en 5 Mbit/s; máximo 10,5 ± 0,25 Mbit/s |
+| P10 | CPU con carga DL | Global 52,8 ± 2,0 %; núcleo más cargado 55,9 ± 2,9 %; gNB 241 ± 11 % y UE 168 ± 6 % de un núcleo; ningún núcleo saturado |
+
+Lectura técnica:
+- Cota teórica DL (TS 38.306, 106 PRB, MCS 28 qam64, 1 capa, OH 0,14): 85,1 Mbit/s. El TCP DL
+  medido es el 57 % de ella, con MCS ≈ 28 y BLER 0: el límite no es la radio emulada sino el
+  procesamiento en tiempo real del ZMQ (P10: el gNB usa unos 2,4 núcleos) y la dinámica de TCP
+  (unas 820 retransmisiones por corrida).
+- UL limitado por el srsUE (SNR de PUSCH ≈ 1 dB y MCS ≈ 6), igual que en la Fase 1: es una
+  limitación conocida del srsUE, no del Core.
+- El barrido P7 DL llegó solo hasta 40 Mbit/s, que el canal entregó casi sin pérdidas: **falta**
+  un barrido DL de 40 a 80 Mbit/s para encontrar el punto de saturación.
+
+### Paso 4 automatizado
+
+- `banco/protocolos.py` y `python -m banco protocolos [traza]` (requiere tshark). Sobre la traza
+  de `pcap --registro` escribe `<traza>_analisis.md` y `_tiempos.csv`: SUCI (formato, esquema,
+  indicador de enrutamiento, MSIN), RAND/AUTN/RES*/ABBA, NEA/NIA y mensajes NAS cifrados, TEID e IP
+  N3 del UPF y del gNB (tomados de NGAP y contrastados con PFCP), IP del UE, PDR/FAR/QER, duración
+  de cada procedimiento y diagrama de secuencia Mermaid. `pcap --registro` lo ejecuta solo.
+- `parsers.parse_tshark_campos` (función pura) y `banco/tests/test_protocolos.py` con la salida
+  real de tshark (`banco/tests/datos/tshark_registro_nea2.tsv`), que incluye tramas de la sesión
+  anterior al reinicio para comprobar que se ignoran.
+- Errores encontrados al probar con la traza real y corregidos: (1) tshark 4.6 llama a la columna
+  `_ws.col.info` (minúsculas); (2) el TEID del gNB salía de la Outer Header Creation de la
+  Session Establishment Request, que apunta al SMF (127.0.0.4, TEID 2), no al gNB: ahora cada
+  valor sale de la trama del hito que lo define; (3) con NEA0 la cabecera de seguridad 2 aparece
+  igual, así que las trazas viejas salían como "cifradas": ahora `nas_cifrados` es 0 si NEA = 0.
+- Resultado en la traza NEA2 (`capturas/fase2_traza_20261102_181110.pcap`): MSIN 0123456780 con
+  esquema nulo, NEA2/NIA2, 7 mensajes NAS cifrados, TEID UPF 0x0000c208 (10.53.0.3) y gNB
+  0x00000001 (10.53.0.4), iguales en NGAP y PFCP; registro hasta sesión PDU en 381,7 ms.
+- Nueva prueba `registro` (`python -m banco registro --corridas N`, `manage_lab.ps1 registro`,
+  `make registro`): recrea la RAN, captura, analiza y registra cada tiempo en `resumen.csv`, así
+  `estadistica`/`analisis` dan el IC 95 % de los tiempos de señalización. `captura()` ahora
+  devuelve la ruta del PCAP y `protocolos` separa `analizar_archivo` de `escribir_informe`.
+
+### Fase 3 preparada sin hardware
+
+- **gNB con UHD:** `docker/gnb/Dockerfile` con `ARG ENABLE_UHD` (una receta, dos imágenes:
+  `red5g-gnb` ZMQ y `red5g-gnb-sdr` con `libuhd4.1.0`, `uhd-host` y las imágenes FPGA de B2xx).
+  El entrypoint renderiza la plantilla de `GNB_CONFIG` (por defecto `gnb_zmq.yaml`). Servicio
+  `gnb-sdr` en Compose con el perfil `sdr` (IP 10.53.0.7, `privileged`, `/dev/bus/usb` montado como
+  volumen para que el contenedor arranque aunque no haya USB y muestre el error de UHD) y acciones
+  `build-sdr` / `up-sdr` en `manage_lab.ps1` y `Makefile`; `down` incluye el perfil.
+- **Plantillas** `gnb_b210_n3.yaml` (n3 FDD, 20 MHz, 15 kHz: la misma celda que ZMQ) y
+  `gnb_b210_n78.yaml` (n78 TDD, 20 MHz, 30 kHz), basadas en los ejemplos oficiales del commit
+  `4bf1543936`, sin los ajustes de PDCCH propios del srsUE. Claves comprobadas en el código de
+  ese commit: `ru_sdr.clock/sync/otw_format` (por defecto `default`) y `cell_cfg.tdd_ul_dl_cfg`.
+  Primero escribí en el comentario un patrón TDD por defecto de "7 DL y 2 UL" sin verificarlo; el
+  código dice 10 slots con 6 DL + 8 símbolos DL y 3 UL, así que se corrigió y se dejó explícito.
+- **Calculadora:** `--fraccion` escala el caudal por la fracción de tiempo del enlace (TDD n78:
+  0,657 DL, 0,30 UL). Prueba unitaria nueva.
+- **Seguridad AS del gNB:** srsRAN Project prefiere `nea0,nea2,nea1,nea3` por defecto (RRC y
+  PDCP sin cifrar en la radio aunque el NAS vaya cifrado). Se añadió `cu_cp.security` a las tres
+  plantillas con `GNB_NEA_PREF_LIST` (`nea2,nea1,nea3,nea0`) y `GNB_NIA_PREF_LIST`.
+- **SIM física:** `banco/suscriptores.py` y `python -m banco suscriptor` dan de alta en MongoDB la
+  SIM de `SIM_IMSI`/`SIM_K`/`SIM_OPC` (`.env`) reutilizando `init-mongo.js` (el esquema está en un
+  solo lugar). Valida formato y PLMN, imprime K/OPc enmascarados y los pasa al contenedor con
+  `-e VAR` sin valor (desde el entorno del proceso), así no quedan en la línea de comandos.
+  `VARIABLES_SECRETAS` incluye `SIM_K`, `SIM_OPC` y `SIM_IMSI` (ocultos en `metadata.json`).
+  `init-mongo.js`: `NumberLong("0")` en lugar de `NumberLong(0)` (aviso de mongosh).
+- **Plan de pruebas:** `docs/fase3_plan_pruebas.md` (hardware H1–H8, niveles de potencia con la
+  calculadora, procedimiento paso a paso, pruebas F3-1 a F3-8 con criterios, riesgos y qué queda
+  por verificar con el equipo).
+
+### Calidad
+
+- `.github/workflows/ci.yml`: pruebas unitarias (Python 3.10 y 3.12), `shellcheck`, `yamllint`
+  de Compose, del propio workflow y de las plantillas **renderizadas** con `.env.example` (sin
+  renderizar no son YAML válido; el renderizado falla si una plantilla usa una variable que
+  `.env.example` no define) y `docker compose config` con y sin el perfil `sdr`. Reglas en
+  `.yamllint`.
+- Comentario obsoleto de `amf.yaml` (decía que el cifrado prioriza NEA0) corregido; es solo un
+  comentario dentro de la imagen `red5g-open5gs` y se actualizará en su próxima reconstrucción.
+
+### Verificación
+
+- 40 pruebas unitarias OK (`python -m unittest discover -s banco/tests -t .`).
+- Simulación local de la CI en un venv del scratchpad: `yamllint` (solo avisos) y `shellcheck`
+  sin hallazgos; `docker compose config --quiet` OK con y sin `--profile sdr`. La CI en GitHub no
+  se ha ejecutado (no se ha hecho push).
+- `manage_lab.ps1`: 0 errores de sintaxis (parser de PowerShell). `make` no está instalado en este
+  equipo: los objetivos nuevos del `Makefile` no se probaron.
+- `banco suscriptor`: validación sin `.env` (3 errores, código 1) y alta real con un IMSI ficticio
+  (001010000000099): documento con la K, la OPc, el SST y el DNN correctos; repetir el alta deja un
+  solo documento; el documento de prueba se borró.
+- `banco protocolos` sobre la traza NEA2 y sobre dos trazas NEA0 del 27 y 28/10.
+
+### Después de la campaña: compilación, seguridad AS, registro y P7 DL extendido
+
+- **Compilación interrumpida por falta de memoria.** Se lanzaron en segundo plano `compose build
+  gnb ue` y `compose --profile sdr build gnb-sdr`. El gNB ZMQ (con las plantillas nuevas) y el UE
+  terminaron (`naming to red5g-gnb:latest done`; el UE confirma que el valor por defecto del
+  Dockerfile funciona con `compose build`). Claude Code detuvo el proceso durante la compilación
+  de `gnb-sdr`, en la etapa de `apt`, porque Windows se quedó sin memoria: 0,4–0,6 GB libres de
+  15,6 GB, con la VM de WSL2 limitada a 8 GB (`.wslconfig`), el gNB usando 2,4 GB y el UE 0,8 GB con
+  la red levantada, Opera unos 1,9 GB y `make -j8` de srsRAN en paralelo. **`red5g-gnb-sdr` no
+  existe todavía.** Recomendación: compilar con la red detenida (`down`) y el navegador cerrado.
+- **Seguridad AS con nea2:** con la imagen nueva el gNB renderiza
+  `nea_pref_list: nea2,nea1,nea3,nea0` y el UE registra y pasa tráfico (UE sano en 15 s). **No
+  verificado:** qué algoritmo AS se negoció. El gNB solo lo escribe en `debug` del logger de
+  seguridad ("Selected security algorithms integrity=NIA{} ciphering=NEA{}",
+  `ue_security_manager_impl.cpp`), que además puede volcar claves derivadas; queda para una prueba
+  temporal con la imagen reconstruida (o con un PCAP MAC del gNB).
+- **Prueba `registro`, 5 corridas, AS nea2** (`resultados/20261102_190117_registro_nea2_as_nea2`):
+  NG Setup 18,7 ± 7,0 ms; 5G-AKA 29,9 ± 5,0 ms; contexto inicial 76,2 ± 10,1 ms; PFCP 1,4 ± 0,8 ms;
+  recursos PDU (N2) 126,4 ± 35,4 ms; registro hasta contexto 196,0 ± 18,7 ms; registro hasta
+  sesión PDU 471,6 ± 32,3 ms; 7 mensajes NAS cifrados en todas.
+- **Misma prueba con AS nea0** (valor por defecto de srsRAN; `GNB_NEA_PREF_LIST=nea0,...` solo
+  en el entorno del proceso, `resultados/20261102_190520_registro_nea2_as_nea0`): registro hasta
+  sesión PDU 598 ± 133 ms; hasta contexto 306 ± 107 ms. Los IC se solapan con los de nea2: **no
+  hay una penalización medible** por cifrar RRC/PDCP; la variabilidad la domina la carga del
+  equipo.
+- **P7 DL de 40 a 80 Mbit/s** (`resultados/20261102_190957_p7_dl_40_80`, 5 corridas): saturación
+  entre 40 y 50 Mbit/s ofrecidos y caudal máximo 51,7 ± 6,4 Mbit/s (61 % de la cota de 85,1 Mbit/s)
+  con MCS 28 y BLER 0; la pérdida sube de 6 % (40 Mbit/s) a 37 % (80 Mbit/s). Ojo: el punto de
+  40 Mbit/s dio 6,0 ± 10,0 % de pérdida frente a 0,22 % en la campaña; esta serie se tomó con la
+  memoria del equipo al límite y su varianza es mayor. Conviene repetirla en las mismas
+  condiciones que la campaña.
+- `banco protocolos` / `registro`: cada recreación de la RAN asigna una IP nueva al UE
+  (10.45.0.5 → .9): el SMF no reutiliza la dirección de la sesión anterior en estas pruebas.
+
+**Pendiente / siguientes pasos:**
+- Cerrar programas, `.\manage_lab.ps1 down` y `.\manage_lab.ps1 build-sdr`; luego validar las
+  plantillas B210 sin hardware (el gNB debe aceptar la configuración y fallar solo al no encontrar
+  la USRP).
+- Prueba temporal de la seguridad AS negociada (log `sec_level: debug` o PCAP MAC).
+- P8 (MCS fijo) y P9 (30 min) en condiciones de memoria normales; repetir P7 DL 40–80.
+- Paso 5: informe de la Fase 2 con las tablas y figuras de esta entrada.

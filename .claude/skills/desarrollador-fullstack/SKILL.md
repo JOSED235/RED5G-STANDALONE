@@ -17,7 +17,7 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
 | `docker-compose.yml` | Servicios; valores `${VAR}` desde `.env`; anclas `x-identidad-red` y `x-suscriptor` |
 | `docker/<servicio>/` | Dockerfile, entrypoint y plantilla de configuración de cada contenedor |
 | `docker/comun/renderizar_plantilla.sh` | `envsubst` restringido a las variables definidas; aborta si queda `${...}` |
-| `banco/` | Banco de pruebas: `config`, `compose`, `parsers` (funciones puras), `resultados`, `pruebas`, `verificacion`, `enlace`, `estadistica` (IC 95 %), `__main__` (CLI) |
+| `banco/` | Banco de pruebas: `config`, `compose`, `parsers` (funciones puras), `resultados`, `pruebas`, `verificacion`, `enlace`, `estadistica` (IC 95 %), `protocolos` (tshark), `suscriptores` (SIM física), `__main__` (CLI) |
 | `analisis/` | Gráficas del informe (matplotlib, `requirements.txt` propio); consume `banco.estadistica` |
 | `banco/tests/` | `unittest` de la biblioteca estándar, con fixtures de salidas reales |
 | `manage_lab.ps1`, `Makefile` | Envolturas finas: ciclo de vida de Compose y llamadas al banco |
@@ -63,6 +63,15 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   10.53.0.0/24. `python -m banco verificar` detecta choques.
 - **iperf3 3.9 (Ubuntu 22.04):** no uses `-O` con UDP; el caudal UDP se calcula a partir de los
   paquetes recibidos.
+- **Heredocs de Git Bash con `\\`:** convierten `\\` en `\`; para scripts con barras invertidas (rutas de
+  Windows, continuaciones de Dockerfile) escribe el archivo con la herramienta de escritura, no con heredoc.
+- **Secretos hacia un contenedor:** `docker compose exec -e VAR` sin valor toma VAR del entorno del proceso
+  (`env_extra`); así K/OPc no quedan en la línea de comandos (ver `banco/suscriptores.py`).
+- **CI:** `.github/workflows/ci.yml` valida las plantillas **renderizadas** con `.env.example` (sin
+  renderizar no son YAML válido); toda variable nueva de una plantilla debe estar en `.env.example`.
+- **Memoria al compilar:** con la red arriba (gNB 2,4 GB + UE 0,8 GB en una VM de 8 GB) un `build` de
+  srsRAN agota la memoria y Claude Code mata el proceso en segundo plano. Compila con la red
+  detenida; tampoco midas mientras compilas (el ZMQ es sensible a CPU y memoria).
 - **Reiniciar la RAN = recrear:** usa `Compose.reiniciar_ran()` (sin esperar) o `recrear_ran()` (espera la
   sesión PDU). Nunca `docker compose restart gnb ue`: deja el ZMQ sin muestras (F2-13).
 - **Repositorio en Google Drive (`G:\`):** lo que un contenedor escribe en un montaje (`./capturas`) puede no

@@ -23,6 +23,12 @@ class PruebasEnlace(unittest.TestCase):
         # 106 PRB, µ = 0, MCS 28 (64QAM, 948/1024), OH 0,14: ≈ 85,1 Mbit/s
         self.assertAlmostEqual(enlace.caudal_mbps(28, 106, 15, 0.14), 85.06, places=1)
 
+    def test_fraccion_tdd_escala_el_caudal(self):
+        fdd = enlace.presupuesto(0, 0, 0, 60, 1, 0, 3489.42, 51, 30, 9, 0.14)
+        tdd = enlace.presupuesto(0, 0, 0, 60, 1, 0, 3489.42, 51, 30, 9, 0.14, fraccion=0.657)
+        self.assertEqual(fdd["mcs"], tdd["mcs"])
+        self.assertAlmostEqual(tdd["caudal_mbps"], 0.657 * fdd["caudal_mbps"])
+
     def test_presupuesto_conducido(self):
         r = enlace.presupuesto(0, 0, 0, 70, 1, 0, 1842.5, 106, 15, 7, 0.14)
         self.assertAlmostEqual(r["prx_dbm"], -71.0)

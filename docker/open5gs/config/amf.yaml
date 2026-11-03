@@ -44,8 +44,8 @@ amf:
       s_nssai:
         - sst: ${SST}
   # Orden de preferencia de algoritmos NAS (AMF_INTEGRITY_ORDER / AMF_CIPHERING_ORDER en .env).
-  # NIA2 se prioriza para la integridad. El cifrado prioriza NEA0 en la Fase 2 porque el srsUE
-  # no completa el registro con NEA1/2/3; en la Fase 3 (terminal comercial) se usa NEA2 primero.
+  # NIA2 y NEA2 (AES) primero. Requiere el srsUE 26.10: el 25.10 no completaba el registro con
+  # NEA1/2/3 (falla F2-15); con un srsUE anterior ponga NEA0 primero en .env.
   security:
     integrity_order : [ ${AMF_INTEGRITY_ORDER} ]
     ciphering_order : [ ${AMF_CIPHERING_ORDER} ]

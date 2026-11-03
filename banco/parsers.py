@@ -313,3 +313,30 @@ def parse_docker_stats(texto: str) -> list[dict]:
             "memoria_mib": memoria_mib(datos.get("MemUsage", "").split("/")[0]),
         })
     return filas
+
+
+TSHARK_AGREGADOR = "|"
+
+
+def parse_tshark_campos(texto: str) -> list[dict]:
+    """Salida de 'tshark -T fields -E header=y -E separator=/t -E occurrence=a -E aggregator=|'.
+
+    Devuelve una fila por trama: {campo: [valores]}; el campo vacío es una lista vacía. La
+    columna _ws.col.info no se parte (puede contener el agregador) y se guarda como texto.
+    """
+    lineas = [l for l in texto.splitlines() if l.strip()]
+    if not lineas:
+        return []
+    campos = lineas[0].split("\t")
+    filas = []
+    for linea in lineas[1:]:
+        valores = linea.split("\t")
+        valores += [""] * (len(campos) - len(valores))
+        fila = {}
+        for campo, valor in zip(campos, valores):
+            if campo == "_ws.col.info":
+                fila[campo] = valor
+            else:
+                fila[campo] = [v for v in valor.split(TSHARK_AGREGADOR) if v] if valor else []
+        filas.append(fila)
+    return filas

@@ -19,7 +19,7 @@ SERVICIOS = ("mongodb", "open5gs", "webui", "gnb", "ue")
 IMAGENES = ("red5g-open5gs", "red5g-webui", "red5g-gnb", "red5g-ue")
 
 # Nunca se copian a los metadatos de los resultados (Ley 1581 de 2012)
-VARIABLES_SECRETAS = {"UE_K", "UE_OPC"}
+VARIABLES_SECRETAS = {"UE_K", "UE_OPC", "SIM_K", "SIM_OPC", "SIM_IMSI"}
 
 
 def asegurar_env() -> bool:

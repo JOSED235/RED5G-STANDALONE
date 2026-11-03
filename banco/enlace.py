@@ -52,7 +52,8 @@ def caudal_mbps(mcs: int, n_prb: int, scs_khz: float, overhead: float, capas: in
 
 
 def presupuesto(ptx_dbm, gtx_dbi, grx_dbi, atenuacion_db, perdidas_db, distancia_m, frecuencia_mhz,
-                n_prb, scs_khz, nf_db, overhead, alfa=0.6) -> dict:
+                n_prb, scs_khz, nf_db, overhead, alfa=0.6, fraccion=1.0) -> dict:
+    """fraccion: parte del tiempo para el enlace evaluado (1 en FDD; en TDD, la fracción DL o UL)."""
     perdida_trayecto = fspl_db(distancia_m, frecuencia_mhz)
     prx = ptx_dbm + gtx_dbi + grx_dbi - atenuacion_db - perdidas_db - perdida_trayecto
     ruido = ruido_dbm(n_prb, scs_khz, nf_db)
@@ -68,20 +69,20 @@ def presupuesto(ptx_dbm, gtx_dbi, grx_dbi, atenuacion_db, perdidas_db, distancia
         "snr_db": snr,
         "shannon_mbps": ancho_hz * math.log2(1 + 10 ** (snr / 10)) / 1e6,
         "mcs": mcs,
-        "caudal_mbps": caudal_mbps(mcs, n_prb, scs_khz, overhead) if mcs is not None else 0.0,
+        "caudal_mbps": fraccion * caudal_mbps(mcs, n_prb, scs_khz, overhead) if mcs is not None else 0.0,
     }
 
 
 def calcular(args) -> int:
     print(f"Enlace a {args.frecuencia} MHz, {args.prb} PRB x {args.scs} kHz, NF {args.nf} dB, "
           f"Ptx {args.ptx} dBm, Gtx {args.gtx} dBi, Grx {args.grx} dBi, pérdidas {args.perdidas} dB, "
-          f"distancia {args.distancia} m")
+          f"distancia {args.distancia} m, fracción de tiempo {args.fraccion}")
     print(f"{'Aten.':>6} {'FSPL':>6} {'Prx':>7} {'RSRP':>7} {'Ruido':>7} {'SNR':>6} "
           f"{'Shannon':>8} {'MCS':>4} {'Caudal':>7}")
     print(f"{'dB':>6} {'dB':>6} {'dBm':>7} {'dBm':>7} {'dBm':>7} {'dB':>6} {'Mbit/s':>8} {'':>4} {'Mbit/s':>7}")
     for atenuacion in [float(x) for x in str(args.atenuacion).split(",") if x.strip()]:
         r = presupuesto(args.ptx, args.gtx, args.grx, atenuacion, args.perdidas, args.distancia,
-                        args.frecuencia, args.prb, args.scs, args.nf, args.overhead, args.alfa)
+                        args.frecuencia, args.prb, args.scs, args.nf, args.overhead, args.alfa, args.fraccion)
         mcs = "-" if r["mcs"] is None else str(r["mcs"])
         aviso = "  <- supera --prx-max: más atenuación" if r["prx_dbm"] > args.prx_max else ""
         print(f"{atenuacion:6.1f} {r['fspl_db']:6.1f} {r['prx_dbm']:7.1f} {r['rsrp_dbm']:7.1f} "

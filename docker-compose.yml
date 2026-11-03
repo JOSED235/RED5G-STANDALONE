@@ -114,6 +114,8 @@ services:
       OPEN5GS_IP: ${OPEN5GS_IP}
       GNB_IP: ${GNB_IP}
       UE_IP: ${UE_IP}
+      GNB_NEA_PREF_LIST: ${GNB_NEA_PREF_LIST:-nea2,nea1,nea3,nea0}
+      GNB_NIA_PREF_LIST: ${GNB_NIA_PREF_LIST:-nia2,nia1,nia3}
       PDSCH_MIN_MCS: ${PDSCH_MIN_MCS:-0}
       PDSCH_MAX_MCS: ${PDSCH_MAX_MCS:-28}
       PUSCH_MIN_MCS: ${PUSCH_MIN_MCS:-0}
@@ -123,6 +125,52 @@ services:
     networks:
       red5g_net:
         ipv4_address: ${GNB_IP}
+
+  # Fase 3: gNB con USRP B210 (UHD). Solo arranca con el perfil 'sdr' (manage_lab.ps1 up-sdr /
+  # make up-sdr), que no levanta el gNB ni el UE de ZMQ. Misma receta que 'gnb' con ENABLE_UHD=ON.
+  gnb-sdr:
+    profiles: ["sdr"]
+    build:
+      context: ./docker/gnb
+      dockerfile: Dockerfile
+      additional_contexts:
+        comun: ./docker/comun
+      args:
+        ENABLE_UHD: "ON"
+    image: red5g-gnb-sdr:latest
+    container_name: red5g-gnb-sdr
+    restart: "no"   # con hardware real, un fallo de RF se revisa a mano antes de reintentar
+    tty: true
+    # USB del B210: en Linux nativo basta /dev/bus/usb; en Windows hay que pasarlo antes a WSL2 con
+    # usbipd-win (ver docs/fase3_plan_pruebas.md). privileged da acceso al USB y la prioridad de
+    # tiempo real que necesita el muestreo continuo.
+    privileged: true
+    volumes:
+      - ./capturas:/capturas
+      - /dev/bus/usb:/dev/bus/usb
+    depends_on:
+      open5gs:
+        condition: service_healthy
+    environment:
+      <<: *identidad-red
+      GNB_CONFIG: ${GNB_CONFIG:-gnb_b210_n3.yaml}
+      OPEN5GS_IP: ${OPEN5GS_IP}
+      GNB_SDR_IP: ${GNB_SDR_IP:-10.53.0.7}
+      SDR_DEVICE_ARGS: ${SDR_DEVICE_ARGS:-type=b200,num_recv_frames=64,num_send_frames=64}
+      SDR_CLOCK: ${SDR_CLOCK:-default}
+      SDR_SYNC: ${SDR_SYNC:-default}
+      SDR_TX_GAIN: ${SDR_TX_GAIN:-50}
+      SDR_RX_GAIN: ${SDR_RX_GAIN:-40}
+      PCI: ${PCI:-1}
+      GNB_NEA_PREF_LIST: ${GNB_NEA_PREF_LIST:-nea2,nea1,nea3,nea0}
+      GNB_NIA_PREF_LIST: ${GNB_NIA_PREF_LIST:-nia2,nia1,nia3}
+      PDSCH_MIN_MCS: ${PDSCH_MIN_MCS:-0}
+      PDSCH_MAX_MCS: ${PDSCH_MAX_MCS:-28}
+      PUSCH_MIN_MCS: ${PUSCH_MIN_MCS:-0}
+      PUSCH_MAX_MCS: ${PUSCH_MAX_MCS:-28}
+    networks:
+      red5g_net:
+        ipv4_address: ${GNB_SDR_IP:-10.53.0.7}
 
   ue:
     build:

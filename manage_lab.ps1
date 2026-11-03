@@ -3,8 +3,9 @@
 #     up construye solo las imágenes que falten; build reconstruye tras cambiar un Dockerfile
 #   Diagnóstico:    .\manage_lab.ps1 verificar (equipo, .env, subred; 'up' la ejecuta antes) | status
 #   Pruebas (banco de pruebas en Python, guarda resultados en .\resultados):
-#     .\manage_lab.ps1 test-ping | test-iperf | p7 | p8 | p9 | p10 | campana  [opciones del banco]
+#     .\manage_lab.ps1 test-ping | test-iperf | p7 | p8 | p9 | p10 | registro | campana  [opciones del banco]
 #     .\manage_lab.ps1 pcap [-Seconds 60] | pcap-registro [-Seconds 60]
+#   Fase 3 (SDR):   .\manage_lab.ps1 build-sdr | up-sdr   (gNB con USRP B210; ver docs/fase3_plan_pruebas.md)
 #   Análisis (paso 3, requiere matplotlib):  .\manage_lab.ps1 analisis [resultados\<carpeta>]
 #   Ejemplos:
 #     .\manage_lab.ps1 p7 --tasas 2,5,10,20 --sentidos dl
@@ -14,7 +15,8 @@
 param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
-                 "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean")]
+                 "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean",
+                 "build-sdr", "up-sdr", "registro")]
     [string]$Action = "up",
     [int]$Seconds = 60,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -87,7 +89,20 @@ switch ($Action) {
     }
     "down" {
         Write-Host ">>> Deteniendo red 5G..." -ForegroundColor Yellow
-        & $DockerBin compose down
+        # --profile sdr: detiene también el gNB con SDR si estaba levantado
+        & $DockerBin compose --profile sdr down
+    }
+    "build-sdr" {
+        # Compila srsRAN Project con UHD (imagen red5g-gnb-sdr); no toca la imagen ZMQ
+        Write-Host ">>> Construyendo el gNB con soporte UHD (USRP B210)..." -ForegroundColor Cyan
+        & $DockerBin compose --profile sdr build gnb-sdr
+    }
+    "up-sdr" {
+        # Fase 3: Core + gNB con SDR, sin el gNB ni el UE de ZMQ. Plantilla: GNB_CONFIG en .env
+        Write-Host ">>> Iniciando Core 5G y gNB con SDR (sin gNB/UE ZMQ)..." -ForegroundColor Cyan
+        & $DockerBin compose stop gnb ue
+        & $DockerBin compose --profile sdr up -d mongodb open5gs webui gnb-sdr
+        Write-Host ">>> Siga el arranque con: docker compose logs -f gnb-sdr" -ForegroundColor Green
     }
     "restart" {
         Write-Host ">>> Reiniciando red 5G (aplica los cambios de .env)..." -ForegroundColor Yellow
@@ -111,6 +126,7 @@ switch ($Action) {
     "p8"            { Invoke-Banco (@("p8") + $Opciones) }
     "p9"            { Invoke-Banco (@("p9") + $Opciones) }
     "p10"           { Invoke-Banco (@("p10") + $Opciones) }
+    "registro"      { Invoke-Banco (@("registro") + $Opciones) }
     "campana"       { Invoke-Banco (@("campana") + $Opciones) }
     "banco"         { Invoke-Banco $Opciones }
     "analisis"      { Invoke-Banco $Opciones "analisis.graficas" }

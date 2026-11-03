@@ -1,0 +1,71 @@
+# Plantilla de la Fase 3: gNB con USRP B210 (UHD), banda n3 FDD, 20 MHz, SCS 15 kHz.
+# Misma celda que la Fase 2 (gnb_zmq.yaml) para comparar ZMQ y RF con la misma numerología.
+# Basada en configs/gnb_rf_b210_fdd_srsUE.yml del commit 4bf1543936 de srsRAN Project, sin los
+# ajustes de PDCCH propios del srsUE (ss2_type common, DCI 0_0/1_0): el terminal es comercial.
+# Se usa con el servicio gnb-sdr (perfil 'sdr'): GNB_CONFIG=gnb_b210_n3.yaml en .env.
+#
+# SEGURIDAD RADIOELÉCTRICA: solo pruebas conducidas por cable con atenuadores (60-80 dB) hasta
+# tener el permiso de MinTIC; calcule los niveles antes con 'python -m banco enlace'.
+
+cu_cp:
+  amf:
+    addr: ${OPEN5GS_IP}
+    port: 38412
+    bind_addr: ${GNB_SDR_IP}
+    supported_tracking_areas:
+      - tac: ${TAC}
+        plmn_list:
+          - plmn: "${MCC}${MNC}"
+            tai_slice_support_list:
+              - sst: ${SST}
+  # Seguridad AS (RRC y PDCP en la interfaz radio), independiente de la NAS del AMF.
+  # Por defecto el commit 4bf1543936 prefiere nea0 (sin cifrado AS); aquí se toma de .env.
+  security:
+    nea_pref_list: ${GNB_NEA_PREF_LIST}
+    nia_pref_list: ${GNB_NIA_PREF_LIST}
+
+cu_up:
+  ngu:
+    socket:
+      - bind_addr: ${GNB_SDR_IP}
+
+ru_sdr:
+  device_driver: uhd
+  device_args: ${SDR_DEVICE_ARGS}   # type=b200 abarca B200 y B210; num_*_frames: búferes USB
+  clock: ${SDR_CLOCK}               # default | internal | external | gpsdo
+  sync: ${SDR_SYNC}                 # default | internal | external | gpsdo
+  srate: 23.04                      # 20 MHz con SCS 15 kHz (igual que en ZMQ)
+  otw_format: sc12                  # 12 bits por muestra en el USB: menos ancho de banda
+  tx_gain: ${SDR_TX_GAIN}           # dB; empiece bajo y suba mirando la SNR y la Prx del teléfono
+  rx_gain: ${SDR_RX_GAIN}
+
+cell_cfg:
+  dl_arfcn: 368500                  # 1842,5 MHz DL (n3)
+  band: 3
+  channel_bandwidth_MHz: 20
+  common_scs: 15
+  plmn: "${MCC}${MNC}"
+  tac: ${TAC}
+  pci: ${PCI}
+  pdsch:
+    mcs_table: qam64
+    min_ue_mcs: ${PDSCH_MIN_MCS}
+    max_ue_mcs: ${PDSCH_MAX_MCS}
+  pusch:
+    mcs_table: qam64
+    min_ue_mcs: ${PUSCH_MIN_MCS}
+    max_ue_mcs: ${PUSCH_MAX_MCS}
+
+pcap:
+  ngap_enable: true
+  ngap_filename: /capturas/gnb_sdr_ngap.pcap
+  n3_enable: false
+
+log:
+  filename: /capturas/gnb_sdr.log
+  all_level: warning
+  rrc_level: info
+  ngap_level: info
+
+metrics:
+  autostart_stdout_metrics: true

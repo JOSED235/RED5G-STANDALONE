@@ -1,0 +1,14 @@
+# Reglas de yamllint del repositorio (CI: .github/workflows/ci.yml).
+# Parte de 'relaxed' y ajusta lo propio de este proyecto:
+# - las plantillas alinean los comentarios en columna (dos espacios mínimos no siempre);
+# - las líneas largas son comentarios explicativos;
+# - 'on:' de GitHub Actions no es un booleano.
+extends: relaxed
+
+rules:
+  line-length: disable
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false

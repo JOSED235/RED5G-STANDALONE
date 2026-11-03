@@ -22,6 +22,8 @@ en la configuración, los logs o las capturas: no supongas.
 | Muestreo | 23,04 MS/s (ZMQ, puertos 2000 gNB TX / 2001 UE TX) | `gnb_zmq.yaml`, `ue_zmq.conf` |
 | MCS | Tabla `qam64` en PDSCH/PUSCH; rango `PDSCH/PUSCH_MIN/MAX_MCS` (0..28) | `.env` |
 | Seguridad NAS | Integridad NIA2 y cifrado NEA2 primero (verificado en traza el 2026-11-02) | `.env` |
+| Seguridad AS (gNB) | `cu_cp.security.nea_pref_list` / `nia_pref_list` (por defecto de srsRAN: nea0 primero); aquí `GNB_NEA_PREF_LIST=nea2,...` | `.env`, plantillas del gNB |
+| Fase 3 | `gnb-sdr` (perfil `sdr`, UHD), `gnb_b210_n3.yaml` / `gnb_b210_n78.yaml` (TDD 10 slots: 6 DL + 8 símb., 3 UL), `SDR_*` y `SIM_*` en `.env` | `docs/fase3_plan_pruebas.md` |
 | Red Docker | `10.53.0.0/24`: MongoDB .2, Core .3, gNB .4, UE .5, WebUI .6 | `.env` |
 | UE / N6 | Subred 10.45.0.0/16, pasarela 10.45.0.1 (`ogstun`) con NAT MASQUERADE | yaml por defecto SMF/UPF |
 
@@ -42,6 +44,13 @@ Command (algoritmos NIA/NEA seleccionados, capacidades repetidas del UE; con NEA
 InitialContextSetup → Registration Accept/Complete → PDU Session Establishment Request → PFCP
 Session Establishment (PDR/FAR/QER, F-TEID del UPF) → PDUSessionResourceSetup (TEID GTP-U de N3) →
 PDU Session Establishment Accept (IP 10.45.0.x, QoS 5QI 9, AMBR) → tráfico GTP-U.
+
+Análisis automático: `python -m banco protocolos [traza]` (se ejecuta solo tras `pcap --registro`) escribe
+`<traza>_analisis.md` y `_tiempos.csv`. Campos tshark 4.6: SUCI `nas-5gs.mm.suci.*`, RAND/AUTN
+`gsm_a.dtap.rand/autn`, RES* `nas-eps.emm.res`, TEID N3 `ngap.gTP_TEID` (Request = UPF, Response =
+gNB), `pfcp.f_teid.teid` y `pfcp.outer_hdr_creation.teid` (la de la Establishment Request apunta
+al SMF 127.0.0.4, no al gNB), IP del UE `pfcp.ue_ip_addr_ipv4`; la columna es `_ws.col.info`.
+Con NEA0 la cabecera de seguridad 2 aparece igual, pero el contenido es legible.
 
 Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_type == 0x5d`
 (Security Mode Command; campos `nas-5gs.mm.nas_sec_algo_enc` / `nas_sec_algo_ip`).

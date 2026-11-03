@@ -9,10 +9,13 @@ Uso (desde la raíz del repositorio):
   python -m banco p8     [--mcs 0,5,10,15,20,25,28] [--enlace dl|ul|ambos]          (MCS fijo)
   python -m banco p9     [--duracion 1800] [--carga 5M] [--recuperar]               (estabilidad)
   python -m banco p10    [--duracion 30] [--carga dl|ul|ninguna]                    (CPU por núcleo)
+  python -m banco registro [--segundos 30] [--corridas 5]                           (tiempos del registro, tshark)
   python -m banco campana --pruebas ping,iperf,p7,p10 --corridas 5                  (repeticiones)
   python -m banco pcap   [--segundos 60] [--registro]
   python -m banco enlace [--atenuacion 60,70,80] [--ptx 0] [--distancia 0]          (presupuesto de enlace, Fase 3)
   python -m banco estadistica [resultados/<carpeta>]                                (media, desv., IC 95 %)
+  python -m banco protocolos [capturas/<traza>.pcap]                                (paso 4, requiere tshark)
+  python -m banco suscriptor                                                        (alta de la SIM física, Fase 3)
 
 Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv y crudos/.
 """
@@ -20,9 +23,9 @@ Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv 
 import argparse
 import sys
 
-from . import enlace, estadistica, pruebas, verificacion
+from . import enlace, estadistica, protocolos, pruebas, suscriptores, verificacion
 from .compose import Compose, ErrorCompose
-from .config import asegurar_env
+from .config import asegurar_env, leer_env
 from .parsers import ErrorIperf
 from .resultados import Sesion
 
@@ -33,6 +36,7 @@ PRUEBAS = {
     "p8": pruebas.prueba_p8,
     "p9": pruebas.prueba_p9,
     "p10": pruebas.prueba_p10,
+    "registro": pruebas.prueba_registro,
 }
 
 
@@ -96,6 +100,10 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--umbral-saturacion", type=float, default=95, help="%% medio para considerar un núcleo saturado")
     _comunes(p)
 
+    p = sub.add_parser("registro", help="paso 4: recrea la RAN, captura el registro y mide cada procedimiento (tshark)")
+    p.add_argument("--segundos", type=int, default=30, help="duración de cada captura")
+    _comunes(p)
+
     p = sub.add_parser("campana", help="ejecuta varias pruebas N veces en una sola carpeta de resultados")
     p.add_argument("--pruebas", default="ping,iperf,p7,p10", help=f"lista de: {','.join(PRUEBAS)}")
     _comunes(p, corridas=5)
@@ -117,11 +125,21 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--nf", type=float, default=7, help="figura de ruido del receptor en dB")
     p.add_argument("--overhead", type=float, default=0.14, help="TS 38.306: 0,14 DL / 0,08 UL en FR1")
     p.add_argument("--alfa", type=float, default=0.6, help="factor del Shannon atenuado (TR 36.942)")
+    p.add_argument("--fraccion", type=float, default=1.0,
+                   help="fracción de tiempo del enlace: 1 en FDD; TDD n78 de gnb_b210_n78.yaml: 0.657 DL, 0.3 UL")
     p.add_argument("--prx-max", type=float, default=-15,
                    help="potencia máxima admisible en el receptor en dBm (verificar en la hoja de datos)")
 
     p = sub.add_parser("estadistica", help="paso 3: media, desviación e IC 95 %% (t-Student) de una carpeta (no usa Docker)")
     p.add_argument("carpeta", nargs="?", help="carpeta de resultados; por defecto la más reciente")
+
+    p = sub.add_parser("protocolos", help="paso 4: SUCI, 5G-AKA, NEA/NIA, TEID, PFCP y tiempos de una traza (tshark)")
+    p.add_argument("pcap", nargs="?", help="traza de 'pcap --registro'; por defecto la más reciente de capturas/")
+
+    p = sub.add_parser("suscriptor", help="alta o reemplazo en MongoDB de la SIM de SIM_IMSI/SIM_K/SIM_OPC (.env)")
+    p.add_argument("--imsi", help="por defecto SIM_IMSI de .env")
+    p.add_argument("--k", help="por defecto SIM_K de .env (mejor en .env: la línea de comandos queda en el historial)")
+    p.add_argument("--opc", help="por defecto SIM_OPC de .env")
     return parser
 
 
@@ -147,12 +165,22 @@ def main(argv=None) -> int:
         if args.comando == "estadistica":
             estadistica.analizar(args.carpeta)
             return 0
+        if args.comando == "protocolos":
+            protocolos.analizar_pcap(args.pcap)
+            return 0
         compose = Compose()
+        if args.comando == "suscriptor":
+            return suscriptores.ejecutar(compose, leer_env(), args.imsi, args.k, args.opc)
         if args.comando == "estado":
             pruebas.estado(compose)
             return 0
         if args.comando == "pcap":
             pruebas.captura(compose, args.segundos, args.registro)
+            if args.registro:
+                try:
+                    protocolos.analizar_pcap(None)
+                except ValueError as exc:  # sin tshark o sin registro: la captura sigue siendo válida
+                    print(f">>> Análisis de protocolos omitido: {exc}")
             return 0
 
         if args.comando == "campana":

@@ -1,0 +1,68 @@
+# Integración continua: comprobaciones rápidas que no necesitan compilar srsRAN ni levantar la red.
+# Se ejecuta en cada push y pull request. Lo que sí necesita la red (P5-P10) se valida a mano
+# con el banco de pruebas (ver BITACORA.md).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  banco:
+    name: Pruebas unitarias del banco (Python ${{ matrix.python }})
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]   # 3.10 es el mínimo declarado en el README
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s banco/tests -t . -v
+
+  scripts:
+    name: shellcheck de los scripts de los contenedores
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck --version && find docker -name '*.sh' -print0 | xargs -0 shellcheck
+
+  yaml:
+    name: yamllint de Compose y de las plantillas renderizadas
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install yamllint==1.35.1
+      # Las plantillas no son YAML válido hasta sustituir ${VAR} (p. ej. '[ ${AMF_CIPHERING_ORDER} ]'):
+      # se renderizan con .env.example y se valida el resultado. Como renderizar_plantilla.sh, solo
+      # se sustituye ${NOMBRE}; falla (KeyError) si una plantilla usa una variable que
+      # .env.example no define.
+      - name: Renderizar plantillas con .env.example
+        run: |
+          python - <<'EOF'
+          import re
+          from pathlib import Path
+          from banco.config import ARCHIVO_ENV_EJEMPLO, leer_env
+          env = leer_env(ARCHIVO_ENV_EJEMPLO)
+          destino = Path("/tmp/plantillas")
+          destino.mkdir()
+          for plantilla in sorted(Path("docker").rglob("*.yaml")):
+              texto = re.sub(r"\$\{(\w+)\}", lambda m: env[m.group(1)], plantilla.read_text(encoding="utf-8"))
+              (destino / plantilla.name).write_text(texto, encoding="utf-8", newline="\n")
+              print("renderizada", plantilla)
+          EOF
+      # Reglas del repositorio en .yamllint
+      - run: yamllint docker-compose.yml .github/ /tmp/plantillas
+
+  compose:
+    name: docker compose config (con y sin el perfil sdr)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose config --quiet
+      - run: docker compose --profile sdr config --quiet

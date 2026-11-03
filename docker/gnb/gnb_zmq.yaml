@@ -12,6 +12,11 @@ cu_cp:
           - plmn: "${MCC}${MNC}"
             tai_slice_support_list:
               - sst: ${SST}
+  # Seguridad AS (RRC y PDCP en la interfaz radio), independiente de la NAS del AMF.
+  # Por defecto el commit 4bf1543936 prefiere nea0 (sin cifrado AS); aquí se toma de .env.
+  security:
+    nea_pref_list: ${GNB_NEA_PREF_LIST}
+    nia_pref_list: ${GNB_NIA_PREF_LIST}
 
 cu_up:
   ngu:

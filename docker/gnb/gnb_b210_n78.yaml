@@ -1,0 +1,80 @@
+# Plantilla de la Fase 3: gNB con USRP B210 (UHD), banda n78 TDD, 20 MHz, SCS 30 kHz.
+# Muchos teléfonos solo operan en SA en n78; confirme las bandas SA del terminal antes de elegir.
+# Basada en configs/gnb_rf_b200_tdd_n78_20mhz.yml del commit 4bf1543936 de srsRAN Project.
+# El patrón TDD se deja explícito con los valores por defecto del commit 4bf1543936
+# (du_high_config.h, tdd_ul_dl_pattern_unit_config): periodo de 10 slots (5 ms con 30 kHz),
+# 6 slots DL + 8 símbolos DL en el slot especial, 3 slots UL. Fracción DL = (6·14 + 8)/140 ≈ 0,657;
+# UL = 3·14/140 = 0,30. Úsela para escalar el caudal teórico de 'banco enlace' (que supone FDD).
+# Se usa con el servicio gnb-sdr (perfil 'sdr'): GNB_CONFIG=gnb_b210_n78.yaml en .env.
+#
+# SEGURIDAD RADIOELÉCTRICA: n78 (3,3-3,8 GHz) está asignada a operadores en Colombia. Solo pruebas
+# conducidas por cable con atenuadores (60-80 dB) y, para OTA, permiso temporal de MinTIC.
+
+cu_cp:
+  amf:
+    addr: ${OPEN5GS_IP}
+    port: 38412
+    bind_addr: ${GNB_SDR_IP}
+    supported_tracking_areas:
+      - tac: ${TAC}
+        plmn_list:
+          - plmn: "${MCC}${MNC}"
+            tai_slice_support_list:
+              - sst: ${SST}
+  # Seguridad AS (RRC y PDCP en la interfaz radio), independiente de la NAS del AMF.
+  # Por defecto el commit 4bf1543936 prefiere nea0 (sin cifrado AS); aquí se toma de .env.
+  security:
+    nea_pref_list: ${GNB_NEA_PREF_LIST}
+    nia_pref_list: ${GNB_NIA_PREF_LIST}
+
+cu_up:
+  ngu:
+    socket:
+      - bind_addr: ${GNB_SDR_IP}
+
+ru_sdr:
+  device_driver: uhd
+  device_args: ${SDR_DEVICE_ARGS}
+  clock: ${SDR_CLOCK}
+  sync: ${SDR_SYNC}
+  srate: 23.04                      # 20 MHz con SCS 30 kHz (51 PRB)
+  otw_format: sc12
+  tx_gain: ${SDR_TX_GAIN}
+  rx_gain: ${SDR_RX_GAIN}
+
+cell_cfg:
+  dl_arfcn: 632628                  # 3489,42 MHz (n78), valor del ejemplo oficial
+  band: 78
+  channel_bandwidth_MHz: 20
+  common_scs: 30
+  plmn: "${MCC}${MNC}"
+  tac: ${TAC}
+  pci: ${PCI}
+  tdd_ul_dl_cfg:
+    dl_ul_tx_period: 10
+    nof_dl_slots: 6
+    nof_dl_symbols: 8
+    nof_ul_slots: 3
+    nof_ul_symbols: 0
+  pdsch:
+    mcs_table: qam64
+    min_ue_mcs: ${PDSCH_MIN_MCS}
+    max_ue_mcs: ${PDSCH_MAX_MCS}
+  pusch:
+    mcs_table: qam64
+    min_ue_mcs: ${PUSCH_MIN_MCS}
+    max_ue_mcs: ${PUSCH_MAX_MCS}
+
+pcap:
+  ngap_enable: true
+  ngap_filename: /capturas/gnb_sdr_ngap.pcap
+  n3_enable: false
+
+log:
+  filename: /capturas/gnb_sdr.log
+  all_level: warning
+  rrc_level: info
+  ngap_level: info
+
+metrics:
+  autostart_stdout_metrics: true

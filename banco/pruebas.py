@@ -1,12 +1,13 @@
-"""Pruebas del plan de la Fase 2 (P5-P10), estado de la red y captura de trazas."""
+"""Pruebas del plan de la Fase 2 (P5-P10 y registro), estado de la red y captura de trazas."""
 
 import re
 import threading
 import time
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 
-from . import parsers
+from . import parsers, protocolos
 from .compose import Compose, ErrorCompose
 from .config import DESTINO_INTERNET, DIR_CAPTURAS, INTERFAZ_UE, IP_UPF, RAIZ
 from .resultados import Sesion
@@ -539,7 +540,7 @@ def estado(compose: Compose) -> None:
     print(res.stdout.strip() or "  MongoDB no disponible")
 
 
-def captura(compose: Compose, segundos: int, registro: bool) -> None:
+def captura(compose: Compose, segundos: int, registro: bool) -> Path:
     archivo = f"fase2_traza_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pcap"
     filtro = "sctp or udp port 2152 or udp port 8805 or tcp port 7777"
     print(f">>> [WIRESHARK] Capturando NGAP (SCTP), GTP-U (2152), PFCP (8805) y SBI (7777) durante {segundos} s")
@@ -559,3 +560,26 @@ def captura(compose: Compose, segundos: int, registro: bool) -> None:
     compose.ejecutar("cp", f"open5gs:/capturas/{archivo}", str(ruta), verificar=False, timeout=60)
     tamano = ruta.stat().st_size if ruta.exists() else 0
     print(f">>> Captura finalizada: {ruta.relative_to(RAIZ)} ({tamano / 1024:.1f} KiB)")
+    return ruta
+
+
+# --- Registro: tiempos de los procedimientos de señalización (paso 4) ---------
+
+def prueba_registro(ctx: Contexto, args) -> None:
+    """Recrea la RAN, captura el registro completo y mide cada procedimiento con tshark.
+
+    Repetida N veces da la media y el IC 95 % de los tiempos (banco estadistica), y deja en
+    crudos/ el informe de cada traza (SUCI, 5G-AKA, NEA/NIA, TEID, PFCP, diagrama).
+    """
+    protocolos.buscar_tshark()  # falla antes de capturar si no hay tshark
+    for corrida in range(1, args.corridas + 1):
+        print(f">>> [Registro] Corrida {corrida}/{args.corridas}")
+        ruta = captura(ctx.compose, args.segundos, registro=True)
+        r = protocolos.analizar_archivo(ruta)
+        informe = protocolos.escribir_informe(ruta, r)
+        ctx.sesion.guardar_crudo(f"registro_c{corrida}_{informe.name}", informe.read_text(encoding="utf-8"))
+        for nombre, ms in r["tiempos_ms"].items():
+            ctx.sesion.registrar("P4_registro", corrida, nombre, ms, "ms")
+        ctx.sesion.registrar("P4_registro", corrida, "nas_cifrados", r["seguridad"]["nas_cifrados"], "mensajes")
+        ctx.compose.esperar_ue(120)  # la siguiente corrida parte de un UE registrado
+        _pausa(args, corrida)

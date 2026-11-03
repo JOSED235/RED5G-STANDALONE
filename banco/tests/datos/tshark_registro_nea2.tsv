@@ -1,0 +1,33 @@
+frame.number	frame.time_relative	_ws.col.info	e212.mcc	e212.mnc	nas-5gs.mm.suci.supi_fmt	nas-5gs.mm.suci.scheme_id	nas-5gs.mm.suci.routing_indicator	nas-5gs.mm.suci.msin	gsm_a.dtap.rand	gsm_a.dtap.autn	nas-eps.emm.res	nas-5gs.mm.abba_contents	nas-5gs.mm.nas_sec_algo_enc	nas-5gs.mm.nas_sec_algo_ip	nas-5gs.security_header_type	ngap.gTP_TEID	ngap.TransportLayerAddressIPv4	ngap.fiveQI	pfcp.ue_ip_addr_ipv4	pfcp.pdr_id	pfcp.far_id	pfcp.qer_id	pfcp.f_teid.teid	pfcp.f_teid.ipv4_addr	pfcp.outer_hdr_creation.teid	pfcp.outer_hdr_creation.ipv4
+73	4.341129000	NGReset [Cause: RadioNetwork=radio-connection-with-ue-lost]																								
+80	4.343311000	PFCP Session Modification Request																			1					
+81	4.343573000	PFCP Session Modification Response																								
+89	4.344507000	SACK (Ack=0, Arwnd=106496) , NGResetAcknowledge																								
+104	6.400853000	PFCP Heartbeat Request																								
+105	6.400903000	PFCP Heartbeat Request																								
+106	6.401020000	PFCP Heartbeat Response																								
+107	6.401039000	PFCP Heartbeat Response																								
+112	7.841385000	NGSetupRequest	001|001	01|01																						
+114	7.849035000	NGSetupResponse	001	01																						
+116	8.370997000	InitialUEMessage, Registration request [RRCEstablishmentCause=mo-Signalling]	001	01	0	0	0000	0123456780							0											
+123	8.373136000	PFCP Session Deletion Request																								
+124	8.373333000	PFCP Session Deletion Response																								
+190	8.382261000	SACK (Ack=1, Arwnd=106496) , DownlinkNASTransport, Authentication request							92b8f103a15d347ae0606e9de6ecda78	25e69ebb5b9780008bec274ee5725b7d		0000			0											
+191	8.414067000	SACK (Ack=1, Arwnd=106496) , UplinkNASTransport, Authentication response									9ece94c27554ee83808862a931d85b13				0											
+226	8.420299000	SACK (Ack=2, Arwnd=106496) , DownlinkNASTransport, Security mode command											2	2	3|0											
+227	8.456371000	SACK (Ack=2, Arwnd=106496) , UplinkNASTransport													4											
+310	8.466369000	SACK (Ack=3, Arwnd=106496) , InitialContextSetupRequest													2											
+311	8.541535000	SACK (Ack=3, Arwnd=106496) , InitialContextSetupResponse																								
+312	8.663532000	DATA (TSN=4) (retransmission) , UERadioCapabilityInfoIndication, UplinkNASTransport, UplinkNASTransport													2|2											
+314	8.664202000	DownlinkNASTransport													2											
+392	8.674344000	PFCP Session Establishment Request	001	01															10.45.0.3	1|2|3|4	1|2|1|3|1|2|3	1|1|1			0x00000002	127.0.0.4
+393	8.674697000	PFCP Session Establishment Response																		2|3|4			0x0000c208|0x0000835b|0x0000c208	10.53.0.3|10.53.0.3|10.53.0.3		
+401	8.676194000	PDUSessionResourceSetupRequest													2	0000c208	10.53.0.3	9								
+408	8.752677000	PDUSessionResourceSetupResponse														00000001	10.53.0.4									
+415	8.753585000	PFCP Session Modification Request																			1				0x00000001	10.53.0.4
+416	8.753742000	PFCP Session Modification Response																								
+444	8.879473000	DATA (TSN=8) (retransmission) , UplinkNASTransport													2											
+533	17.401892000	PFCP Heartbeat Request																								
+534	17.402070000	PFCP Heartbeat Response																								
+535	17.402127000	PFCP Heartbeat Request																								
+536	17.402158000	PFCP Heartbeat Response																								

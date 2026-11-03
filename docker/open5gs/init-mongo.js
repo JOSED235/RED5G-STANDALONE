@@ -64,7 +64,7 @@ db.subscribers.insertOne({
     "amf": "8000",
     "op": null,
     "opc": opc,
-    "sqn": NumberLong(0)
+    "sqn": NumberLong("0")
   },
   "ambr": {
     "downlink": { "value": 1, "unit": 3 },
