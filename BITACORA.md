@@ -15,7 +15,7 @@ registra el trabajo realizado.
 
 _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo nuevo)._
 
-### Fase 2 — Implementación Core y Zero-RF
+### Fase 2 — Implementación Core y Zero-RF (completa el 2026-11-02; quedan revisión del informe y mejoras opcionales)
 - [x] Paso 1: correcciones de base (NEA2, Open5GS fijado, `.env` como fuente única, README).
 - [x] Paso 2: banco de pruebas con resultados persistentes (P5–P10, campañas, metadatos).
 - [x] Portabilidad entre equipos: subred por defecto 10.53.0.0/24 y `verificar` (chequeo previo).
@@ -28,7 +28,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Paso 3 (aplicación): `analisis` sobre la campaña definitiva; figuras revisadas (2026-11-02).
 - [x] Paso 4 (herramienta): `python -m banco protocolos` con tshark (SUCI, 5G-AKA, NEA/NIA, TEID, IP, PDR/FAR/QER, tiempos y diagrama Mermaid) (2026-11-02).
 - [x] Paso 4 (aplicación): prueba `registro` con 5 corridas (AS nea2 y nea0) e IC 95 % de cada procedimiento (2026-11-02).
-- [ ] Interpretación del paso 4 para el informe (tiempos por procedimiento frente a TS 23.502).
+- [x] Interpretación del paso 4 en el informe (procedimientos, contenido NAS, SBI y tiempos) (2026-11-02).
 - [x] Paso 5: informe de la Fase 2 (`docs/informe_fase2.tex` / `.pdf`, 8 páginas) (2026-11-02).
 - [ ] Revisión del informe de la Fase 2 por el autor antes de la entrega.
 - [x] Cifrado NAS con srsUE: srsUE 26.10 (`06f0b1e23`) registra con NEA2 + NIA2, verificado en traza (2026-11-02, F2-15).
@@ -814,3 +814,23 @@ de Wireshark; el informe usa la disección textual de tshark, que emplea el mism
 **Pendiente / siguientes pasos:**
 - Revisión del informe por el autor (opcional: añadir una captura de pantalla de Wireshark abriendo
   `capturas/fase2_traza_20261102_220903.pcap` con la preferencia `nas-5gs.null_decipher`).
+
+---
+
+## 2026-11-02 — Cierre de la Fase 2 en la documentación
+
+**Objetivo:** dejar la documentación coherente con el estado real: la Fase 2 cubre los cuatro
+criterios de su rúbrica.
+
+**Cambios realizados:**
+- `README.md`: la Fase 2 pasa a "Completada (falta la revisión del informe por el autor)" en la
+  tabla de fases; la sección "Pendiente para completar la Fase 2" se sustituye por "Estado de la
+  Fase 2", con la evidencia de cada criterio de la rúbrica, el informe y las mejoras opcionales.
+- `BITACORA.md`: interpretación del paso 4 marcada como hecha (está en el informe) y encabezado de
+  la Fase 2 con su estado.
+
+**Verificación:** `git status` limpio antes de estos cambios y CI del commit `089b17c` en verde (API
+de GitHub). Solo se cambia documentación.
+
+**Pendiente / siguientes pasos:**
+- Revisión del informe por el autor; mejoras opcionales listadas en "Pendientes vigentes".
