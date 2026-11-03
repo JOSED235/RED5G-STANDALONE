@@ -71,6 +71,11 @@ Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_
   N_PRB = 106, 14·2^µ símbolos/ms, overhead 0,14 DL / 0,08 UL); MCS y TBS por TS 38.214; Shannon
   C = B·log2(1 + SNR). Explica la brecha teórica frente a la empírica (emulación, TCP, CPU).
 - **P8:** el gNB debe reportar el mismo MCS que se fijó; si no, la configuración no se aplicó.
+- **Medido frente a teórico (2026-11-02):** TCP DL ≈ 54–62 % de la cota de TS 38.306 en **todos** los
+  MCS de P8, incluso MCS 0 (2 Mbit/s): la brecha la domina la sobrecarga real de capa física y del
+  scheduler (mayor que el 0,14 de la norma) más las cabeceras, no la CPU. UDP DL máximo ≈ 56 Mbit/s.
+- **Medir con memoria holgada:** con Windows sin RAM libre la varianza se dispara (P7 DL a 40 Mbit/s:
+  6 % de pérdida frente a 0,2 %). No midas mientras se compila ni con el navegador cargado.
 
 ## 4. Diagnóstico: síntoma → causa conocida en este proyecto
 

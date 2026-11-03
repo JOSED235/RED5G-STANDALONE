@@ -22,7 +22,8 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Skills de Claude Code del proyecto (`.claude/skills/`) y documentación `.md` al día.
 - [ ] Primer `up` en el portátil menos potente (i5-8250U): `git pull`, `EQUIPO=` en `.env`, `verificar`, `up` (compila sus propias imágenes) y una `campana` corta para confirmar.
 - [x] Campaña definitiva `campana --pruebas ping,iperf,p7,p10 --corridas 5` con srsUE 26.10 y NEA2 (2026-11-02, `resultados/20261102_181151_campana_definitiva_nea2`).
-- [ ] P8 (MCS fijo) y P9 (30 min) en el mismo equipo, sin compilar a la vez; repetir P7 DL 40–80 Mbit/s en esas condiciones.
+- [x] P8 (MCS fijo, 3 corridas), P9 (30 min, ESTABLE) y P7 DL 40–80 Mbit/s repetido con la red optimizada (2026-11-02).
+- [ ] Cuantificar la sobrecarga de capa física y scheduler (log MAC del gNB) que explica el 54–62 % medido/teórico de P8.
 - [x] Paso 3 (herramienta): `python -m banco estadistica` (IC 95 % t-Student, BLER agregada) y `python -m analisis.graficas` (2026-11-02).
 - [x] Paso 3 (aplicación): `analisis` sobre la campaña definitiva; figuras revisadas (2026-11-02).
 - [x] Paso 4 (herramienta): `python -m banco protocolos` con tshark (SUCI, 5G-AKA, NEA/NIA, TEID, IP, PDR/FAR/QER, tiempos y diagrama Mermaid) (2026-11-02).
@@ -50,7 +51,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 
 ### Calidad
 - [x] CI en GitHub Actions (`.github/workflows/ci.yml`), simulada en local (2026-11-02).
-- [ ] Ver la primera ejecución de la CI en GitHub tras el próximo push.
+- [x] Primera ejecución de la CI en GitHub: 5 trabajos en verde (2026-11-02).
 - [ ] Borrar `.git_roto_20261029/` (respaldo del `.git` dañado por OneDrive, solo en la copia de `G:`) cuando se confirme que el repositorio funciona bien.
 - [x] Repositorio trasladado a disco local: `C:\Users\Fa1097la\Proyectos\RED5G-STANDALONE` (2026-11-02). La copia de `G:\Mi unidad\...` queda solo como respaldo; no trabajar en ella.
 - [ ] Las carpetas `resultados/20261028_224037_ping_validacion` a `..._224219_p7_validacion` tienen datos anteriores a la corrección de iperf3 `-O` (P7 UL con caudal negativo): no usarlas en el informe.
@@ -656,3 +657,68 @@ pidió volver a intentarlo y optimizar para que compile más rápido y consuma m
 - Para quien compile en Windows con poca RAM: `.wslconfig` con `autoMemoryReclaim=gradual`
   (sección `[experimental]`) ayuda a que la VM devuelva la caché a Windows; es configuración del
   equipo, no del repositorio, y no se ha probado aquí.
+
+---
+
+## 2026-11-02 — Reintento con la red optimizada: UE, P7 DL 40–80, P8, P9, push y CI
+
+**Objetivo:** repetir lo que la presión de memoria había dejado a medias (compilación del UE y
+mediciones), subir todo a GitHub y ver la primera ejecución de la CI.
+
+**Compilación del UE con la receta nueva:** `docker compose build --no-cache ue` (capa de
+compilación rehecha, `ccache` vacío para este proyecto: 0 aciertos de 368), `make -j4` elegido
+automáticamente por memoria: **193 s** de principio a fin, sin cortes; Windows pasó de 973 a 393 MB
+libres. La receta anterior compilaba todo srsRAN_4G (eNB, EPC y pruebas).
+
+**P7 DL 40–80 Mbit/s repetido** (`resultados/*_p7_dl_40_80_rep`, 5 corridas, red optimizada):
+- 40 Mbit/s: 40,19 ± 0,04 Mbit/s con pérdida 0,21 ± 0,03 % (la campaña: 0,22 %; la serie con la
+  memoria al límite: 6,0 ± 10,0 %).
+- 50: 49,52 ± 1,30 (1,8 %); 60: 53,39 ± 3,29 (11,9 %); 70: 53,83 ± 3,68 (23,9 %);
+  80: 55,84 ± 1,92 Mbit/s (30,9 %).
+- **Caudal UDP DL máximo 56,33 ± 1,19 Mbit/s** (66 % de 85,1); saturación entre 40 y 50 Mbit/s
+  ofrecidos. El IC es 5 veces más estrecho que en la serie anterior: la presión de memoria sí
+  distorsionaba las mediciones. Esta serie sustituye a `20261102_190957_p7_dl_40_80`.
+
+**P8, MCS fijo en DL** (`resultados/20261102_205401_p8_definitiva`, 3 corridas, TCP DL 15 s):
+
+| MCS | Qm | R·1024 | Teórico TS 38.306 (Mbit/s) | Medido (Mbit/s) | Medido/teórico |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 2 | 120 | 3,6 | 2,18 ± 0,07 | 61 % |
+| 5 | 2 | 379 | 11,3 | 6,75 ± 0,21 | 60 % |
+| 10 | 4 | 340 | 20,3 | 12,53 ± 0,07 | 62 % |
+| 15 | 4 | 616 | 36,9 | 21,01 ± 3,31 | 57 % |
+| 20 | 6 | 567 | 50,9 | 27,61 ± 3,29 | 54 % |
+| 25 | 6 | 822 | 73,8 | 40,81 ± 2,49 | 55 % |
+| 28 | 6 | 948 | 85,1 | 47,83 ± 3,31 | 56 % |
+
+El gNB aplicó exactamente el MCS fijado (MCS medio igual al configurado) y la BLER DL agregada
+fue 0 % en todos los casos.
+
+**Corrección de una conclusión anterior.** En la entrada de la campaña escribí que la diferencia
+con la cota teórica se debía sobre todo al procesamiento en tiempo real (CPU) y a TCP. P8 lo
+desmiente en parte: la fracción medida/teórica es casi constante (54–62 %) en todos los MCS,
+**incluso en MCS 0 con 2 Mbit/s**, donde la CPU no limita. La causa dominante es una sobrecarga
+estructural mayor que el 0,14 que supone TS 38.306 para FR1 (PDCCH, DMRS, SSB y SIB, programación
+de slots del scheduler) más las cabeceras de TCP/IP/GTP-U y la dinámica de TCP. La CPU puede
+pesar en el extremo alto (la fracción baja un poco de 60 % a 55 % al subir el MCS). **No
+verificado:** el reparto exacto de esa sobrecarga; se podría cuantificar con el número de PRB y
+símbolos asignados por slot en un log MAC del gNB.
+
+**Push y CI:** `git push origin main` (`94107c0..22f796b`). Primera ejecución de la CI en GitHub
+(run 41562743977): los 5 trabajos en verde (pruebas unitarias en Python 3.10 y 3.12,
+`shellcheck`, `yamllint` de plantillas renderizadas y `docker compose config` con y sin el perfil
+`sdr`). Consulta con la API pública (`gh` no está instalado en este equipo).
+
+**P9, estabilidad 30 min** (`resultados/20261102_210518_p9_definitiva`, ping cada 1 s al UPF,
+carga UDP DL de 5 Mbit/s, `--recuperar`): 1799 de 1800 respuestas (pérdida 0,06 %), RTT medio
+23,2 ms (p50 21,1; p95 35,3; p99 43,0; máximo 1,1 s en una sola muestra), **0 cortes, 0 reinicios
+de contenedores, 0 recuperaciones**, sin underflows, overflows ni avisos de tiempo real en el gNB,
+y la carga de 5 Mbit/s entregada completa (5,00 Mbit/s, 0 % de pérdida). Criterio de estabilidad:
+CUMPLE. Nota: el RTT de P9 (23 ms) es menor que el de P5 en la campaña (31,9 ms); P9 hace un ping
+por segundo y P5 dos, y se midió con la red ya optimizada en memoria; no se analizó más.
+
+**Pendiente / siguientes pasos:**
+- Paso 5: informe de la Fase 2 (LaTeX, IEEE) con estas tablas y figuras.
+- Cuantificar la sobrecarga de la capa física y del scheduler (log MAC del gNB) para explicar el
+  56–62 % de P8.
+- Evidenciar el algoritmo AS negociado (log `debug` temporal o PCAP MAC).
