@@ -34,14 +34,16 @@ N4 (PFCP/UDP 8805, SMF↔UPF en loopback del Core), N6 (`ogstun` + NAT), SBI (HT
 ## 2. Procedimientos y qué buscar en las trazas
 
 Captura del registro completo: `.\manage_lab.ps1 pcap-registro` (Core, `tcpdump -i any`) más
-`capturas/gnb_ngap.pcap` y `capturas/ue_nas.pcap` (NAS en claro desde el UE). Hay `tshark` en el
+`capturas/gnb_ngap.pcap` y `capturas/ue_nas.pcap` (NAS desde el UE, **tal como viaja**: con NEA1/2/3
+va cifrado; encapsulado USER 1 / DLT 148, con Wireshark: preferencia `uat:user_dlts` → `"User 1 (DLT=148)","nas-5gs"`; srsUE la escribe al detenerse (`docker compose stop -t 30 ue`)). Hay `tshark` en el
 equipo principal (`C:\Program Files\Wireshark\tshark.exe`).
 
 Secuencia esperada (≈ 0,6 s desde InitialUEMessage en el equipo i7): NGSetupRequest/Response →
 InitialUEMessage + Registration Request (SUCI con esquema nulo: `suci-0-001-01-0000-0-0-<MSIN>`) →
 Authentication Request (RAND, AUTN, ngKSI, ABBA) → Authentication Response (RES*) → Security Mode
 Command (algoritmos NIA/NEA seleccionados, capacidades repetidas del UE; con NEA2 lo que sigue va cifrado —
-`security_header_type` 2— y se lee en `ue_nas.pcap` o poniendo NEA0 primero) → Security Mode Complete →
+`security_header_type` 2— y solo se lee con NEA0: `AMF_CIPHERING_ORDER="NEA0, NEA2, NEA1"` en el
+entorno, recrear `open5gs`, `pcap --registro` y tshark con `-o nas-5gs.null_decipher:TRUE`) → Security Mode Complete →
 InitialContextSetup → Registration Accept/Complete → PDU Session Establishment Request → PFCP
 Session Establishment (PDR/FAR/QER, F-TEID del UPF) → PDUSessionResourceSetup (TEID GTP-U de N3) →
 PDU Session Establishment Accept (IP 10.45.0.x, QoS 5QI 9, AMBR) → tráfico GTP-U.

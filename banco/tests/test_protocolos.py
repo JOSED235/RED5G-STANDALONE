@@ -64,6 +64,10 @@ class PruebaProtocolos(unittest.TestCase):
         self.assertTrue(diagrama.startswith("sequenceDiagram"))
         self.assertLess(diagrama.index("Registration Request"), diagrama.index("PDUSessionResourceSetupResponse"))
 
+    def test_contenido_nas_cifrado_no_se_inventa(self):
+        # Con NEA2 el Registration Accept y el PDU Session Establishment Accept no son legibles
+        self.assertTrue(all(v is None for v in self.r["nas_en_claro"].values()))
+
     def test_nea0_no_cuenta_como_cifrado(self):
         filas = [{"frame.number": ["1"], "frame.time_relative": ["0.0"], "_ws.col.info": "Security mode command",
                   "nas-5gs.mm.nas_sec_algo_enc": ["0"], "nas-5gs.mm.nas_sec_algo_ip": ["2"],
@@ -72,6 +76,37 @@ class PruebaProtocolos(unittest.TestCase):
                   "nas-5gs.security_header_type": ["4", "0"]}]
         s = protocolos.analizar(filas)["seguridad"]
         self.assertEqual(s["nas_cabecera_cifrado"], 1)
+        self.assertEqual(s["nas_cifrados"], 0)
+
+
+FIXTURE_NEA0 = Path(__file__).parent / "datos" / "tshark_registro_nea0.tsv"
+
+
+class PruebaProtocolosNea0(unittest.TestCase):
+    """Traza real con NEA0 + NIA2 (2026-11-02): el contenido NAS es legible."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.r = protocolos.analizar(parsers.parse_tshark_campos(FIXTURE_NEA0.read_text(encoding="utf-8")))
+
+    def test_inicio_en_initial_ue_message(self):
+        # El Security Mode Complete también dice "Registration request" en Info (lleva la petición
+        # completa); el registro debe empezar en el InitialUEMessage, antes de la autenticación
+        h = self.r["hitos"]
+        self.assertLess(h["InitialUEMessage"][0], h["Authentication request"][0])
+        self.assertGreater(self.r["tiempos_ms"]["autenticacion_5g_aka"], 0)
+
+    def test_contenido_nas_legible(self):
+        n = self.r["nas_en_claro"]
+        self.assertIn("5G-TMSI 0xc0000793", n["guti_5g"])
+        self.assertEqual((n["tac_tai"], n["nssai_permitido_sst"], n["dnn"]), ("7", "1", "internet"))
+        self.assertEqual((n["tipo_pdu"], n["ip_pdu"], n["modo_ssc"]), ("IPv4", "10.45.0.2", "1"))
+        self.assertEqual(n["session_ambr_dl_kbps"], 1_000_000)  # 62500 x 16 kbit/s (unidad 3)
+        self.assertEqual(n["5qi"], "9")
+
+    def test_seguridad_nea0(self):
+        s = self.r["seguridad"]
+        self.assertEqual(s["cifrado"], "0 (nulo)")
         self.assertEqual(s["nas_cifrados"], 0)
 
 

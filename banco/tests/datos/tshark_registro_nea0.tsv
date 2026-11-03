@@ -1,0 +1,33 @@
+frame.number	frame.time_relative	_ws.col.info	e212.mcc	e212.mnc	nas-5gs.mm.suci.supi_fmt	nas-5gs.mm.suci.scheme_id	nas-5gs.mm.suci.routing_indicator	nas-5gs.mm.suci.msin	gsm_a.dtap.rand	gsm_a.dtap.autn	nas-eps.emm.res	nas-5gs.mm.abba_contents	nas-5gs.mm.nas_sec_algo_enc	nas-5gs.mm.nas_sec_algo_ip	nas-5gs.security_header_type	ngap.gTP_TEID	ngap.TransportLayerAddressIPv4	ngap.fiveQI	pfcp.ue_ip_addr_ipv4	pfcp.pdr_id	pfcp.far_id	pfcp.qer_id	pfcp.f_teid.teid	pfcp.f_teid.ipv4_addr	pfcp.outer_hdr_creation.teid	pfcp.outer_hdr_creation.ipv4	nas-5gs.amf_region_id	nas-5gs.amf_set_id	nas-5gs.amf_pointer	nas-5gs.5g_tmsi	nas-5gs.tac	nas-5gs.mm.sst	nas-5gs.sm.sel_sc_mode	nas-5gs.sm.pdu_ses_type	nas-5gs.sm.pdu_addr_inf_ipv4	nas-5gs.sm.unit_for_session_ambr_dl	nas-5gs.sm.session_ambr_dl	nas-5gs.sm.unit_for_session_ambr_ul	nas-5gs.sm.session_ambr_ul	nas-5gs.sm.qfi	nas-5gs.sm.5qi	nas-5gs.cmn.dnn
+84	3.931715000	PFCP Heartbeat Request																																								
+85	3.932990000	PFCP Heartbeat Request																																								
+86	3.933657000	PFCP Heartbeat Response																																								
+87	3.933967000	PFCP Heartbeat Response																																								
+92	5.741826000	NGSetupRequest	001|001	01|01																																						
+94	5.773592000	NGSetupResponse	001	01																																						
+96	6.893438000	InitialUEMessage, Registration request [RRCEstablishmentCause=mo-Signalling]	001	01	0	0	0000	0123456780							0																											
+146	6.937014000	SACK (Ack=1, Arwnd=106496) , DownlinkNASTransport, Authentication request							38512f013d223333a5ab5cfdea75e75b	4126e693866480000a2cee868ab50758		0000			0																											
+148	6.974411000	SACK (Ack=1, Arwnd=106496) , UplinkNASTransport, Authentication response									23006f5a051d35ff3db83a8811fa9b8b				0																											
+185	6.988730000	SACK (Ack=2, Arwnd=106496) , DownlinkNASTransport, Security mode command											0	2	3|0																											
+186	7.018665000	SACK (Ack=2, Arwnd=106496) , UplinkNASTransport, Security mode complete, Registration request	001	01	0	0	0000	0123456780							4|0|0																											
+296	7.056394000	SACK (Ack=3, Arwnd=106496) , InitialContextSetupRequest, Registration accept													2|0												2	1	0	3221227411	7	1										
+297	7.147680000	SACK (Ack=3, Arwnd=106496) , InitialContextSetupResponse																																								
+298	7.268623000	DATA (TSN=4) (retransmission) , UERadioCapabilityInfoIndication, UplinkNASTransport, Registration complete, UplinkNASTransport, UL NAS transport, PDU session establishment request													2|0|2|0																											internet
+300	7.269480000	DownlinkNASTransport, Configuration update command													2|0																											
+315	7.272274000	DATA[1], JSON (application/json), PDU session establishment request																																								
+403	7.302329000	SACK (Ack=4, Arwnd=106496) , UplinkNASTransport, Configuration update complete													2|0																											
+404	7.306803000	PFCP Session Establishment Request	001	01															10.45.0.2	1|2|3|4	1|2|1|3|1|2|3	1|1|1			0x00000001	127.0.0.4																
+405	7.311855000	PFCP Session Establishment Response																		2|3|4			0x0000696d|0x00003561|0x0000696d	10.53.0.3|10.53.0.3|10.53.0.3																		
+414	7.320034000	SACK (Ack=8, Arwnd=106496) , PDUSessionResourceSetupRequest, DL NAS transport, PDU session establishment accept													2|0	0000696d	10.53.0.3	9														1	1	1	10.45.0.2	3	62500	3	62500	1|1	9	internet
+420	7.486819000	SACK (Ack=5, Arwnd=106496) , PDUSessionResourceSetupResponse														00000001	10.53.0.4																									
+426	7.487658000	DATA[3], JSON (application/json), PDUSessionResourceSetupResponseTransfer														00000001	10.53.0.4																									
+428	7.488772000	PFCP Session Modification Request																			1				0x00000001	10.53.0.4																
+429	7.489258000	PFCP Session Modification Response																																								
+542	14.931571000	PFCP Heartbeat Request																																								
+543	14.931938000	PFCP Heartbeat Response																																								
+544	14.931994000	PFCP Heartbeat Request																																								
+545	14.932041000	PFCP Heartbeat Response																																								
+632	25.933531000	PFCP Heartbeat Request																																								
+633	25.933532000	PFCP Heartbeat Request																																								
+634	25.933570000	PFCP Heartbeat Response																																								
+635	25.933608000	PFCP Heartbeat Response																																								

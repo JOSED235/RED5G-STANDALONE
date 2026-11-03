@@ -33,7 +33,17 @@ CAMPOS = [
     "pfcp.ue_ip_addr_ipv4", "pfcp.pdr_id", "pfcp.far_id", "pfcp.qer_id",
     "pfcp.f_teid.teid", "pfcp.f_teid.ipv4_addr",
     "pfcp.outer_hdr_creation.teid", "pfcp.outer_hdr_creation.ipv4",
+    # Contenido NAS: solo legible con NEA0 (con NEA1/2/3 va cifrado y estos campos quedan vacíos)
+    "nas-5gs.amf_region_id", "nas-5gs.amf_set_id", "nas-5gs.amf_pointer", "nas-5gs.5g_tmsi",
+    "nas-5gs.tac", "nas-5gs.mm.sst", "nas-5gs.sm.sel_sc_mode", "nas-5gs.sm.pdu_ses_type",
+    "nas-5gs.sm.pdu_addr_inf_ipv4", "nas-5gs.sm.unit_for_session_ambr_dl", "nas-5gs.sm.session_ambr_dl",
+    "nas-5gs.sm.unit_for_session_ambr_ul", "nas-5gs.sm.session_ambr_ul", "nas-5gs.sm.qfi",
+    "nas-5gs.sm.5qi", "nas-5gs.cmn.dnn",
 ]
+
+# TS 24.501 §9.11.4.14: unidad del Session-AMBR -> kbit/s por unidad
+UNIDAD_AMBR_KBPS = {1: 1, 2: 4, 3: 16, 4: 64, 5: 256, 6: 1_000, 7: 4_000, 8: 16_000, 9: 64_000,
+                    10: 256_000, 11: 1_000_000}
 
 # TS 33.501 §5.11.1: 0 = NEA0/NIA0 (nulo), 1 = SNOW 3G, 2 = AES, 3 = ZUC
 ALGORITMOS = {"0": "0 (nulo)", "1": "1 (SNOW 3G)", "2": "2 (AES)", "3": "3 (ZUC)"}
@@ -42,7 +52,7 @@ ALGORITMOS = {"0": "0 (nulo)", "1": "1 (SNOW 3G)", "2": "2 (AES)", "3": "3 (ZUC)
 HITOS = [
     ("NGSetupRequest", "gNB", "AMF", "NGSetupRequest"),
     ("NGSetupResponse", "AMF", "gNB", "NGSetupResponse"),
-    ("Registration request", "UE", "AMF", "Registration Request (SUCI)"),
+    ("InitialUEMessage", "UE", "AMF", "Registration Request (SUCI)"),
     ("Authentication request", "AMF", "UE", "Authentication Request (RAND, AUTN)"),
     ("Authentication response", "UE", "AMF", "Authentication Response (RES*)"),
     ("Security mode command", "AMF", "UE", "Security Mode Command (NEA/NIA)"),
@@ -63,8 +73,8 @@ PROCEDIMIENTOS = [
     ("contexto_inicial", "InitialContextSetupRequest", "InitialContextSetupResponse"),
     ("pfcp_establecimiento", "PFCP Session Establishment Request", "PFCP Session Establishment Response"),
     ("recursos_pdu_n2", "PDUSessionResourceSetupRequest", "PDUSessionResourceSetupResponse"),
-    ("registro_hasta_contexto", "Registration request", "InitialContextSetupResponse"),
-    ("registro_hasta_sesion_pdu", "Registration request", "PDUSessionResourceSetupResponse"),
+    ("registro_hasta_contexto", "InitialUEMessage", "InitialContextSetupResponse"),
+    ("registro_hasta_sesion_pdu", "InitialUEMessage", "PDUSessionResourceSetupResponse"),
 ]
 
 
@@ -77,7 +87,9 @@ def buscar_tshark() -> str:
 
 def extraer(pcap: Path) -> str:
     """Salida de tshark con los CAMPOS de cada trama NGAP/PFCP/NAS (texto tabulado)."""
-    cmd = [buscar_tshark(), "-r", str(pcap), "-Y", FILTRO, "-T", "fields", "-E", "header=y",
+    # nas-5gs.null_decipher: Wireshark decodifica el contenido de los mensajes "cifrados" con NEA0
+    cmd = [buscar_tshark(), "-r", str(pcap), "-o", "nas-5gs.null_decipher:TRUE", "-Y", FILTRO,
+           "-T", "fields", "-E", "header=y",
            "-E", "separator=/t", "-E", "occurrence=a", "-E", f"aggregator={parsers.TSHARK_AGREGADOR}"]
     for campo in CAMPOS:
         cmd += ["-e", campo]
@@ -107,9 +119,9 @@ def localizar_hitos(filas: list[dict]) -> dict:
     """{texto del hito: (trama, tiempo)} del último registro de la traza.
 
     El NG Setup se toma como el último antes del registro; los demás hitos, como la primera
-    aparición desde el último Registration Request (así se ignoran sesiones previas al reinicio).
+    aparición desde el último InitialUEMessage (así se ignoran sesiones previas al reinicio).
     """
-    inicio = max((i for i, f in enumerate(filas) if "Registration request" in f["_ws.col.info"]), default=None)
+    inicio = max((i for i, f in enumerate(filas) if "InitialUEMessage" in f["_ws.col.info"]), default=None)
     hitos = {}
     for texto, *_ in HITOS:
         if texto.startswith("NGSetup"):
@@ -136,8 +148,8 @@ def analizar(filas: list[dict]) -> dict:
         return [por_trama[hitos[hito][0]]] if hito in hitos else []
 
     # Solo el último registro: la traza puede traer sesiones anteriores al reinicio de la RAN
-    if "Registration request" in hitos:
-        filas = [f for f in filas if int(f["frame.number"][0]) >= hitos["Registration request"][0]]
+    if "InitialUEMessage" in hitos:
+        filas = [f for f in filas if int(f["frame.number"][0]) >= hitos["InitialUEMessage"][0]]
     cabeceras = [h for f in filas for h in f.get("nas-5gs.security_header_type", [])]
     pfcp_est = en("PFCP Session Establishment Request")
     return {
@@ -176,8 +188,48 @@ def analizar(filas: list[dict]) -> dict:
                  "qer": _todos(pfcp_est, "pfcp.qer_id"),
                  "teid_upf_pfcp": _primero(en("PFCP Session Establishment Response"), "pfcp.f_teid.teid"),
                  "teid_gnb_pfcp": _primero(en("PFCP Session Modification Request"), "pfcp.outer_hdr_creation.teid")},
+        "nas_en_claro": contenido_nas(filas),
         "hitos": hitos,
         "tiempos_ms": tiempos,
+    }
+
+
+def _con_info(filas: list[dict], texto: str) -> list[dict]:
+    """Primera trama cuya columna Info contiene el texto (lista vacía si no hay)."""
+    return next(([f] for f in filas if texto in f["_ws.col.info"]), [])
+
+
+def _ambr_kbps(filas: list[dict], sentido: str) -> int | None:
+    valor = _primero(filas, f"nas-5gs.sm.session_ambr_{sentido}")
+    unidad = _primero(filas, f"nas-5gs.sm.unit_for_session_ambr_{sentido}")
+    if valor is None or unidad is None or int(unidad) not in UNIDAD_AMBR_KBPS:
+        return None
+    return int(valor) * UNIDAD_AMBR_KBPS[int(unidad)]
+
+
+def contenido_nas(filas: list[dict]) -> dict:
+    """Registration Accept y PDU Session Establishment Accept. Con NEA1/2/3 van cifrados y todo es None."""
+    acepta_registro = _con_info(filas, "Registration accept")
+    acepta_pdu = _con_info(filas, "PDU session establishment accept")
+    guti = None
+    if _primero(acepta_registro, "nas-5gs.5g_tmsi"):
+        guti = (f"MCC {_primero(filas, 'e212.mcc')} MNC {_primero(filas, 'e212.mnc')}, "
+                f"AMF región {_primero(acepta_registro, 'nas-5gs.amf_region_id')}, "
+                f"set {_primero(acepta_registro, 'nas-5gs.amf_set_id')}, "
+                f"puntero {_primero(acepta_registro, 'nas-5gs.amf_pointer')}, "
+                f"5G-TMSI {int(_primero(acepta_registro, 'nas-5gs.5g_tmsi')):#010x}")
+    return {
+        "guti_5g": guti,
+        "tac_tai": _primero(acepta_registro, "nas-5gs.tac"),
+        "nssai_permitido_sst": _primero(acepta_registro, "nas-5gs.mm.sst"),
+        "modo_ssc": _primero(acepta_pdu, "nas-5gs.sm.sel_sc_mode"),
+        "tipo_pdu": {"1": "IPv4", "2": "IPv6", "3": "IPv4v6"}.get(_primero(acepta_pdu, "nas-5gs.sm.pdu_ses_type") or ""),
+        "ip_pdu": _primero(acepta_pdu, "nas-5gs.sm.pdu_addr_inf_ipv4"),
+        "session_ambr_dl_kbps": _ambr_kbps(acepta_pdu, "dl"),
+        "session_ambr_ul_kbps": _ambr_kbps(acepta_pdu, "ul"),
+        "qfi": _primero(acepta_pdu, "nas-5gs.sm.qfi"),
+        "5qi": _primero(acepta_pdu, "nas-5gs.sm.5qi"),
+        "dnn": _primero(acepta_pdu, "nas-5gs.cmn.dnn"),
     }
 
 
@@ -214,7 +266,13 @@ antes de citarlos en el informe.
 
 `nas_cabecera_cifrado` cuenta los mensajes NAS con cabecera de seguridad 2 o 4 (integridad y
 cifrado). Con NEA0 esa cabecera se usa igual pero el cifrado es nulo, por eso `nas_cifrados` es 0.
-Con NEA1/2/3 su contenido no se lee en la traza del Core: use `capturas/ue_nas.pcap` o NEA0.
+Con NEA1/2/3 su contenido no se lee (tampoco en `ue_nas.pcap`): capture un registro con NEA0.
+
+## Contenido NAS (Registration Accept y PDU Session Establishment Accept)
+{tabla(r["nas_en_claro"])}
+
+Solo es legible si el cifrado NAS es NEA0: con NEA1/2/3 estos mensajes van cifrados y los campos
+salen como "no encontrado". La propia captura del UE (`ue_nas.pcap`) también los guarda cifrados.
 
 ## Plano de usuario (N3 / PFCP)
 {tabla(r["plano_usuario"])}
@@ -249,7 +307,7 @@ def analizar_archivo(ruta: Path) -> dict:
     if not ruta.exists():
         raise ValueError(f"no existe {ruta}")
     r = analizar(parsers.parse_tshark_campos(extraer(ruta)))
-    if "Registration request" not in r["hitos"]:
+    if "InitialUEMessage" not in r["hitos"]:
         raise ValueError(f"{ruta.name} no contiene un registro: capture con 'pcap --registro'")
     return r
 

@@ -102,14 +102,14 @@ La carpeta `capturas/` del repositorio se monta en los contenedores y recibe aut
 | Archivo | Origen | Uso |
 | :--- | :--- | :--- |
 | `gnb_ngap.pcap` | gNB | Señalización N2 (NGAP + NAS-5GS) |
-| `ue_nas.pcap` | srsUE | Mensajes NAS vistos desde el UE |
+| `ue_nas.pcap` | srsUE | Mensajes NAS vistos desde el UE, tal como viajan (cifrados con NEA1/2/3). Se escribe al detener el UE; en Wireshark: DLT USER 1 (148) → `nas-5gs` |
 | `gnb.log`, `ue.log` | gNB / srsUE | Logs detallados de capa física a NAS |
 | `fase2_traza_*.pcap` | Core (`tcpdump -i any`) | NGAP, GTP-U, PFCP (N4) y SBI HTTP/2 |
 
 Su contenido no se versiona en git (`.gitignore`); copie a `docs/` las capturas que use en el informe.
 
 **Repositorio en una unidad en la nube (Google Drive `G:\`, OneDrive):** lo que los contenedores escriben en `./capturas` puede no aparecer en Windows (falla F2-14). `pcap` copia su traza con `docker compose cp`; para los demás archivos use `docker compose cp open5gs:/capturas/<archivo> capturas/`. La solución de fondo es clonar el repositorio en un disco local.
-Las capturas de NGAP de srsRAN se abren directamente en Wireshark. Con el srsUE 26.10 el AMF negocia NIA2 (integridad) y NEA2 (cifrado): el Security Mode Command muestra los algoritmos negociados y los mensajes NAS posteriores van cifrados en las trazas del Core (`security_header_type = 2`). Para leer su contenido en Wireshark, use `ue_nas.pcap` (el UE lo guarda en claro) o ponga temporalmente `AMF_CIPHERING_ORDER=NEA0, NEA2, NEA1` en `.env`.
+Las capturas de NGAP de srsRAN se abren directamente en Wireshark. Con el srsUE 26.10 el AMF negocia NIA2 (integridad) y NEA2 (cifrado): el Security Mode Command muestra los algoritmos negociados y los mensajes NAS posteriores van cifrados en las trazas del Core (`security_header_type = 2`). Para leer su contenido hay que capturar un registro con NEA0 (`ue_nas.pcap` también guarda los mensajes cifrados): ponga temporalmente `AMF_CIPHERING_ORDER=NEA0, NEA2, NEA1`, recree `open5gs`, ejecute `pcap-registro` y abra la traza con la preferencia de Wireshark `nas-5gs.null_decipher` activada (`banco protocolos` ya la usa y extrae el 5G-GUTI, el NSSAI, la IP, el AMBR y la QoS).
 
 ---
 
@@ -132,7 +132,7 @@ Las pruebas se ejecutan con el banco de pruebas en Python ([`../banco`](../banco
 | Suscriptor (Fase 3) | `.\manage_lab.ps1 banco suscriptor` | Alta o reemplazo en MongoDB de la SIM de `SIM_IMSI`/`SIM_K`/`SIM_OPC` (`.env`) reutilizando `init-mongo.js`. Valida formatos y PLMN; las claves llegan al contenedor por el entorno (no por la línea de comandos) y no se imprimen |
 | Enlace (Fase 3) | `.\manage_lab.ps1 banco enlace [--atenuacion 60,70,80] [--ptx 0] [--distancia 0]` | Presupuesto de enlace sin Docker: FSPL, Prx, RSRP, ruido térmico, SNR, Shannon, MCS teórico (TS 38.214 qam64 con Shannon atenuado α = 0,6) y caudal TS 38.306 por cada atenuación; avisa si Prx supera `--prx-max` |
 | Estadística (paso 3) | `.\manage_lab.ps1 banco estadistica [resultados\<carpeta>]` | Sin Docker. Escribe `estadistica.csv` en la carpeta (por defecto la más reciente): n, media, desviación muestral, IC 95 % con t-Student (n−1 g.l.), mín y máx por prueba, parámetro y métrica, más `dl/ul_bler_agregada_pct` con los ACK/NACK sumados de todas las corridas |
-| Protocolos (paso 4) | `.\manage_lab.ps1 banco protocolos [capturas\<traza>.pcap]` | Sin Docker; requiere tshark (Wireshark). Sobre la traza de `pcap-registro` (por defecto la más reciente; se ejecuta solo al terminar `pcap-registro`) escribe `<traza>_analisis.md` (SUCI, RAND/AUTN/RES*, ABBA, NEA/NIA negociados y mensajes NAS cifrados, TEID e IP N3 del UPF y del gNB desde NGAP contrastados con PFCP, IP del UE, PDR/FAR/QER, tiempos y diagrama de secuencia Mermaid) y `<traza>_tiempos.csv`. Solo analiza el último registro de la traza |
+| Protocolos (paso 4) | `.\manage_lab.ps1 banco protocolos [capturas\<traza>.pcap]` | Sin Docker; requiere tshark (Wireshark). Con una traza NEA0 extrae además el contenido NAS (5G-GUTI, TAI, NSSAI, SSC, IP, Session-AMBR, QFI/5QI, DNN). Sobre la traza de `pcap-registro` (por defecto la más reciente; se ejecuta solo al terminar `pcap-registro`) escribe `<traza>_analisis.md` (SUCI, RAND/AUTN/RES*, ABBA, NEA/NIA negociados y mensajes NAS cifrados, TEID e IP N3 del UPF y del gNB desde NGAP contrastados con PFCP, IP del UE, PDR/FAR/QER, tiempos y diagrama de secuencia Mermaid) y `<traza>_tiempos.csv`. Solo analiza el último registro de la traza |
 | Gráficas (paso 3) | `.\manage_lab.ps1 analisis [resultados\<carpeta>]` | Regenera `estadistica.csv` y escribe `graficas/*.pdf` y `*.png` (media ± IC 95 %) de P5, P6, P7, P8 y P10. Necesita matplotlib: `pip install -r analisis/requirements.txt` (por eso vive en `analisis/`, fuera del banco) |
 
 Opciones comunes: `--corridas N`, `--pausa S` (entre corridas), `--equipo <etiqueta>` (por defecto `EQUIPO` de `.env` o el nombre del host) y `--etiqueta <sufijo>` para la carpeta. En Linux/WSL: `make p7 ARGS="--tasas 2,5,10"`.

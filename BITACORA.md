@@ -761,3 +761,56 @@ autor).
 
 **Pendiente / siguientes pasos:**
 - Revisión del autor y ajustes de redacción antes de la entrega.
+
+---
+
+## 2026-11-02 — Contenido NAS legible, disección de Wireshark y SBI en el informe
+
+**Objetivo:** reforzar el criterio "Análisis de protocolos" de la rúbrica: con NEA2 el Registration
+Accept y el PDU Session Establishment Accept iban cifrados y el informe no mostraba su contenido.
+
+**Hallazgo (corrige documentación anterior):** `ue_nas.pcap` **no** guarda el NAS en claro. srsUE
+registra los mensajes tal como viajan (cabecera de seguridad 2, cifrados con NEA2), en un PCAP con
+encapsulado USER 1 (DLT 148) que solo se escribe al detener el UE (`docker compose stop -t 30 ue`).
+Se verificó con la captura del 2026-11-02 (11 mensajes; del 5 en adelante, cifrados). Las skills,
+`SKILLS.md`, `docker/README.md` y el texto de `banco protocolos` decían lo contrario y se
+corrigieron.
+
+**Cambios realizados:**
+- **Traza de control con NEA0:** `AMF_CIPHERING_ORDER="NEA0, NEA2, NEA1"` solo en el entorno del
+  proceso, `docker compose up -d open5gs` (recrea el núcleo con esa variable), `pcap --registro`
+  (`capturas/fase2_traza_20261102_220903.pcap`), y de vuelta a NEA2 (núcleo recreado sin la
+  variable, comprobado en `/etc/open5gs/amf.yaml`, y RAN recreada; UE sano). `.env` no se tocó.
+- `banco/protocolos.py`: tshark con `-o nas-5gs.null_decipher:TRUE` y campos del contenido NAS;
+  nueva sección `nas_en_claro` (5G-GUTI, TAI, NSSAI permitido, modo SSC, tipo e IP de PDU,
+  Session-AMBR en kbit/s según la tabla de unidades de TS 24.501 §9.11.4.14, QFI, 5QI, DNN) e
+  informe Markdown con ella. **Error corregido:** con NEA0 el Security Mode Complete aparece en Info
+  como "Security mode complete, Registration request" (transporta la petición completa) y el
+  analizador habría tomado ese mensaje como inicio del registro; el hito de inicio es ahora
+  `InitialUEMessage`.
+- `banco/tests/datos/tshark_registro_nea0.tsv` y 4 pruebas nuevas (contenido NAS legible, inicio en
+  el InitialUEMessage, NEA0 no cuenta como cifrado, y con NEA2 el contenido NAS no se inventa).
+- Informe (`docs/informe_fase2.tex` / `.pdf`, ahora 9 páginas): subsección "Contenido NAS con cifrado
+  nulo (traza de control)" con la lista de paquetes (Fig. 3), la tabla de campos del Registration
+  Accept, Configuration Update Command y PDU Session Establishment Accept, el extracto de la
+  disección de Wireshark (Fig. 4) y la señalización SBI decodificada; trazabilidad, resumen y
+  conclusiones actualizados.
+
+**Resultados de la traza NEA0:** 5G-GUTI 001/01, AMF Region 2, Set 1, Pointer 0, 5G-TMSI
+`0xc0000793`; TAI 001/01 TAC 7; NSSAI permitido SST 1; T3512 = 540 s; nombre de red
+"Open5GS"/"5GS"; PDU IPv4 con SSC 1, IP 10.45.0.2, regla QoS por defecto (filtro *match-all*,
+precedencia 255, QFI 1), flujo QFI 1 con 5QI 9, Session-AMBR 1 Gbps/1 Gbps (62500 × 16 kbit/s), DNN
+`internet`. SBI: 14 peticiones decodificadas (UDR, PCF, SMF, BSF); las de la AUSF y el UDM iban por
+conexiones HTTP/2 abiertas antes de la captura y sin la tabla HPACK inicial no se pueden decodificar.
+
+**Verificación:** 44 pruebas unitarias OK; `banco protocolos` sobre la traza NEA0 (contenido
+completo) y sobre la NEA2 (contenido "no encontrado", como corresponde); informe compilado dos veces
+en `texlive/texlive:latest-full` sin errores, sin `Overfull` y sin referencias sin resolver, y revisado
+página a página. Se corrigieron durante la revisión: `listings` no admite UTF-8 en el cuerpo
+("Información" → "Info") y el título de un listado se solapaba con el marco (ahora va en una figura
+con título debajo, como la Fig. 3). **No verificado:** una captura de pantalla de la interfaz gráfica
+de Wireshark; el informe usa la disección textual de tshark, que emplea el mismo disector.
+
+**Pendiente / siguientes pasos:**
+- Revisión del informe por el autor (opcional: añadir una captura de pantalla de Wireshark abriendo
+  `capturas/fase2_traza_20261102_220903.pcap` con la preferencia `nas-5gs.null_decipher`).

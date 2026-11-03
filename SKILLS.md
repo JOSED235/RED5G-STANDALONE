@@ -69,7 +69,7 @@ Para cumplir con éxito las exigencias de la **Fase 2 (Implementación Core y Ze
 * **Conocimientos clave:**
   * Captura de bajo nivel con `tcpdump -i any` dentro del contenedor del Core (`.\manage_lab.ps1 pcap-registro`), que ve N2 y N3 por `eth0` y N4/SBI por `lo`, y análisis con `tshark` (instalado con Wireshark en el equipo principal).
   * Filtros de visualización en Wireshark: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `sctp`, `http2`; Security Mode Command: `nas-5gs.mm.message_type == 0x5d`.
-  * Lectura del NAS: con el srsUE el AMF negocia NIA2 + NEA0, así que el NAS es legible en las trazas del Core; `ue_nas.pcap` siempre está en claro.
+  * Lectura del NAS: el AMF negocia NIA2 + NEA2, así que el NAS va cifrado en las trazas del Core y también en `ue_nas.pcap` (srsUE guarda los mensajes tal como viajan). Para leer el contenido se captura un registro con NEA0 y se activa `nas-5gs.null_decipher` en Wireshark/tshark.
   * Verificación exhaustiva de parámetros: SUCI/SUPI, RAND, AUTN, RES*, derivación de claves KAMF/KgNB, TEID en GTP-U, asignación de IP en PDU Session Establishment Accept.
 
 ### Skill 5: Aprovisionamiento y Seguridad de SIM/USIM (`USIM-Security-Provisioning`)

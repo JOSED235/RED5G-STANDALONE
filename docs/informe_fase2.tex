@@ -62,7 +62,7 @@ Curso: Sistemas y Comunicaciones 2 --- Docente: Andrés Navarro Cadavid, PhD}
 \maketitle
 
 \begin{abstract}
-Este informe documenta la Fase 2 (Implementación del Core y de la Red de Acceso, Zero-RF) del proyecto de curso que despliega una red 5G Standalone (SA) con \textit{srsRAN Project} como red de acceso y \textit{Open5GS} como núcleo 5G con servicios virtualizados tipo NFV. El despliegue se automatizó con Docker Compose en cinco contenedores, con una configuración única versionable y un banco de pruebas en Python que guarda resultados trazables. El núcleo ejecuta once funciones de red con la base de datos MongoDB aprovisionada con el perfil 5G del suscriptor, y el gNB se enlaza al AMF por NGAP/SCTP con el túnel GTP-U estable. Se habilitó el cifrado NAS 128-NEA2 con integridad 128-NIA2 tras identificar y corregir, actualizando el srsUE, un defecto de descifrado que antes obligaba a usar NEA0, y se parametrizó la seguridad AS del gNB. El análisis de las trazas del registro y de la sesión PDU, automatizado con \textit{tshark}, extrae el SUCI, el vector 5G-AKA, los algoritmos negociados, los TEID de N3 contrastados entre NGAP y PFCP, y la duración de cada procedimiento: el registro completo hasta la sesión PDU tardó $471.6\pm32.3$~ms (IC 95\,\%, $n=5$). Con cinco corridas por prueba se midió un RTT al UPF de $31.9\pm0.9$~ms, un caudal TCP de $48.6\pm1.4$~Mbps en descendente y $11.6\pm0.5$~Mbps en ascendente, un máximo UDP descendente de $56.3\pm1.2$~Mbps y treinta minutos de operación sin cortes. El barrido de MCS fijo muestra que el caudal es el 54--62\,\% de la cota de TS 38.306 en todos los MCS, lo que atribuye la brecha a la sobrecarga de capa física y de planificación y no a la CPU. Se documentan quince fallas corregidas, las decisiones técnicas y la preparación de la Fase 3.
+Este informe documenta la Fase 2 (Implementación del Core y de la Red de Acceso, Zero-RF) del proyecto de curso que despliega una red 5G Standalone (SA) con \textit{srsRAN Project} como red de acceso y \textit{Open5GS} como núcleo 5G con servicios virtualizados tipo NFV. El despliegue se automatizó con Docker Compose en cinco contenedores, con una configuración única versionable y un banco de pruebas en Python que guarda resultados trazables. El núcleo ejecuta once funciones de red con la base de datos MongoDB aprovisionada con el perfil 5G del suscriptor, y el gNB se enlaza al AMF por NGAP/SCTP con el túnel GTP-U estable. Se habilitó el cifrado NAS 128-NEA2 con integridad 128-NIA2 tras identificar y corregir, actualizando el srsUE, un defecto de descifrado que antes obligaba a usar NEA0, y se parametrizó la seguridad AS del gNB. El análisis de las trazas del registro y de la sesión PDU, automatizado con \textit{tshark}, extrae el SUCI, el vector 5G-AKA, los algoritmos negociados, el contenido NAS del registro y de la sesión PDU (5G-GUTI, NSSAI, QoS y AMBR, leídos en una traza de control con cifrado nulo), los TEID de N3 contrastados entre NGAP y PFCP, y la duración de cada procedimiento: el registro completo hasta la sesión PDU tardó $471.6\pm32.3$~ms (IC 95\,\%, $n=5$). Con cinco corridas por prueba se midió un RTT al UPF de $31.9\pm0.9$~ms, un caudal TCP de $48.6\pm1.4$~Mbps en descendente y $11.6\pm0.5$~Mbps en ascendente, un máximo UDP descendente de $56.3\pm1.2$~Mbps y treinta minutos de operación sin cortes. El barrido de MCS fijo muestra que el caudal es el 54--62\,\% de la cota de TS 38.306 en todos los MCS, lo que atribuye la brecha a la sobrecarga de capa física y de planificación y no a la CPU. Se documentan quince fallas corregidas, las decisiones técnicas y la preparación de la Fase 3.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -101,7 +101,7 @@ La radio sigue siendo virtual (ZMQ) y el UE es el emulador srsUE; el SDR y el te
 \midrule
 Core Open5GS (ABET 2) & 11 NF activas y registradas en el NRF, MongoDB aprovisionado con el perfil 5G, seguridad NAS NIA2/NEA2 y AS, estabilidad de 30 min & \ref{sec:core} \\
 gNB srsRAN (ABET 1, 2) & NG Setup por NGAP/SCTP, parámetros de celda, túnel GTP-U con TEID verificados, caudal y MCS medidos frente a la teoría & \ref{sec:gnb}, \ref{sec:res} \\
-Análisis de protocolos (ABET 1) & Registration y PDU Session campo a campo (SUCI, RAND/AUTN/RES*, ABBA, NEA/NIA, TEID, PDR/FAR/QER, IP), diagrama de secuencia medido y tiempos con IC 95\,\% & \ref{sec:proto} \\
+Análisis de protocolos (ABET 1) & Registration y PDU Session campo a campo (SUCI, RAND/AUTN/RES*, ABBA, NEA/NIA, 5G-GUTI, NSSAI, QoS, AMBR, TEID, PDR/FAR/QER, IP), disección de Wireshark, SBI, diagrama de secuencia medido y tiempos con IC 95\,\% & \ref{sec:proto} \\
 Gestión técnica (ABET 4) & Decisiones justificadas, 15 fallas resueltas, flujo de trabajo (git, bitácora, CI), optimización de recursos y preparación de la Fase 3 & \ref{sec:gestion} \\
 \bottomrule
 \end{tabular}
@@ -312,7 +312,7 @@ La Tabla~\ref{tab:campos} resume los campos extraídos de la traza.
 
 \textbf{5G-AKA.} El \textit{Authentication Request} transporta RAND (128 bits) y AUTN, este último desglosado en SQN$\oplus$AK (48 bits), el campo AMF = 8000 y MAC (64 bits). El bit de separación del campo AMF está activo, como exige 5G-AKA para distinguir los vectores 5G de los de EPS. ABBA vale 0000. El UE calcula RES* a partir de K, OPc y RAND (Milenage) \cite{milenage}, y lo devuelve en el \textit{Authentication Response}. La AUSF lo compara con el XRES* que generó el UDM. Este intercambio tardó $29.9\pm5.0$~ms.
 
-\textbf{Seguridad NAS.} El \textit{Security Mode Command} selecciona 128-NEA2 y 128-NIA2 y repite las capacidades de seguridad del UE para evitar ataques de degradación. A partir de ahí los mensajes NAS llevan cabecera de seguridad tipo 2 (integridad y cifrado) \cite{ts24501}: en cada traza hay 7 mensajes cifrados, entre ellos el \textit{Registration Accept}, el \textit{Registration Complete} y el intercambio de la sesión PDU. Su contenido no puede leerse en la captura del núcleo. Para inspeccionarlo hay que usar la captura NAS que guarda el propio UE o, temporalmente, NEA0. En las trazas de octubre, con NEA0, la cabecera era también tipo 2 pero el contenido era legible. El analizador distingue ambos casos según el algoritmo negociado.
+\textbf{Seguridad NAS.} El \textit{Security Mode Command} selecciona 128-NEA2 y 128-NIA2 y repite las capacidades de seguridad del UE para evitar ataques de degradación. A partir de ahí los mensajes NAS llevan cabecera de seguridad tipo 2 (integridad y cifrado) \cite{ts24501}: en cada traza hay 7 mensajes cifrados, entre ellos el \textit{Registration Accept}, el \textit{Registration Complete} y el intercambio de la sesión PDU. Su contenido no puede leerse en la captura del núcleo ni en la que guarda el propio UE, que registra los mensajes tal como viajan. Por eso el contenido se analiza en una traza de control con NEA0 (Sección~\ref{sec:nas0}). Con NEA0 la cabecera también es tipo 2, pero el cifrado es nulo y el contenido es legible; el analizador distingue ambos casos según el algoritmo negociado.
 
 \begin{table}[!t]
 \caption{Campos extraídos de la traza del registro (corrida 1)}
@@ -348,6 +348,99 @@ La petición de sesión PDU llega cifrada dentro de un \textit{UplinkNASTranspor
   \item \textbf{PDR 3 y 4}: reglas de control entre el UPF y el plano de control, por ejemplo para los mensajes de descubrimiento de enrutador.
 \end{itemize}
 La respuesta trae el F-TEID asignado por el UPF (\texttt{0x0000cd8a}, 10.53.0.3), que el AMF envía al gNB en la \textit{PDUSessionResourceSetupRequest} junto con la QoS (5QI 9). El gNB contesta con su propio TEID (\texttt{0x00000001}, 10.53.0.4), y el SMF lo instala en el UPF con una \textit{PFCP Session Modification}, que crea la cabecera GTP-U externa hacia el gNB \cite{ts29281}. El analizador comprueba que los dos TEID coinciden en NGAP y en PFCP. Una versión inicial tomaba por error la \textit{Outer Header Creation} de la primera petición PFCP, que apunta al SMF (127.0.0.4, TEID 2) y no al gNB.
+
+\subsection{Contenido NAS con cifrado nulo (traza de control)}
+\label{sec:nas0}
+Para interpretar los mensajes que NEA2 oculta se capturó un registro adicional con la misma configuración y \texttt{AMF\_CIPHERING\_ORDER=NEA0, NEA2, NEA1}. El cambio se aplicó solo en el entorno del proceso, sin tocar \texttt{.env}, y se revirtió a NEA2 en cuanto terminó la captura. La integridad sigue siendo 128-NIA2. La traza se decodificó con la preferencia \texttt{nas-5gs.null\_decipher} de Wireshark. La Fig.~\ref{fig:lista} muestra la lista de paquetes, en la que aparecen en claro el \textit{Security Mode Complete} (que transporta la \textit{Registration Request} completa), el \textit{Registration Accept}, el \textit{Configuration Update Command} y el \textit{PDU Session Establishment Accept}. La Tabla~\ref{tab:nas0} resume sus campos y la Fig.~\ref{fig:pdu} reproduce un extracto de la disección.
+
+\begin{figure*}[!t]
+\begin{lstlisting}[basicstyle=\ttfamily\fontsize{6.2}{7.2}\selectfont]
+ No.  Time (s)   Protocol        Info
+  92     5.742   NGAP            NGSetupRequest
+  94     5.774   NGAP            NGSetupResponse
+  96     6.893   NGAP/NAS-5GS    InitialUEMessage, Registration request [RRCEstablishmentCause=mo-Signalling]
+ 146     6.937   NGAP/NAS-5GS    DownlinkNASTransport, Authentication request
+ 148     6.974   NGAP/NAS-5GS    UplinkNASTransport, Authentication response
+ 185     6.989   NGAP/NAS-5GS    DownlinkNASTransport, Security mode command
+ 186     7.019   NGAP/NAS-5GS    UplinkNASTransport, Security mode complete, Registration request
+ 296     7.056   NGAP/NAS-5GS    InitialContextSetupRequest, Registration accept
+ 297     7.148   NGAP            InitialContextSetupResponse
+ 298     7.269   NGAP/NAS-5GS    UERadioCapabilityInfoIndication, UplinkNASTransport, Registration complete, UL NAS transport [PDU session establishment request]
+ 300     7.269   NGAP/NAS-5GS    DownlinkNASTransport, Configuration update command
+ 404     7.307   PFCP            PFCP Session Establishment Request
+ 405     7.312   PFCP            PFCP Session Establishment Response
+ 414     7.320   NGAP/NAS-5GS    PDUSessionResourceSetupRequest, DL NAS transport, PDU session establishment accept
+ 420     7.487   NGAP            PDUSessionResourceSetupResponse
+ 426     7.488   HTTP2/JSON      Nsmf_PDUSession (PDUSessionResourceSetupResponseTransfer)
+ 428     7.489   PFCP            PFCP Session Modification Request
+ 429     7.489   PFCP            PFCP Session Modification Response
+\end{lstlisting}
+\caption{Lista de paquetes de la traza de control con NEA0 (Wireshark/\textit{tshark}, filtro \texttt{ngap or pfcp}, sin los \textit{heartbeats} de PFCP). Con NEA2 las tramas 186 a 414 muestran solo la cabecera de seguridad.}
+\label{fig:lista}
+\end{figure*}
+
+\begin{table}[!t]
+\caption{Contenido NAS del registro y de la sesión PDU (traza con NEA0)}
+\label{tab:nas0}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{5.0cm}}
+\toprule
+\textbf{Campo} & \textbf{Valor observado} \\
+\midrule
+\multicolumn{2}{l}{\textit{Registration Accept}} \\
+Resultado & Registrado por acceso 3GPP; SMS sobre NAS no permitido \\
+5G-GUTI & 001/01, AMF Region 2, AMF Set 1, Pointer 0, 5G-TMSI \texttt{0xc0000793} \\
+Lista de TAI & 001/01, TAC 7 \\
+NSSAI permitido & SST 1 (eMBB) \\
+T3512 & 540~s (registro periódico) \\
+\multicolumn{2}{l}{\textit{Configuration Update Command}} \\
+Nombre de red & ``Open5GS'' / ``5GS'', con zona horaria y hora universal \\
+\multicolumn{2}{l}{\textit{PDU Session Establishment Accept}} \\
+Tipo de PDU / SSC & IPv4 / modo SSC 1 \\
+Dirección PDU & 10.45.0.2 \\
+Regla QoS por defecto & ID 1, filtro bidireccional \textit{match-all}, precedencia 255, QFI 1 \\
+Flujo QoS autorizado & QFI 1, 5QI 9 \\
+Session-AMBR & 1~Gbps DL / 1~Gbps UL ($62\,500\times16$~kbps) \\
+S-NSSAI / DNN & SST 1 / \texttt{internet} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\begin{lstlisting}
+NAS-5GS  Message type: PDU session establishment accept (0xc2)
+  Selected SSC mode: SSC mode 1 (1)
+  PDU session type: IPv4 (1)
+  QoS rules - Authorized QoS rules
+    QoS rule 1: identifier 1, Create new QoS rule,
+      DQR: the QoS rule is the default QoS rule
+      Packet filter 1: Bidirectional, Match-all
+      QoS rule precedence: 255, QoS flow identifier: 1
+  Session-AMBR DL: 1000000 Kbps (62500, unit 16 Kbps)
+  Session-AMBR UL: 1000000 Kbps (62500, unit 16 Kbps)
+  PDU address: IPv4 10.45.0.2
+  S-NSSAI: SST eMBB (1)
+  QoS flow descriptions - Authorized
+    QoS flow 1: Create new QoS flow, parameter 5QI: 9
+  DNN: internet
+\end{lstlisting}
+\caption{Extracto de la disección de Wireshark del \textit{PDU Session Establishment Accept} (trama 414 de la traza con NEA0).}
+\label{fig:pdu}
+\end{figure}
+
+Los valores coinciden con el perfil aprovisionado en MongoDB (Tabla~\ref{tab:suscriptor}): el SMF entrega la sesión IPv4 del DNN \texttt{internet} en el \textit{slice} eMBB, con 5QI 9 y el AMBR de 1~Gbps del suscriptor, y la regla QoS por defecto con un filtro \textit{match-all} envía todo el tráfico por el flujo QFI 1. El 5G-GUTI sustituye al SUCI en los registros siguientes, de modo que el identificador permanente no vuelve a viajar por la radio. La IP 10.45.0.2 coincide con la que el SMF instaló en el UPF por PFCP.
+
+\textbf{SBI.} La misma traza contiene la señalización HTTP/2 entre funciones del núcleo, enrutada por el SCP. Se decodificaron 14 peticiones de servicio:
+\begin{itemize}
+  \raggedright
+  \item \textbf{UDR} (\texttt{nudr-dr}): lectura de los datos de autenticación, de acceso y movilidad (\texttt{am-data}), de sesión (\texttt{sm-data}) y de selección de SMF, y registro del contexto del AMF y del SMF.
+  \item \textbf{PCF}: políticas de acceso (\texttt{npcf-am-policy-control}) y de sesión (\texttt{npcf-smpolicycontrol}).
+  \item \textbf{SMF} (\texttt{nsmf-pdusession}): creación del contexto de sesión y su modificación con el TEID del gNB.
+  \item \textbf{BSF} (\texttt{nbsf-management}): vínculo entre la sesión y el PCF.
+\end{itemize}
+Las llamadas a la AUSF y al UDM viajaban por conexiones HTTP/2 abiertas antes de iniciar la captura: sin la tabla HPACK inicial, Wireshark no puede decodificar sus cabeceras, y por eso no figuran en la lista.
 
 \subsection{Tiempos de los procedimientos}
 La prueba de registro se repitió cinco veces con la seguridad AS en \texttt{nea2} y otras cinco con \texttt{nea0}. Cada corrida recrea la RAN, captura el registro y lo analiza. La Tabla~\ref{tab:tiempos} presenta las medias con su intervalo de confianza del 95\,\% (t de Student, 4 grados de libertad).
@@ -608,7 +701,7 @@ El plan fija las pruebas conducidas, con atenuadores o caja de apantallamiento, 
 \begin{enumerate}
   \item El núcleo Open5GS quedó totalmente funcional y reproducible: once funciones de red, MongoDB aprovisionado con el perfil 5G del suscriptor (5G-AKA con Milenage, SST 1, 5QI 9) y seguridad NAS con cifrado 128-NEA2 e integridad 128-NIA2. Habilitar el cifrado requirió diagnosticar un defecto de descifrado del emulador y actualizarlo.
   \item El gNB de srsRAN se vincula al núcleo por NGAP/SCTP ($18.7\pm7.0$~ms de NG Setup) y mantiene estable el túnel GTP-U: treinta minutos de tráfico sin cortes ni reinicios, con TEID coherentes entre NGAP y PFCP.
-  \item El análisis de las trazas del registro y de la sesión PDU, automatizado con \textit{tshark}, interpreta cada campo relevante (SUCI, RAND, AUTN, RES*, ABBA, algoritmos, TEID, reglas PDR/FAR/QER, IP) y mide cada procedimiento. El registro completo tarda $471.6\pm32.3$~ms, dominado por los pasos que cruzan la radio emulada. La PFCP es casi instantánea y cifrar RRC/PDCP no añade una demora medible.
+  \item El análisis de las trazas del registro y de la sesión PDU, automatizado con \textit{tshark}, interpreta cada campo relevante (SUCI, RAND, AUTN, RES*, ABBA, algoritmos, 5G-GUTI, NSSAI, reglas y flujos QoS, AMBR, TEID, reglas PDR/FAR/QER, IP) y mide cada procedimiento. El registro completo tarda $471.6\pm32.3$~ms, dominado por los pasos que cruzan la radio emulada. La PFCP es casi instantánea y cifrar RRC/PDCP no añade una demora medible.
   \item Las mediciones con rigor estadístico dan un RTT de $31.9\pm0.9$~ms al UPF y caudales TCP de $48.6\pm1.4$ (DL) y $11.6\pm0.5$~Mbps (UL), con un máximo UDP DL de $56.3\pm1.2$~Mbps. El barrido de MCS muestra un caudal del 54--62\,\% de la cota teórica en todos los MCS, lo que atribuye la brecha a la sobrecarga de capa física y de planificación y no a la CPU. El UL lo limita el emulador srsUE.
   \item La gestión técnica dejó trazabilidad completa: quince fallas resueltas con causa y corrección, decisiones justificadas, bitácora, pruebas unitarias e integración continua. La optimización de memoria redujo a la mitad el consumo de la red y estabilizó las mediciones.
   \item \textbf{Trabajo futuro:} cuantificar la sobrecarga de capa física con el registro MAC del gNB, evidenciar el algoritmo AS negociado y, en la Fase 3, integrar la USRP B210 y el terminal comercial con la configuración y el plan ya preparados.

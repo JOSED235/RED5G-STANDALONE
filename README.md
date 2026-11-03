@@ -274,6 +274,6 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 * [`docs/Enunciado.txt`](docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.
 * [`docs/SyC2ProyectoFinal.pdf`](docs/SyC2ProyectoFinal.pdf): Informe formal completo de la Fase 1 generado bajo formato IEEE Transactions.
 * [`docs/informe_fase1_corregido.tex`](docs/informe_fase1_corregido.tex): Código fuente en LaTeX del informe de la Fase 1 (compatible con compilación en Overleaf / pdfLaTeX).
-* [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf): Informe de la Fase 2 (IEEEtran, 8 páginas): despliegue contenerizado, núcleo y seguridad 5G, gNB, análisis de protocolos, resultados con IC 95 % y gestión técnica. Las figuras son TikZ/pgfplots con los datos dentro del `.tex`, así que compila en Overleaf sin archivos externos.
+* [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf): Informe de la Fase 2 (IEEEtran, 9 páginas): despliegue contenerizado, núcleo y seguridad 5G, gNB, análisis de protocolos (incluido el contenido NAS leído en una traza de control con NEA0, la disección de Wireshark y la SBI), resultados con IC 95 % y gestión técnica. Las figuras son TikZ/pgfplots con los datos dentro del `.tex`, así que compila en Overleaf sin archivos externos.
 * `docs/Rúbricas de Evaluación proyecto 5G (2).xlsx`: Matriz de evaluación académica y criterios ABET para las Fases 1, 2 y 3.
 
