@@ -14,6 +14,7 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
+from . import enlace
 from .config import DIR_RESULTADOS
 
 # Cuantil t_{0,975; gl} (tablas estándar). Para gl ausentes se usa el gl tabulado inmediato
@@ -108,6 +109,76 @@ def _carpeta_reciente() -> Path:
     return carpetas[-1]
 
 
+# Celda de gnb_zmq.yaml medida en el log MAC del gNB (04/11/2026): con DCI 1_0 en search space común
+# el PDSCH se limita al ancho del CORESET#0 (96 PRB, TS 38.214 §5.1.2.2.2) y el TBS corresponde a
+# N'_RE = 120 RE/PRB. shortcut: valores fijos de esa celda; recalcular si cambia la celda o el DCI.
+P8_N_PRB = 96
+P8_N_RE_PRB = 120
+SLOTS_POR_S = 1000  # µ = 0 (SCS 15 kHz), FDD: todos los slots admiten PDSCH
+MIN_TB_POR_S = 50  # segundos con menos bloques son reposo antes o después de iperf
+
+
+def sobrecarga_p8(metricas: list[dict], resumen: list[dict]) -> list[dict]:
+    """Descompone el cociente medido/cota TS 38.306 de P8 (DL) en factores multiplicativos.
+
+    cota · f_prb_re · f_tbs_parcial · f_ocupacion · f_tcp = caudal TCP medido, donde:
+    f_prb_re = TBS de un slot completo (96 PRB) / bits por slot de la cota;
+    f_tbs_parcial = TBS medio / TBS completo (slots con menos PRB, p. ej. los del SSB);
+    f_ocupacion = bloques DL correctos por segundo / slots por segundo;
+    f_tcp = caudal TCP / caudal MAC (cabeceras, retransmisiones y dinámica de TCP).
+    """
+    brate, ok, segundos = defaultdict(float), defaultdict(int), defaultdict(int)
+    for f in metricas:
+        if f.get("prueba") != "P8_mcs" or f.get("parametro") != "mcs_dl":
+            continue
+        try:
+            n_ok, tasa = int(float(f["dl_ok"] or 0)), float(f["dl_brate_bps"] or 0)
+        except (KeyError, ValueError):
+            continue
+        if n_ok < MIN_TB_POR_S:
+            continue
+        mcs = int(float(f["valor_parametro"]))
+        brate[mcs] += tasa
+        ok[mcs] += n_ok
+        segundos[mcs] += 1
+    tcp = defaultdict(list)
+    for f in resumen:
+        if f.get("prueba") == "P8_mcs" and f.get("parametro") == "mcs_dl" and f.get("metrica") == "caudal_mbps":
+            tcp[int(float(f["valor_parametro"]))].append(float(f["valor"]))
+    filas = []
+    for mcs in sorted(set(segundos) & set(tcp)):
+        cota = enlace.caudal_mbps(mcs, 106, 15, 0.14)
+        tbs_completo = enlace.tbs_bits(mcs, P8_N_PRB, P8_N_RE_PRB)
+        tbs_medio = brate[mcs] / ok[mcs]
+        ocupacion = ok[mcs] / (SLOTS_POR_S * segundos[mcs])
+        mac = brate[mcs] / segundos[mcs] / 1e6
+        tcp_mbps = statistics.fmean(tcp[mcs])
+        filas.append({
+            "mcs": mcs, "cota_38306_mbps": cota, "tope_tbs_mbps": tbs_completo * SLOTS_POR_S / 1e6,
+            "mac_mbps": mac, "tcp_mbps": tcp_mbps, "tbs_completo_bits": tbs_completo,
+            "tbs_medio_bits": tbs_medio, "f_prb_re": tbs_completo * SLOTS_POR_S / 1e6 / cota,
+            "f_tbs_parcial": tbs_medio / tbs_completo, "f_ocupacion": ocupacion,
+            "f_tcp": tcp_mbps / mac, "medido_sobre_cota": tcp_mbps / cota,
+        })
+    return filas
+
+
+def _escribir_sobrecarga(directorio: Path, filas: list[dict]) -> None:
+    destino = directorio / "sobrecarga_p8.csv"
+    with open(destino, "w", newline="", encoding="utf-8") as f:
+        escritor = csv.DictWriter(f, fieldnames=list(filas[0]))
+        escritor.writeheader()
+        for fila in filas:
+            escritor.writerow({k: (round(v, 4) if isinstance(v, float) else v) for k, v in fila.items()})
+    print(">>> P8: descomposición de la brecha con la cota TS 38.306 (factores multiplicativos)")
+    print("  MCS  cota  tope_TBS   MAC   TCP | f_prb_re f_tbs_parcial f_ocupacion  f_tcp | medido/cota")
+    for r in filas:
+        print(f"  {r['mcs']:>3} {r['cota_38306_mbps']:>5.1f} {r['tope_tbs_mbps']:>8.1f} {r['mac_mbps']:>5.1f} "
+              f"{r['tcp_mbps']:>5.1f} | {r['f_prb_re']:>8.3f} {r['f_tbs_parcial']:>13.3f} "
+              f"{r['f_ocupacion']:>11.3f} {r['f_tcp']:>6.3f} | {r['medido_sobre_cota']:>11.3f}")
+    print(f">>> Tabla: {destino}")
+
+
 def analizar(carpeta: str | None) -> Path:
     """Escribe <carpeta>/estadistica.csv y muestra las métricas principales en pantalla."""
     directorio = Path(carpeta) if carpeta else _carpeta_reciente()
@@ -130,4 +201,7 @@ def analizar(carpeta: str | None) -> Path:
         grupo = f"{f['prueba']} {f['parametro']}={f['valor_parametro']}" if f["parametro"] else f["prueba"]
         print(f"  {grupo:<28} {f['metrica']:<26} n={f['n']:<2} {f['media']:>12.4g} {ic:<14} {f['unidad']}")
     print(f">>> Tabla: {destino}")
+    sobrecarga = sobrecarga_p8(_leer_csv(directorio / "metricas_gnb.csv"), filas)
+    if sobrecarga:
+        _escribir_sobrecarga(directorio, sobrecarga)
     return destino

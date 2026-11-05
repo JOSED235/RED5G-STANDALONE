@@ -23,6 +23,12 @@ class PruebasEnlace(unittest.TestCase):
         # 106 PRB, µ = 0, MCS 28 (64QAM, 948/1024), OH 0,14: ≈ 85,1 Mbit/s
         self.assertAlmostEqual(enlace.caudal_mbps(28, 106, 15, 0.14), 85.06, places=1)
 
+    def test_tbs_38214_contra_el_log_del_gnb(self):
+        # TBS reales del log MAC del gNB (04/11/2026, MCS 28): 7941 B con 96 PRB y 3329 B con 40 PRB
+        self.assertEqual(enlace.tbs_bits(28, 96, 120), 7941 * 8)
+        self.assertEqual(enlace.tbs_bits(28, 40, 120), 3329 * 8)
+        self.assertEqual(enlace.tbs_bits(0, 1, 12), 24)  # rama N_info <= 3824, mínimo de la tabla
+
     def test_fraccion_tdd_escala_el_caudal(self):
         fdd = enlace.presupuesto(0, 0, 0, 60, 1, 0, 3489.42, 51, 30, 9, 0.14)
         tdd = enlace.presupuesto(0, 0, 0, 60, 1, 0, 3489.42, 51, 30, 9, 0.14, fraccion=0.657)

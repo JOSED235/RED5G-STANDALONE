@@ -23,7 +23,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Primer `up` en el portátil menos potente (i5-8250U): `git pull`, `EQUIPO=` en `.env`, `verificar`, `up` (compila sus propias imágenes) y una `campana` corta para confirmar.
 - [x] Campaña definitiva `campana --pruebas ping,iperf,p7,p10 --corridas 5` con srsUE 26.10 y NEA2 (2026-11-02, `resultados/20261102_181151_campana_definitiva_nea2`).
 - [x] P8 (MCS fijo, 3 corridas), P9 (30 min, ESTABLE) y P7 DL 40–80 Mbit/s repetido con la red optimizada (2026-11-02).
-- [ ] Cuantificar la sobrecarga de capa física y scheduler (log MAC del gNB) que explica el 54–62 % medido/teórico de P8.
+- [x] Cuantificar la sobrecarga de capa física y scheduler (log MAC del gNB) que explica el 54–62 % medido/teórico de P8 (2026-11-04, `sobrecarga_p8.csv`).
 - [x] Paso 3 (herramienta): `python -m banco estadistica` (IC 95 % t-Student, BLER agregada) y `python -m analisis.graficas` (2026-11-02).
 - [x] Paso 3 (aplicación): `analisis` sobre la campaña definitiva; figuras revisadas (2026-11-02).
 - [x] Paso 4 (herramienta): `python -m banco protocolos` con tshark (SUCI, 5G-AKA, NEA/NIA, TEID, IP, PDR/FAR/QER, tiempos y diagrama Mermaid) (2026-11-02).
@@ -49,6 +49,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Calibrar la calculadora con el hardware real: Ptx, NF y potencia máxima de entrada del SDR y del teléfono según sus hojas de datos.
 - [x] Plan de pruebas de la Fase 3 y lista de verificación de hardware: `docs/fase3_plan_pruebas.md` (2026-11-02).
 - [ ] Adaptar el banco a las mediciones con teléfono (P5–P10 hoy miden desde el contenedor `ue`).
+- [ ] Con el terminal comercial, probar DCI 1_1 en search space dedicado (`dci_format_0_1_and_1_1: true`, sin `ss2_type: common`): liberaría los 106 PRB (~10 % más de caudal). Recalcular `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` si cambia la celda.
 
 ### Calidad
 - [x] CI en GitHub Actions (`.github/workflows/ci.yml`), simulada en local (2026-11-02).
@@ -873,4 +874,56 @@ se revirtió). `restart-ran` tampoco sirve: el contenedor nuevo sobrescribe el l
   algoritmo en `info`).
 
 **Pendiente / siguientes pasos:**
-- Cuantificar la sobrecarga de capa física y scheduler (log MAC del gNB) para P8.
+- Cuantificar la sobrecarga de capa física y scheduler (log MAC del gNB) para P8 (hecho en la entrada siguiente).
+
+---
+
+## 2026-11-04 — Brecha de P8 frente a TS 38.306 cuantificada con el log MAC del gNB
+
+**Objetivo:** explicar con datos por qué el caudal TCP de P8 es el 54–62 % de la cota de TS 38.306 en
+todos los MCS. El informe lo dejaba como hipótesis (PDCCH, DMRS, SSB, planificador, TCP) y trabajo
+futuro.
+
+**Cambios realizados:**
+- `banco/enlace.py`: `tbs_bits()` calcula el TBS del PDSCH por TS 38.214 §5.1.3.2 (tabla 5.1.3.2-1 y
+  fórmulas para N_info > 3824).
+- `banco/estadistica.py`: `sobrecarga_p8()` descompone el cociente medido/cota en cuatro factores
+  multiplicativos a partir de `metricas_gnb.csv` y `resumen.csv`: `f_prb_re` (TBS de un slot
+  completo frente a la cota), `f_tbs_parcial` (TBS medio frente a completo), `f_ocupacion` (bloques DL
+  por segundo frente a 1000 slots) y `f_tcp` (TCP frente a MAC). `analizar()` escribe
+  `sobrecarga_p8.csv` si la carpeta trae P8. N_PRB = 96 y N'_RE = 120 son constantes de la celda
+  actual, medidas en el log (comentario `shortcut:`).
+- `banco/tests/test_enlace.py`, `banco/tests/test_estadistica.py`: TBS contra los valores reales del
+  log (7941 B con 96 PRB, 3329 B con 40 PRB) y producto de factores igual al cociente.
+- `docs/informe_fase2.tex` / `.pdf`: nuevo párrafo "Cuantificación con el registro MAC" y Tabla
+  `tab:sobrecarga`; resumen y conclusiones actualizados (el informe pasa a 10 páginas).
+- `README.md`, `docker/README.md`, skill `ingeniero-telecom-5g`: resultado y forma de repetirlo.
+
+**Cómo se midió:** un gNB temporal con `mac_level: info`, montando sobre la plantilla una copia
+modificada mediante un override de compose en el directorio temporal, sin tocar el repositorio ni
+reconstruir la imagen. Se fijó MCS 28 (`PDSCH_MIN/MAX_MCS=28`), se corrió `banco iperf --sentidos dl
+--corridas 1` (15 s) y luego se detuvieron gNB y UE para vaciar el log (srslog). Resultados:
+- 10 923 slots DL con datos: 89 % con `rb=[0..96)` y TBS de 7941 B (o 7429 B en el 15 % de ellos),
+  10 % con `rb=[0..40)` (slot 0 de cada trama, el del SSB) y TBS de 3329 B.
+- El máximo de 96 PRB lo impone el DCI 1_0 en search space común (`dci_format_0_1_and_1_1: false`,
+  `ss2_type: common`, ajustes heredados del srsUE): TS 38.214 §5.1.2.2.2 limita la asignación al
+  ancho del CORESET#0.
+- `tbs_bits()` reproduce exactamente los TBS de 96 y 40 PRB con N'_RE = 120 RE/PRB (12 símbolos con 2
+  de DMRS, o 13 con 3: el log no muestra el reparto).
+- Factores sobre `resultados/20261102_205401_p8_definitiva`: f_prb_re 0,745–0,760 (96/106 × 120/144,5),
+  f_tbs_parcial 0,91–0,95, f_ocupacion 0,94–0,98, f_tcp 0,83–0,91. El producto reproduce el 54–62 %.
+  La caída en los MCS altos procede de f_tcp y f_ocupacion.
+
+**Verificación:** `python -m unittest discover -s banco/tests -t .` OK. `python -m banco estadistica
+resultados/20261102_205401_p8_definitiva` escribe `sobrecarga_p8.csv` con la tabla anterior. Informe
+compilado dos veces con `pdflatex` en `texlive/texlive:latest-full`: 10 páginas, sin errores, sin
+`Overfull` y sin referencias sin resolver. Red restaurada con `down` (sin override). Evidencia en
+`resultados/20261104_232646_iperf_mac_info_mcs28/crudos/gnb_mac_asignaciones_dl.log` (no versionada).
+
+**No verificado:** el reparto exacto entre símbolos de PDCCH y DMRS (el log MAC no lo muestra); la
+causa de los slots con TBS de 7429 B (probablemente recursos reservados de CSI-RS); con el log MAC
+activo el caudal baja (35 frente a 48 Mbit/s), así que esa corrida solo sirve para las asignaciones,
+no para el caudal. No revisé visualmente el PDF compilado.
+
+**Pendiente / siguientes pasos:**
+- Fase 3: probar DCI 1_1 en search space dedicado con el terminal comercial (106 PRB).

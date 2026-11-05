@@ -1,6 +1,6 @@
 import unittest
 
-from banco.estadistica import bler_agregada, describir, resumir, t_975
+from banco.estadistica import bler_agregada, describir, resumir, sobrecarga_p8, t_975
 
 
 class PruebaEstadistica(unittest.TestCase):
@@ -49,6 +49,22 @@ class PruebaEstadistica(unittest.TestCase):
         self.assertEqual(tabla[0]["metrica"], "dl_bler_agregada_pct")
         self.assertEqual(tabla[0]["n"], 2)
         self.assertAlmostEqual(tabla[0]["media"], 100 * 105 / 1010)
+
+
+    def test_sobrecarga_p8_factores_multiplican_al_cociente(self):
+        base = {"prueba": "P8_mcs", "parametro": "mcs_dl", "valor_parametro": "28"}
+        metricas = [{**base, "dl_ok": "950", "dl_brate_bps": "60e6"},
+                    {**base, "dl_ok": "930", "dl_brate_bps": "50e6"},
+                    {**base, "dl_ok": "3", "dl_brate_bps": "1e5"}]  # reposo: se descarta
+        resumen = [{**base, "metrica": "caudal_mbps", "valor": "47"},
+                   {**base, "metrica": "caudal_mbps", "valor": "49"}]
+        (r,) = sobrecarga_p8(metricas, resumen)
+        self.assertEqual(r["tbs_completo_bits"], 63528)
+        self.assertAlmostEqual(r["mac_mbps"], 55.0)
+        self.assertAlmostEqual(r["f_ocupacion"], 0.94)
+        producto = r["f_prb_re"] * r["f_tbs_parcial"] * r["f_ocupacion"] * r["f_tcp"]
+        self.assertAlmostEqual(producto, r["medido_sobre_cota"])
+        self.assertEqual(sobrecarga_p8([], resumen), [])
 
 
 if __name__ == "__main__":

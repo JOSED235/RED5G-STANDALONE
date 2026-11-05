@@ -76,6 +76,12 @@ Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_
   N_PRB = 106, 14·2^µ símbolos/ms, overhead 0,14 DL / 0,08 UL); MCS y TBS por TS 38.214; Shannon
   C = B·log2(1 + SNR). Explica la brecha teórica frente a la empírica (emulación, TCP, CPU).
 - **P8:** el gNB debe reportar el mismo MCS que se fijó; si no, la configuración no se aplicó.
+- **Brecha P8 (medido ≈ 54–62 % de TS 38.306):** con `dci_format_0_1_and_1_1: false` y `ss2_type: common`
+  (DCI 1_0 en search space común) el PDSCH se limita al CORESET#0 (`rb=[0..96)`, TS 38.214 §5.1.2.2.2) y
+  el TBS corresponde a N'_RE = 120 RE/PRB: techo 0,906 · 0,831 ≈ 0,75 de la cota. El slot 0 de cada trama
+  (SSB) solo lleva 40 PRB. `banco estadistica` escribe `sobrecarga_p8.csv` con los factores. Para ver las
+  asignaciones: `mac_level: info` (en el log aparecen como `[SCHED] ... DL: ... rb=[a..b) ... tbs=<bytes>`),
+  con un override temporal de la plantilla; cuesta CPU (MCS 28: 35 frente a 48 Mbit/s).
 - **Medido frente a teórico (2026-11-02):** TCP DL ≈ 54–62 % de la cota de TS 38.306 en **todos** los
   MCS de P8, incluso MCS 0 (2 Mbit/s): la brecha la domina la sobrecarga real de capa física y del
   scheduler (mayor que el 0,14 de la norma) más las cabeceras, no la CPU. UDP DL máximo ≈ 56 Mbit/s.

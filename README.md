@@ -224,7 +224,7 @@ La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el 
 | Paso 4: análisis de protocolos de una traza (SUCI, 5G-AKA, NEA/NIA, TEID N3, PDR/FAR/QER, tiempos y diagrama de secuencia; requiere tshark) | `.\manage_lab.ps1 banco protocolos [capturas\<traza>.pcap]` (se ejecuta solo tras `pcap-registro`) | `python -m banco protocolos` |
 | Paso 3: estadística + gráficas PDF/PNG para el informe (requiere `pip install -r analisis/requirements.txt`) | `.\manage_lab.ps1 analisis resultados\<carpeta>` | `make analisis ARGS=resultados/<carpeta>` |
 
-Todas las pruebas aceptan `--corridas N`, `--equipo <etiqueta>` y `--help`. `estadistica` escribe `estadistica.csv` en la carpeta analizada (sin argumento usa la más reciente); `analisis` además genera `graficas/` con P5 (RTT), P6 (caudal TCP), P7 (caudal y pérdida frente a la tasa ofrecida), P8 (caudal frente al MCS) y P10 (CPU por contenedor), con barras de error del IC 95 %. El manual completo del banco está en [`docker/README.md`](docker/README.md#4-banco-de-pruebas-de-la-fase-2).
+Todas las pruebas aceptan `--corridas N`, `--equipo <etiqueta>` y `--help`. `estadistica` escribe `estadistica.csv` en la carpeta analizada (sin argumento usa la más reciente) y, si hay P8, `sobrecarga_p8.csv` con la brecha frente a TS 38.306 descompuesta en factores; `analisis` además genera `graficas/` con P5 (RTT), P6 (caudal TCP), P7 (caudal y pérdida frente a la tasa ofrecida), P8 (caudal frente al MCS) y P10 (CPU por contenedor), con barras de error del IC 95 %. El manual completo del banco está en [`docker/README.md`](docker/README.md#4-banco-de-pruebas-de-la-fase-2).
 
 ### Validación del despliegue (27 de octubre de 2026)
 
@@ -252,7 +252,9 @@ Los cuatro criterios de la rúbrica de la Fase 2 están cubiertos; el detalle es
 
 **Informe:** [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf) (IEEE, 9 páginas). Solo falta la revisión del autor antes de la entrega.
 
-**Mejoras opcionales (no bloquean la Fase 2):** cuantificar la sobrecarga de capa física con el log MAC del gNB, investigar la causa de F2-13 y validar el despliegue en el portátil i5-8250U.
+**Brecha de P8 cuantificada (04/11/2026):** el log MAC del gNB muestra que el PDSCH se limita a 96 de los 106 PRB (DCI 1_0 en search space común: ancho del CORESET#0) con 120 RE de datos por PRB, lo que fija el techo de capa física en el 75 % de la cota TS 38.306; los slots del SSB (40 PRB), los slots vacíos y TCP explican el resto del 54–62 % medido.
+
+**Mejoras opcionales (no bloquean la Fase 2):** investigar la causa de F2-13 y validar el despliegue en el portátil i5-8250U.
 
 Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](docker/README.md).
 
@@ -278,6 +280,6 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 * [`docs/Enunciado.txt`](docs/Enunciado.txt): Guía general y alcance de las tres fases del proyecto entregada por el docente.
 * [`docs/SyC2ProyectoFinal.pdf`](docs/SyC2ProyectoFinal.pdf): Informe formal completo de la Fase 1 generado bajo formato IEEE Transactions.
 * [`docs/informe_fase1_corregido.tex`](docs/informe_fase1_corregido.tex): Código fuente en LaTeX del informe de la Fase 1 (compatible con compilación en Overleaf / pdfLaTeX).
-* [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf): Informe de la Fase 2 (IEEEtran, 9 páginas): despliegue contenerizado, núcleo y seguridad 5G, gNB, análisis de protocolos (incluido el contenido NAS leído en una traza de control con NEA0, la disección de Wireshark y la SBI), resultados con IC 95 % y gestión técnica. Las figuras son TikZ/pgfplots con los datos dentro del `.tex`, así que compila en Overleaf sin archivos externos.
+* [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf): Informe de la Fase 2 (IEEEtran, 10 páginas): despliegue contenerizado, núcleo y seguridad 5G, gNB, análisis de protocolos (incluido el contenido NAS leído en una traza de control con NEA0, la disección de Wireshark y la SBI), resultados con IC 95 % y gestión técnica. Las figuras son TikZ/pgfplots con los datos dentro del `.tex`, así que compila en Overleaf sin archivos externos.
 * `docs/Rúbricas de Evaluación proyecto 5G (2).xlsx`: Matriz de evaluación académica y criterios ABET para las Fases 1, 2 y 3.
 
