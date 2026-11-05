@@ -49,7 +49,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Calibrar la calculadora con el hardware real: Ptx, NF y potencia máxima de entrada del SDR y del teléfono según sus hojas de datos.
 - [x] Plan de pruebas de la Fase 3 y lista de verificación de hardware: `docs/fase3_plan_pruebas.md` (2026-11-02).
 - [ ] Adaptar el banco a las mediciones con teléfono (P5–P10 hoy miden desde el contenedor `ue`).
-- [ ] Con el terminal comercial, probar DCI 1_1 en search space dedicado (`dci_format_0_1_and_1_1: true`, sin `ss2_type: common`): liberaría los 106 PRB (~10 % más de caudal). Recalcular `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` si cambia la celda.
+- [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
 - [x] CI en GitHub Actions (`.github/workflows/ci.yml`), simulada en local (2026-11-02).
@@ -927,3 +927,29 @@ no para el caudal. No revisé visualmente el PDF compilado.
 
 **Pendiente / siguientes pasos:**
 - Fase 3: probar DCI 1_1 en search space dedicado con el terminal comercial (106 PRB).
+
+---
+
+## 2026-11-04 — Documentación `.md` al día y cierre de la sesión
+
+**Objetivo:** dejar todos los `.md` coherentes con lo hecho hoy (seguridad AS y brecha de P8).
+
+**Cambios realizados:**
+- `docs/fase3_plan_pruebas.md`: F3-6 pide confirmar los 106 PRB con `mac_level: info` (las plantillas
+  B210 ya usan DCI 1_1); F3-4 indica cómo ver la seguridad AS con el teléfono (`sec_level: debug`
+  temporal en el gNB, porque el teléfono no da log).
+- `README.md`: el informe tiene 10 páginas.
+- Skill `ingeniero-telecom-5g`: el punto antiguo sobre la brecha de P8 remite al cuantificado.
+- Skill `desarrollador-fullstack`: trampas nuevas. Los heredocs de Git Bash alteran las barras
+  invertidas incluso con `python - <<'EOF'`: `\textit` pasó a tabulador en el `.tex` y se corrigió.
+  Los logs de srslog solo se completan al terminar el proceso.
+- `BITACORA.md`: corregido el pendiente de DCI 1_1. Revisando `gnb_b210_n3.yaml` se vio que las
+  plantillas B210 ya no llevan los ajustes de PDCCH del srsUE, así que en la Fase 3 hay que confirmar
+  los 106 PRB, no configurarlos.
+
+**Verificación:** `grep` de textos desactualizados en todos los `.md` (páginas del informe, AS
+pendiente, "trabajo futuro", 54–62 %). `CLAUDE.md`, `SKILLS.md` y `docker/README.md` no necesitaron
+cambios. Solo se cambió documentación.
+
+**Pendiente / siguientes pasos:** los de "Pendientes vigentes". Sin hardware quedan la revisión del
+informe por el autor, la causa de F2-13 y el primer `up` en el portátil i5-8250U.

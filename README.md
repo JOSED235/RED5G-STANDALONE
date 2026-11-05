@@ -250,7 +250,7 @@ Los cuatro criterios de la rúbrica de la Fase 2 están cubiertos; el detalle es
 3. **Análisis de protocolos (ABET 1):** `banco protocolos` y la prueba `registro` interpretan Registration y PDU Session campo a campo (SUCI, 5G-AKA, NEA/NIA, TEID, PDR/FAR/QER, tiempos); el contenido NAS (5G-GUTI, NSSAI, QoS, AMBR) se lee en una traza de control con NEA0. El informe incluye la disección de Wireshark y la SBI.
 4. **Gestión técnica (ABET 4):** decisiones justificadas, 15 fallas F2 resueltas, bitácora, pruebas unitarias e integración continua.
 
-**Informe:** [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf) (IEEE, 9 páginas). Solo falta la revisión del autor antes de la entrega.
+**Informe:** [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf) (IEEE, 10 páginas). Solo falta la revisión del autor antes de la entrega.
 
 **Brecha de P8 cuantificada (04/11/2026):** el log MAC del gNB muestra que el PDSCH se limita a 96 de los 106 PRB (DCI 1_0 en search space común: ancho del CORESET#0) con 120 RE de datos por PRB, lo que fija el techo de capa física en el 75 % de la cota TS 38.306; los slots del SSB (40 PRB), los slots vacíos y TCP explican el resto del 54–62 % medido.
 

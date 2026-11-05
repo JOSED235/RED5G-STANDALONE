@@ -65,6 +65,14 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   paquetes recibidos.
 - **Heredocs de Git Bash con `\\`:** convierten `\\` en `\`; para scripts con barras invertidas (rutas de
   Windows, continuaciones de Dockerfile) escribe el archivo con la herramienta de escritura, no con heredoc.
+  Pasa también con `python - <<'EOF'` y con un script escrito por heredoc aunque el delimitador vaya entre
+  comillas: `'\\n'` llega como salto de línea real y `\\textit` como tabulador + `extit` (visto en
+  `docs/informe_fase2.tex` y en esta misma skill, 2026-11-04). Para editar LaTeX o Markdown con barras
+  invertidas usa la herramienta de edición; después busca tabuladores con `grep -c $'\t' archivo`.
+- **Logs de srsRAN (srslog):** se escriben en bloques de 4 KiB y solo se vacían al terminar el proceso.
+  Un parser sobre `capturas/ue.log` o `gnb.log` con la red en marcha ve un archivo truncado: léelos tras
+  `down` (no tras `restart-ran`, que los sobrescribe). Por eso la seguridad AS se lee en `banco protocolos`
+  y no dentro de la prueba `registro`.
 - **Secretos hacia un contenedor:** `docker compose exec -e VAR` sin valor toma VAR del entorno del proceso
   (`env_extra`); así K/OPc no quedan en la línea de comandos (ver `banco/suscriptores.py`).
 - **CI:** `.github/workflows/ci.yml` valida las plantillas **renderizadas** con `.env.example` (sin

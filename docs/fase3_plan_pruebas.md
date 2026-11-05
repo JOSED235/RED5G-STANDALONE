@@ -83,9 +83,9 @@ la hoja de datos y empiece con **más** atenuación y ganancia de TX baja (`SDR_
 | F3-1 | Detección del SDR | `uhd_find_devices` / `uhd_usrp_probe` en la imagen `red5g-gnb` (servicio `gnb-sdr`) | Aparece la B210 con su número de serie y carga la FPGA |
 | F3-2 | Arranque de la celda | `up-sdr` y log del gNB | NG Setup exitoso con el AMF; sin `U`/`O`/`L` persistentes durante 5 min |
 | F3-3 | Visibilidad de la celda | Búsqueda manual de redes en el teléfono | Aparece la red 001/01 |
-| F3-4 | Registro y seguridad | `pcap-registro` + `banco protocolos` | Registration Accept; SUCI con el MSIN de la SIM; Security Mode Command con NEA2 + NIA2; sesión PDU con IP 10.45.0.x |
+| F3-4 | Registro y seguridad | `pcap-registro` + `banco protocolos` | Registration Accept; SUCI con el MSIN de la SIM; Security Mode Command con NEA2 + NIA2; sesión PDU con IP 10.45.0.x. La seguridad AS no se ve en la traza del Core ni hay log del teléfono: verla en el gNB con `sec_level: debug` temporal (su log solo se completa al detenerlo) |
 | F3-5 | Plano de usuario | Navegación y ping desde el teléfono a 10.45.0.1 y a Internet | RTT estable, sin pérdidas sostenidas |
-| F3-6 | Caudal | App iperf3 en el teléfono contra un servidor iperf3 en el Core (10.45.0.1) | Comparar con la tabla de la sección 2 y con la Fase 2 (n3) |
+| F3-6 | Caudal | App iperf3 en el teléfono contra un servidor iperf3 en el Core (10.45.0.1) | Comparar con la tabla de la sección 2 y con la Fase 2 (n3). Las plantillas B210 usan DCI 1_1 (sin `ss2_type: common`), así que el PDSCH debería ocupar los 106 PRB y no los 96 de la Fase 2: confirmarlo una vez con `mac_level: info` (`rb=[0..106)` en las líneas `[SCHED]`) |
 | F3-7 | MCS/CQI frente a atenuación | Repetir F3-6 con 60, 70 y 80 dB; tabla de métricas del gNB (`docker compose logs gnb-sdr`) | El MCS baja al aumentar la atenuación, de forma coherente con la calculadora |
 | F3-8 | Estabilidad | 30 min de tráfico moderado | Sin liberaciones del UE ni reinicios del gNB |
 
