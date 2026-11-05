@@ -103,7 +103,7 @@ La carpeta `capturas/` del repositorio se monta en los contenedores y recibe aut
 | :--- | :--- | :--- |
 | `gnb_ngap.pcap` | gNB | Señalización N2 (NGAP + NAS-5GS) |
 | `ue_nas.pcap` | srsUE | Mensajes NAS vistos desde el UE, tal como viajan (cifrados con NEA1/2/3). Se escribe al detener el UE; en Wireshark: DLT USER 1 (148) → `nas-5gs` |
-| `gnb.log`, `ue.log` | gNB / srsUE | Logs detallados de capa física a NAS |
+| `gnb.log`, `ue.log` | gNB / srsUE | Logs detallados de capa física a NAS. srslog escribe en bloques de 4 KiB: el archivo solo está completo cuando el proceso termina (`down`); `restart-ran` no sirve porque el contenedor nuevo lo sobrescribe |
 | `fase2_traza_*.pcap` | Core (`tcpdump -i any`) | NGAP, GTP-U, PFCP (N4) y SBI HTTP/2 |
 
 Su contenido no se versiona en git (`.gitignore`); copie a `docs/` las capturas que use en el informe.

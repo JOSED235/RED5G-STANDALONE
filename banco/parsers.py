@@ -318,6 +318,23 @@ def parse_docker_stats(texto: str) -> list[dict]:
 TSHARK_AGREGADOR = "|"
 
 
+# srsUE, capa RRC-NR en info: "Received Security Mode Command nea: 128-NEA2, nia: 128-NIA2"
+_RRC_SMC = re.compile(r"Received Security Mode Command nea: (\S+), nia: (\S+)")
+
+
+def parse_seguridad_as(texto: str) -> dict:
+    """Algoritmos AS (RRC Security Mode Command) del último registro en el log del srsUE.
+
+    El RRC viaja por Uu y no aparece en la traza del Core (N2/N3/N4/SBI); esta línea del UE es la
+    evidencia del cifrado e integridad negociados en la radio (TS 33.501 §6.7.4).
+    """
+    coincidencias = _RRC_SMC.findall(texto)
+    if not coincidencias:
+        return {"cifrado_as": None, "integridad_as": None}
+    nea, nia = coincidencias[-1]
+    return {"cifrado_as": nea, "integridad_as": nia}
+
+
 def parse_tshark_campos(texto: str) -> list[dict]:
     """Salida de 'tshark -T fields -E header=y -E separator=/t -E occurrence=a -E aggregator=|'.
 

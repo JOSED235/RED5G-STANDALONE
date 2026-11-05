@@ -55,6 +55,9 @@ gNB), `pfcp.f_teid.teid` y `pfcp.outer_hdr_creation.teid` (la de la Establishmen
 al SMF 127.0.0.4, no al gNB), IP del UE `pfcp.ue_ip_addr_ipv4`; la columna es `_ws.col.info`.
 Con NEA0 la cabecera de seguridad 2 aparece igual, pero el contenido es legible.
 
+Seguridad AS: el RRC no está en las trazas del Core. Evidencia: línea `Received Security Mode Command
+nea: 128-NEA2, nia: 128-NIA2` (RRC-NR, `info`) de `capturas/ue.log`, que `banco protocolos` extrae.
+
 Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_type == 0x5d`
 (Security Mode Command; campos `nas-5gs.mm.nas_sec_algo_enc` / `nas_sec_algo_ip`).
 
@@ -96,6 +99,7 @@ Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_
 | `Pool overlaps` al hacer `up` | Otra red Docker usa la subred | `python -m banco verificar` sugiere una libre |
 | UDP con pérdida > 100 % | iperf3 3.9 con `-O` en UDP | El banco no usa `-O` en UDP |
 | Caudal bajo y logs enormes | Logs PHY/MAC en `info` | Mantener `warning` (RRC/NGAP/NAS en `info`) |
+| `ue.log` / `gnb.log` de 4096 B o 0 B con la red en marcha; falta la línea buscada | srslog escribe en bloques de 4 KiB y solo vacía al terminar el proceso | Leerlos tras `down` (no tras `restart-ran`: el contenedor nuevo sobrescribe el log) |
 
 Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` dentro del Core,
 `capturas/ue.log` y `capturas/gnb.log`. Sube temporalmente el nivel de log de la capa sospechosa

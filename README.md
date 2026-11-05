@@ -195,7 +195,7 @@ La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el 
 * **MongoDB automatizado:** Registra de forma inmediata el suscriptor definido en `.env` con perfil eMBB (SST: 1, 5QI: 9) y DNN `internet`.
 * **Open5GS v2.8.0 NFV:** compilado desde la etiqueta `v2.8.0` del código fuente (igual que la WebUI), en lugar del PPA `latest`, que cambia de versión sin aviso. 11 funciones de red, interfaz `ogstun`, `ip_forward` y NAT MASQUERADE automáticos; healthcheck sobre NGAP/SCTP.
 * **Seguridad NAS configurable** (`AMF_INTEGRITY_ORDER` / `AMF_CIPHERING_ORDER` en `.env`): integridad NIA2 (AES-CMAC) y cifrado NEA2 (AES-CTR) primero. Requiere el srsUE 26.10 (srsRAN_4G `06f0b1e23`): el anterior (`bef8680d5`) no descifraba el NAS con NEA1/2/3 y no completaba el registro (falla F2-15). Verificado el 02/11/2026: el Security Mode Command de la traza lleva NEA2 + NIA2 y la sesión PDU se establece. El commit del UE se cambia con `--build-arg SRSRAN_4G_COMMIT=...` (ver `docker/ue/Dockerfile`).
-* **Seguridad AS del gNB** (`GNB_NEA_PREF_LIST` / `GNB_NIA_PREF_LIST` en `.env`): cifrado e integridad de RRC y PDCP en la interfaz radio, independientes de la NAS. srsRAN Project prefiere `nea0` (radio sin cifrar) por defecto; aquí se prioriza `nea2`.
+* **Seguridad AS del gNB** (`GNB_NEA_PREF_LIST` / `GNB_NIA_PREF_LIST` en `.env`): cifrado e integridad de RRC y PDCP en la interfaz radio, independientes de la NAS. srsRAN Project prefiere `nea0` (radio sin cifrar) por defecto; aquí se prioriza `nea2`. Verificado el 04/11/2026: el RRC Security Mode Command llega al UE con `128-NEA2` + `128-NIA2` (log del srsUE; `banco protocolos` lo extrae de `capturas/ue.log`).
 * **Fase 3 preparada (perfil `sdr`):** el binario del gNB trae ZMQ y UHD (USRP B210), así que el servicio `gnb-sdr` usa la misma imagen `red5g-gnb` sin otra compilación, y se levanta con `up-sdr` en lugar del gNB y el UE de ZMQ. La plantilla se elige con `GNB_CONFIG` (`gnb_b210_n3.yaml` o `gnb_b210_n78.yaml`) y los parámetros de radio con `SDR_*`. Procedimiento completo en [`docs/fase3_plan_pruebas.md`](docs/fase3_plan_pruebas.md).
 * **Memoria del gNB:** srsRAN Project reserva al arrancar un *buffer pool* de 2 GiB por defecto; aquí `GNB_BUFFER_POOL_SEGMENTS=131072` (256 MiB) en `.env`, suficiente para el laboratorio.
 * **WebUI** en [http://localhost:9999](http://localhost:9999) (`admin` / `1423`), en su propio contenedor.
@@ -252,7 +252,7 @@ Los cuatro criterios de la rúbrica de la Fase 2 están cubiertos; el detalle es
 
 **Informe:** [`docs/informe_fase2.tex`](docs/informe_fase2.tex) / [`docs/informe_fase2.pdf`](docs/informe_fase2.pdf) (IEEE, 9 páginas). Solo falta la revisión del autor antes de la entrega.
 
-**Mejoras opcionales (no bloquean la Fase 2):** cuantificar la sobrecarga de capa física con el log MAC del gNB, evidenciar el algoritmo AS negociado, investigar la causa de F2-13 y validar el despliegue en el portátil i5-8250U.
+**Mejoras opcionales (no bloquean la Fase 2):** cuantificar la sobrecarga de capa física con el log MAC del gNB, investigar la causa de F2-13 y validar el despliegue en el portátil i5-8250U.
 
 Para más detalles sobre la arquitectura de contenedores, consulte el manual en [`docker/README.md`](docker/README.md).
 

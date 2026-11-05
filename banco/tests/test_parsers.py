@@ -170,6 +170,14 @@ class PruebasParsers(unittest.TestCase):
         self.assertAlmostEqual(parsers.percentil([1, 2, 3, 4], 95), 3.85)
         self.assertIsNone(parsers.percentil([], 50))
 
+    def test_seguridad_as(self):
+        # Líneas reales de capturas/ue.log (srsUE 26.10, 03/11/2026); vale el último registro
+        log = ("2026-11-03T03:10:08.818823 [RRC-NR ] [I] Received Security Mode Command nea: 128-NEA0, nia: 128-NIA2\n"
+               "2026-11-03T03:10:08.818874 [RRC-NR ] [I] RRC integrity key  - k_rrc_int\n"
+               "2026-11-03T03:12:08.818823 [RRC-NR ] [I] Received Security Mode Command nea: 128-NEA2, nia: 128-NIA2\n")
+        self.assertEqual(parsers.parse_seguridad_as(log), {"cifrado_as": "128-NEA2", "integridad_as": "128-NIA2"})
+        self.assertEqual(parsers.parse_seguridad_as("sin registro"), {"cifrado_as": None, "integridad_as": None})
+
 
 if __name__ == "__main__":
     unittest.main()

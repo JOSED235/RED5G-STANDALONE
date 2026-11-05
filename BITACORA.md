@@ -35,7 +35,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] `docker compose build ue` con el valor por defecto del Dockerfile (2026-11-02).
 - [ ] Investigar la causa de F2-13 (`compose restart` deja el ZMQ sin muestras); por ahora se recrea.
 - [x] Seguridad AS parametrizada (`GNB_NEA_PREF_LIST`, nea2 primero); el srsUE registra y pasa tráfico (2026-11-02).
-- [ ] Evidenciar el algoritmo AS negociado (log `debug` temporal del logger de seguridad o PCAP MAC del gNB).
+- [x] Evidenciar el algoritmo AS negociado: RRC Security Mode Command con 128-NEA2 + 128-NIA2 en el log del srsUE, extraído por `banco protocolos` (2026-11-04).
 - [x] Revisar el cambio sin commit en `docs/informe_fase1_corregido.tex` (resuelto en `fe6cea5`).
 - [x] Skill `ingeniero-telecom-5g`: sección de RDS/SDN y NFV (2026-11-02).
 
@@ -834,3 +834,43 @@ de GitHub). Solo se cambia documentación.
 
 **Pendiente / siguientes pasos:**
 - Revisión del informe por el autor; mejoras opcionales listadas en "Pendientes vigentes".
+
+---
+
+## 2026-11-04 — Evidencia del algoritmo de seguridad AS negociado
+
+**Objetivo:** cerrar el pendiente "evidenciar el algoritmo AS negociado". El RRC viaja por Uu y no
+aparece en las trazas del Core, y el informe decía que la evidencia quedaba pendiente.
+
+**Cambios realizados:**
+- `banco/parsers.py`: `parse_seguridad_as()` extrae del log del srsUE la línea RRC-NR
+  `Received Security Mode Command nea: 128-NEA2, nia: 128-NIA2` (la del último registro). Ya se
+  escribe con `rrc_level = info`, así que no hace falta subir el log a `debug` ni capturar MAC.
+- `banco/protocolos.py`: `python -m banco protocolos` añade `cifrado_as` / `integridad_as` al
+  informe de la traza si existe `capturas/ue.log`, con la advertencia de que corresponden al último
+  UE y de que el log solo está completo tras `down`.
+- `banco/tests/test_parsers.py`: prueba con líneas reales (último registro y log sin registro).
+- `docs/informe_fase2.tex` / `.pdf`: la sección de seguridad AS cita la evidencia en lugar de
+  dejarla pendiente.
+- `README.md`, `docker/README.md`, skill `ingeniero-telecom-5g`: evidencia AS y comportamiento del
+  búfer de srslog.
+
+**Hallazgo:** srslog (srsUE y gNB) escribe sus logs en bloques de 4 KiB y solo vacía el búfer al
+terminar el proceso. Con la red en marcha `ue.log` medía 4096 B y `gnb.log` 0 B, sin la línea del
+Security Mode Command. Por eso se descartó leer el log dentro de la prueba `registro` (se probó y
+se revirtió). `restart-ran` tampoco sirve: el contenedor nuevo sobrescribe el log.
+
+**Verificación:**
+- `python -m unittest discover -s banco/tests -t .`: 32 pruebas OK.
+- `up`, `python -m banco registro --corridas 1 --etiqueta verificacion_as`
+  (`resultados/20261104_231446_registro_verificacion_as`): registro completo en 485,8 ms, NAS
+  NEA2/NIA2 con 7 mensajes cifrados. Luego `down` (`ue.log` pasa a 8373 B) y `python -m banco
+  protocolos`: `Seguridad AS (RRC, log del UE): cifrado 128-NEA2, integridad 128-NIA2`. Las líneas
+  de seguridad del log quedaron en `crudos/ue_seguridad_as.log` de esa carpeta (no versionada).
+- Informe compilado dos veces con `pdflatex` en `texlive/texlive:latest-full`: 9 páginas, sin
+  errores, sin `Overfull` y sin referencias sin resolver.
+- No verificado: la vista del lado del gNB (su log también está en búfer y no registra el
+  algoritmo en `info`).
+
+**Pendiente / siguientes pasos:**
+- Cuantificar la sobrecarga de capa física y scheduler (log MAC del gNB) para P8.

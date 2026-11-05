@@ -261,8 +261,13 @@ antes de citarlos en el informe.
 ## Autenticación 5G-AKA
 {tabla(r["aka"])}
 
-## Seguridad NAS (Security Mode Command)
+## Seguridad NAS y AS (Security Mode Command)
 {tabla(r["seguridad"])}
+
+`cifrado_as` e `integridad_as` salen de `capturas/ue.log` (RRC Security Mode Command del srsUE):
+el RRC viaja por Uu y no está en esta traza. Corresponden al último UE que corrió, no
+necesariamente a esta traza, y el srsUE solo vacía su log al terminar: detenga la red (`down`)
+antes de `python -m banco protocolos`.
 
 `nas_cabecera_cifrado` cuenta los mensajes NAS con cabecera de seguridad 2 o 4 (integridad y
 cifrado). Con NEA0 esa cabecera se usa igual pero el cifrado es nulo, por eso `nas_cifrados` es 0.
@@ -315,7 +320,11 @@ def analizar_archivo(ruta: Path) -> dict:
 def analizar_pcap(pcap: str | None) -> Path:
     """Escribe <traza>_analisis.md y <traza>_tiempos.csv junto al PCAP; devuelve el informe."""
     ruta = Path(pcap) if pcap else traza_reciente()
-    return escribir_informe(ruta, analizar_archivo(ruta))
+    r = analizar_archivo(ruta)
+    log_ue = DIR_CAPTURAS / "ue.log"
+    if log_ue.exists():
+        r["seguridad"].update(parsers.parse_seguridad_as(log_ue.read_text(encoding="utf-8", errors="replace")))
+    return escribir_informe(ruta, r)
 
 
 def escribir_informe(ruta: Path, r: dict) -> Path:
@@ -327,6 +336,8 @@ def escribir_informe(ruta: Path, r: dict) -> Path:
         for nombre, ms in r["tiempos_ms"].items():
             escritor.writerow([ruta.name, nombre, ms])
     s = r["seguridad"]
+    if s.get("cifrado_as"):
+        print(f">>> Seguridad AS (RRC, log del UE): cifrado {s['cifrado_as']}, integridad {s['integridad_as']}")
     print(f">>> {ruta.name}: cifrado NAS {s['cifrado']}, integridad {s['integridad']}, "
           f"{s['nas_cifrados']} mensajes NAS cifrados; IP UE {r['plano_usuario']['ip_ue']}")
     for nombre, ms in r["tiempos_ms"].items():
