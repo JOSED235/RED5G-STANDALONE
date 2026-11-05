@@ -3,6 +3,8 @@
 Plan para pasar de la radio virtual ZMQ (Fase 2) a radiofrecuencia real con una USRP B210 y un
 teléfono comercial 5G SA con SIM programable. Todo lo que se puede preparar **sin hardware** ya
 está en el repositorio (sección 6); este documento dice qué falta comprobar al tenerlo y cómo.
+La guía operativa del día de laboratorio (comandos en Windows + WSL2, montaje y lista para
+empacar) está en [`fase3_guia_laboratorio.md`](fase3_guia_laboratorio.md).
 
 > **Seguridad radioeléctrica primero.** Las pruebas son **conducidas** (cable coaxial con
 > atenuadores o caja de apantallamiento) hasta tener el permiso temporal de MinTIC (Res. 467 de

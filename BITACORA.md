@@ -20,7 +20,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Paso 2: banco de pruebas con resultados persistentes (P5–P10, campañas, metadatos).
 - [x] Portabilidad entre equipos: subred por defecto 10.53.0.0/24 y `verificar` (chequeo previo).
 - [x] Skills de Claude Code del proyecto (`.claude/skills/`) y documentación `.md` al día.
-- [ ] Primer `up` en el portátil menos potente (i5-8250U): `git pull`, `EQUIPO=` en `.env`, `verificar`, `up` (compila sus propias imágenes) y una `campana` corta para confirmar.
+- [x] Primer `up` en el portátil menos potente (i5-8250U) con imágenes reconstruidas: prueba de humo ZMQ (2026-11-05). La `campana` corta queda opcional.
 - [x] Campaña definitiva `campana --pruebas ping,iperf,p7,p10 --corridas 5` con srsUE 26.10 y NEA2 (2026-11-02, `resultados/20261102_181151_campana_definitiva_nea2`).
 - [x] P8 (MCS fijo, 3 corridas), P9 (30 min, ESTABLE) y P7 DL 40–80 Mbit/s repetido con la red optimizada (2026-11-02).
 - [x] Cuantificar la sobrecarga de capa física y scheduler (log MAC del gNB) que explica el 54–62 % medido/teórico de P8 (2026-11-04, `sobrecarga_p8.csv`).
@@ -48,6 +48,12 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Calculadora de presupuesto de enlace: `python -m banco enlace` (2026-11-02).
 - [ ] Calibrar la calculadora con el hardware real: Ptx, NF y potencia máxima de entrada del SDR y del teléfono según sus hojas de datos.
 - [x] Plan de pruebas de la Fase 3 y lista de verificación de hardware: `docs/fase3_plan_pruebas.md` (2026-11-02).
+- [x] Guía del día de laboratorio: `docs/fase3_guia_laboratorio.md` (2026-11-05).
+- [x] Portátil i5-8250U: `usbipd-win` 5.3.0, `.env` (n78, TX 30 dB) y pySim + `pcscd` en Ubuntu-22.04 (2026-11-05).
+- [x] Portátil i5-8250U: Open5GS/MongoDB nativo de Ubuntu-22.04 detenido y deshabilitado (puerto 9999 libre) y `build` hecho (gnb, ue, open5gs del 2026-11-05) (guía 1.0 y 1.4).
+- [x] Portátil i5-8250U: prueba de humo ZMQ (guía 1.5), `uhd_find_devices` sin SDR (1.6) y `banco enlace` n78 en `D:\enlace_n78.txt` (1.7) (2026-11-05).
+- [ ] Portátil i5-8250U: prueba `usbipd` → Docker con memoria USB (1.2), K/OPc en `.env`, `docker save` para el plan B y `pcsc_scan` con el lector.
+- [x] SDR elegido: **USRP B200**; guía ajustada (las plantillas `gnb_b210_*` sirven sin cambios) (2026-11-05).
 - [ ] Adaptar el banco a las mediciones con teléfono (P5–P10 hoy miden desde el contenedor `ue`).
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
@@ -953,3 +959,80 @@ cambios. Solo se cambió documentación.
 
 **Pendiente / siguientes pasos:** los de "Pendientes vigentes". Sin hardware quedan la revisión del
 informe por el autor, la causa de F2-13 y el primer `up` en el portátil i5-8250U.
+
+---
+
+## 2026-11-05 — Guía del día de laboratorio y revisión del portátil i5-8250U
+
+**Objetivo:** dejar una guía paso a paso para la Fase 3 con hardware y comprobar qué falta en el
+portátil que se llevará (Windows 11 + WSL2 + Docker Desktop).
+
+**Cambios realizados:**
+- `docs/fase3_guia_laboratorio.md` (nuevo): equipo, faltantes, preparación (`usbipd-win`, `.env`,
+  `build`, prueba de humo ZMQ, UHD sin B210, `banco enlace`, pySim), montaje RF, pruebas F3-1 a F3-8,
+  plan B con Linux nativo y diagnóstico rápido. Se actualizó con lo verificado hoy y con la sección
+  1.0 (Open5GS nativo de Ubuntu-22.04) y la corrección `python3.10-venv` en 1.8.
+- `README.md` y `docs/fase3_plan_pruebas.md`: enlace a la guía.
+
+**Verificación:** `usbipd --version` → 5.3.0; `.env` existe con `GNB_CONFIG=gnb_b210_n78.yaml`,
+`SDR_TX_GAIN=30`, `PCI=1` y `SIM_*` vacíos. En Ubuntu-22.04: `dpkg --audit` limpio, `import smartcard,
+pySim` correcto en `~/pysim/.venv`, `pcscd.socket` activo, `pcsc_scan` y `openssl` presentes.
+Hallazgo: en Ubuntu-22.04 corren Open5GS nativo (18 NF), su WebUI en 127.0.0.1:9999, `mongod` y un
+`ogstun` 10.45.0.1/16, habilitados al arranque; `wslrelay` ocupa `localhost:9999` en Windows, el
+puerto que publica la WebUI del compose. No verificado: imágenes `red5g-*` siguen del 27–28/10 (sin
+`build`); no se hizo `up`, ni la prueba USB → Docker con memoria, ni `pcsc_scan` con lector.
+
+**Avance posterior el mismo día (hecho por el autor):**
+- Guía 1.0: Open5GS nativo y `mongod` de Ubuntu-22.04 con `disable --now` (19 unidades; 0 activas;
+  `netstat` en Windows sin nada en `:9999`; `systemctl is-enabled` → `disabled`).
+- Guía 1.4: `.\manage_lab.ps1 build`. `red5g-gnb`, `red5g-ue` y `red5g-open5gs` son del 2026-11-05;
+  `red5g-webui` conserva la fecha anterior porque no cambió (caché).
+
+**Elección del SDR (el autor tiene USRP B200, bladeRF y HackRF One):** se usa la **USRP B200**.
+- B200: UHD, que es el controlador que compila la imagen (`-DENABLE_UHD=ON`,
+  `uhd_images_downloader -t b2xx`); `SDR_DEVICE_ARGS` con `type=b200` cubre B200 y B210. Dúplex
+  completo, 12 bits, hasta 56 MHz, USB 3.0. Es 1×1, suficiente para SISO; el montaje TX/RX + RX2 de
+  la guía no cambia.
+- bladeRF: hardware válido (dúplex completo, USB 3.0), pero srsRAN Project no lo soporta con el
+  controlador UHD de esta imagen; usarlo exige otro controlador y recompilar. Queda de respaldo.
+- HackRF One: semidúplex, 8 bits, USB 2.0 y ~20 MS/s: no puede transmitir y recibir a la vez, y un
+  gNB lo necesita. Descartado.
+
+**Pendiente / siguientes pasos (retomar aquí en otra conversación):**
+- Guía 1.5: prueba de humo ZMQ (`up`, `status`, `test-ping`, `pcap-registro`, `down`).
+- Guía 1.6: `uhd_find_devices` sin SDR → `No UHD Devices Found`.
+- Guía 1.2: prueba `usbipd` → Docker con una memoria USB.
+- K y OPc con `openssl rand -hex 16` a `SIM_K` / `SIM_OPC` de `.env`; `banco enlace` a
+  `D:\enlace_n78.txt`; `docker save` a `D:\red5g_imagenes.tar`; `pcsc_scan` con el lector.
+- Ajustar `docs/fase3_guia_laboratorio.md` a la B200 y hacer commit de la guía y la bitácora (aún
+  sin commit).
+
+---
+
+## 2026-11-05 — Guía ajustada a la USRP B200 y prueba de humo ZMQ en el portátil i5-8250U
+
+**Objetivo:** cerrar los pendientes de software del portátil que irá al laboratorio y dejar la guía
+acorde al SDR elegido (B200).
+
+**Cambios realizados:**
+- `docs/fase3_guia_laboratorio.md`: B210 → B200 en todo el texto (las plantillas conservan el nombre
+  `gnb_b210_*`); nota en 2.1 de por qué sirven para la B200 (`type=b200`, FPGA `b2xx`, plantilla n78
+  basada en `gnb_rf_b200_tdd_n78_20mhz.yml`, 1×1 con TX/RX y RX2); tablas 0 y 0.1 al día (imágenes
+  reconstruidas, Open5GS nativo deshabilitado, prueba de humo hecha).
+- `README.md`: B200 como SDR de la Fase 3 y revalidación del portátil i5-8250U.
+
+**Verificación (en el portátil i5-8250U, `D:\devJose\RED5G-STANDALONE`):**
+- Guía 1.6: `docker compose --profile sdr run --rm --no-deps --entrypoint uhd_find_devices gnb-sdr`
+  → UHD 4.1.0.5, `No UHD Devices Found` (esperado sin SDR).
+- Guía 1.5: `up` (0 avisos de `verificar`), `status` (5 contenedores sin reinicios, 11 NF, NGAP
+  establecido, `tun_srsue` 10.45.0.2), `test-ping` (`resultados/20261105_164850_ping`: UPF RTT medio
+  48,0 ms, 8.8.8.8 RTT medio 96,8 ms, 0 % de pérdida), `pcap-registro`
+  (`capturas/fase2_traza_20261105_165010.pcap`: NAS NEA2/NIA2 con 7 mensajes cifrados, AS 128-NEA2 +
+  128-NIA2; registro hasta sesión PDU 773 ms), `down`.
+- Guía 1.7: `py -m banco enlace` n78 guardado en `D:\enlace_n78.txt` (MCS 28 a 50–60 dB, 23 a 70 dB,
+  14 a 80 dB de atenuación; cotas teóricas).
+- No verificado: el RTT mínimo de P5 sale 0,00 ms en ambos destinos (posible redondeo del parser o
+  de `ping`); no se revisó. Sin hardware: prueba USB → Docker, lector PC/SC y la B200 real.
+
+**Pendiente / siguientes pasos:** guía 1.2 (memoria USB con `usbipd`), K/OPc en `.env`, `docker save`
+a `D:ed5g_imagenes.tar` y `pcsc_scan` con el lector; luego el día de laboratorio (sección 2).
