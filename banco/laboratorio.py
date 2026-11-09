@@ -1,6 +1,6 @@
 """Fase 3 en el laboratorio: arranque con un solo comando y mediciones con el teléfono comercial.
 
-  python -m banco lab        comprueba .env, la B200 (usbipd en Windows + UHD), levanta el Core con
+  python -m banco lab        comprueba .env, el SDR (B200 o bladeRF; usbipd en Windows + UHD), levanta el Core con
                              el gNB SDR, espera el NG Setup y da de alta la SIM de .env.
   python -m banco telefono   con el teléfono registrado: ping del UPF al teléfono y tabla de métricas
                              del gNB (MCS, CQI, SNR, BLER) mientras el teléfono corre iperf3.
@@ -15,39 +15,49 @@ from . import parsers, suscriptores
 from .compose import Compose, ErrorCompose
 from .config import IP_UPF, leer_env
 
-ID_B200 = "2500:0020"  # Ettus B200/B210 (el mismo VID:PID para ambas)
+# SDR soportados: clave buscada en SDR_DEVICE_ARGS y en la salida de uhd_find_devices -> (VID:PID, nombre)
+SDRS = {
+    "b200": ("2500:0020", "B200"),       # Ettus B200/B210 (el mismo VID:PID para ambas)
+    "bladerf": ("2cf0:5250", "bladeRF"),  # bladeRF 2.0 micro, vía UHD -> SoapySDR (type=soapy,driver=bladerf)
+}
 ESPERA_NG_SETUP = 180  # s; con la B200 el gNB carga la FPGA antes de conectar al AMF
 
 
-def _usb_windows() -> str | None:
-    """Pasa la B200 a WSL2 con usbipd-win. Devuelve un error o None si quedó conectada."""
+def sdr_de(device_args: str) -> tuple[str, str, str]:
+    """(clave, VID:PID, nombre) del SDR que indica SDR_DEVICE_ARGS; B200 si no nombra otro."""
+    clave = "bladerf" if "bladerf" in device_args.lower() else "b200"
+    return (clave, *SDRS[clave])
+
+
+def _usb_windows(vid_pid: str, nombre: str) -> str | None:
+    """Pasa el SDR a WSL2 con usbipd-win. Devuelve un error o None si quedó conectado."""
     usbipd = shutil.which("usbipd")
     if not usbipd:
         return "usbipd-win no está instalado: winget install --exact dorssel.usbipd-win (y abra otra PowerShell)"
     filas = parsers.parse_usbipd_list(subprocess.run([usbipd, "list"], capture_output=True, text=True,
                                                      encoding="utf-8", errors="replace").stdout)
-    b200 = next((f for f in filas if f["vid_pid"] == ID_B200), None)
-    if not b200:
-        return f"La B200 ({ID_B200}) no aparece en 'usbipd list': conéctela a un puerto USB 3.0 (azul)"
-    busid, estado = b200["busid"], b200["estado"]
+    sdr = next((f for f in filas if f["vid_pid"] == vid_pid), None)
+    if not sdr:
+        return f"La {nombre} ({vid_pid}) no aparece en 'usbipd list': conéctela a un puerto USB 3.0 (azul)"
+    busid, estado = sdr["busid"], sdr["estado"]
     if estado == "Attached":
-        print(f"  [OK]    B200 en el bus {busid} ya conectada a WSL2")
+        print(f"  [OK]    {nombre} en el bus {busid} ya conectada a WSL2")
         return None
     if estado == "Not shared":
-        return (f"La B200 (bus {busid}) no está compartida. En una PowerShell COMO ADMINISTRADOR, una sola vez:\n"
+        return (f"La {nombre} (bus {busid}) no está compartida. En una PowerShell COMO ADMINISTRADOR, una sola vez:\n"
                 f"          usbipd bind --busid {busid}\n          y repita este comando")
     # --auto-attach en su propia ventana: al cargar la FPGA la B200 se re-enumera y sin él se desconecta
-    print(f"  [..]    Conectando la B200 (bus {busid}) a WSL2 con --auto-attach en otra ventana (déjela abierta)")
+    print(f"  [..]    Conectando la {nombre} (bus {busid}) a WSL2 con --auto-attach en otra ventana (déjela abierta)")
     subprocess.Popen([usbipd, "attach", "--wsl", "--busid", busid, "--auto-attach"],
                      creationflags=subprocess.CREATE_NEW_CONSOLE)
     time.sleep(6)
     return None
 
 
-def _uhd_ve_b200(compose: Compose) -> bool:
+def _uhd_ve_sdr(compose: Compose, clave: str) -> bool:
     res = compose.ejecutar("--profile", "sdr", "run", "--rm", "--no-deps", "--entrypoint", "uhd_find_devices",
                            "gnb-sdr", verificar=False, timeout=120)
-    return "b200" in res.stdout.lower()
+    return clave in res.stdout.lower()  # "b200" o "driver: bladerf" (type: soapy)
 
 
 def _esperar_ng_setup(compose: Compose) -> bool:
@@ -71,7 +81,8 @@ def preparar(compose: Compose) -> int:
     if not plantilla.startswith("gnb_b210"):
         print(f"  [ERROR] GNB_CONFIG={plantilla}: use gnb_b210_n78.yaml (o gnb_b210_n3.yaml) en .env")
         return 1
-    print(f"  [OK]    {plantilla} | TX {env.get('SDR_TX_GAIN')} dB | RX {env.get('SDR_RX_GAIN')} dB | PCI {env.get('PCI')}")
+    clave, vid_pid, nombre = sdr_de(env.get("SDR_DEVICE_ARGS", ""))
+    print(f"  [OK]    {plantilla} | {nombre} ({env.get('SDR_OTW_FORMAT', 'sc12')}) | TX {env.get('SDR_TX_GAIN')} dB | RX {env.get('SDR_RX_GAIN')} dB | PCI {env.get('PCI')}")
     errores_sim = suscriptores.validar(env.get("SIM_IMSI", ""), env.get("SIM_K", ""), env.get("SIM_OPC", ""),
                                        env.get("MCC", ""), env.get("MNC", ""))
     if errores_sim:
@@ -80,9 +91,11 @@ def preparar(compose: Compose) -> int:
     else:
         print(f"  [OK]    SIM IMSI {env['SIM_IMSI']}")
 
-    print("\n>>> 2/5 USB de la B200")
+    print(f"\n>>> 2/5 USB de la {nombre}")
     if sys.platform == "win32":
-        error = _usb_windows()
+        print("  [AVISO] usbipd (WSL2) da ~18 MB/s y la celda de 20 MHz necesita ~184 MB/s: el gNB perderá")
+        print("          muestras (medido con la bladeRF el 2026-11-09). Para medir, use Linux nativo.")
+        error = _usb_windows(vid_pid, nombre)
         if error:
             print(f"  [ERROR] {error}")
             return 1
@@ -91,14 +104,14 @@ def preparar(compose: Compose) -> int:
 
     print("\n>>> 3/5 UHD dentro de la imagen (uhd_find_devices)")
     for intento in range(3):  # tras el attach, WSL2 tarda unos segundos en exponer el USB
-        if _uhd_ve_b200(compose):
+        if _uhd_ve_sdr(compose, clave):
             break
         time.sleep(5)
     else:
-        print("  [ERROR] UHD no ve la B200 ('No UHD Devices Found'). Revise 'usbipd list' (Attached), el cable")
+        print(f"  [ERROR] UHD no ve la {nombre} ('No UHD Devices Found'). Revise 'usbipd list' (Attached), el cable")
         print("          USB 3.0 y la ventana de --auto-attach; detalle en docs/fase3_guia_laboratorio.md (sección 5)")
         return 1
-    print("  [OK]    UHD encuentra la B200")
+    print(f"  [OK]    UHD encuentra la {nombre}")
 
     print("\n>>> 4/5 Core 5G + gNB SDR (sin gNB/UE ZMQ)")
     compose.ejecutar("stop", "gnb", "ue", verificar=False, timeout=120)

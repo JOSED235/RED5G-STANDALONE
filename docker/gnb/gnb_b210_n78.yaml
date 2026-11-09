@@ -1,4 +1,5 @@
 # Plantilla de la Fase 3: gNB con USRP B210 (UHD), banda n78 TDD, 20 MHz, SCS 30 kHz.
+# También sirve para la bladeRF 2.0 micro (UHD -> SoapySDR): SDR_DEVICE_ARGS y SDR_OTW_FORMAT en .env.
 # Muchos teléfonos solo operan en SA en n78; confirme las bandas SA del terminal antes de elegir.
 # Basada en configs/gnb_rf_b200_tdd_n78_20mhz.yml del commit 4bf1543936 de srsRAN Project.
 # El patrón TDD se deja explícito con los valores por defecto del commit 4bf1543936
@@ -38,7 +39,7 @@ ru_sdr:
   clock: ${SDR_CLOCK}
   sync: ${SDR_SYNC}
   srate: 23.04                      # 20 MHz con SCS 30 kHz (51 PRB)
-  otw_format: sc12
+  otw_format: ${SDR_OTW_FORMAT}     # sc12 con B200 | sc16 con bladeRF
   tx_gain: ${SDR_TX_GAIN}
   rx_gain: ${SDR_RX_GAIN}
 

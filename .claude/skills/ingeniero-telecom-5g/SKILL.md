@@ -119,8 +119,17 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
 - **SDR (AD9361):** USRP B210 (UHD) o bladeRF 2.0 micro. Hay que cambiar `ru_sdr` a
   `device_driver: uhd` y ajustar `srate`, `tx_gain`/`rx_gain` (empieza bajo y sube) y
   `clock`/`sync` si hay GPSDO o referencia externa. Vigila el offset de frecuencia y los
-  underflows/late en los logs del gNB. En Windows, el USB necesita `usbipd-win` para llegar a WSL2;
-  conviene usar Linux nativo.
+  underflows/late en los logs del gNB. En Windows, el USB necesita `usbipd-win` para llegar a WSL2,
+  pero **usbipd solo da ≈ 18 MB/s** (medido el 2026-11-09: 4,6 MS/s de RX, 4,4 % de pérdida a
+  23,04 MS/s TX+RX): la celda de 20 MHz (≈ 184 MB/s) exige Linux nativo (memoria USB con Ubuntu).
+- **bladeRF 2.0 micro (equipo actual, xA9):** srsRAN Project solo tiene drivers `uhd` y `zmq`. La
+  imagen trae `uhd-soapysdr` + `soapysdr0.8-module-bladerf`: `SDR_DEVICE_ARGS=type=soapy,driver=bladerf`,
+  `SDR_OTW_FORMAT=sc16` (sc12 es solo de la B200); ganancias en la escala de SoapySDR. Si el
+  puente pierde muestras en Linux nativo, la alternativa es el gNB de OAI. Sin USB 3 enumera en
+  *full-speed* y libbladeRF dice `incompatible firmware` / `No devices are available`.
+- **Generador R&S SMBV100A:** referencia de 10 MHz (REF OUT → entrada de reloj U.FL de la bladeRF)
+  y portadora CW para calibrar offset de frecuencia y ganancia de RX (siempre ≥ 30 dB de
+  atenuación; la RX del AD9361 admite ≈ +2,5 dBm). No genera NR (eso es del SMBV100B).
 - **Banda:** confirma qué bandas SA soporta el terminal. Muchos teléfonos solo hacen SA en n78
   (TDD, 3,3–3,8 GHz), que exige patrón TDD y otra configuración de celda (SCS 30 kHz). Prepara
   configuraciones n3 y n78.

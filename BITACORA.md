@@ -57,7 +57,13 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Adaptar el banco a las mediciones con teléfono: `banco telefono` (ping UPF → teléfono y métricas del gNB por atenuación) y arranque en un comando `banco lab` (2026-11-08).
 - [ ] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva.
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
-- [ ] Con la B200 real: comprobar los pasos 2/5 a 5/5 de `lab` (attach con `--auto-attach`, UHD, NG Setup del `gnb-sdr`); sin hardware solo se verificaron las rutas de error.
+- [ ] ~~Con la B200 real: comprobar los pasos 2/5 a 5/5 de `lab`~~ (2026-11-09: la B200 no estuvo disponible; se sigue con la bladeRF).
+- [x] SDR de reemplazo: **bladeRF 2.0 micro xA9** detectada en USB 3 y vista por UHD vía SoapySDR (`type=soapy,driver=bladerf`); imagen del gNB, plantillas (`SDR_OTW_FORMAT`) y `lab` adaptados (2026-11-09).
+- [ ] **Conseguir una memoria USB (≥ 32 GB, USB 3) con Ubuntu 22.04 *live* con persistencia** para arrancar el i5 en Linux nativo y trabajar desde ahí: `usbipd` (WSL2) solo da ≈ 18 MB/s y la celda de 20 MHz necesita ≈ 184 MB/s (guía, sección 4).
+- [x] Antes de pasar a Ubuntu: `docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar` en el i5 (2026-11-09: 0,46 GB, las cuatro imágenes).
+- [ ] En Ubuntu nativo: `benchmark_rate` a 23,04 MS/s TX + RX con la bladeRF (0 *overruns*); si el puente SoapySDR pierde muestras, evaluar el gNB de OpenAirInterface (driver bladeRF propio).
+- [ ] En Ubuntu nativo: `lab` con la bladeRF (NG Setup del `gnb-sdr`), ajuste de `SDR_TX_GAIN`/`SDR_RX_GAIN` en la escala de SoapySDR y registro del teléfono.
+- [ ] Calibración con el R&S SMBV100A: portadora CW → atenuador ≥ 30 dB → RX1 de la bladeRF (offset en ppm sin y con referencia de 10 MHz, ganancia real de RX) para la calculadora de enlace.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1089,3 +1095,60 @@ portátiles (el trabajo de hoy se hizo en el portátil i7-13620H, `C:\JoseDev\RE
 
 **Pendiente / siguientes pasos:** los de "Pendientes vigentes": `git pull` en el portátil i5,
 `usbipd-win` en el i7, prueba con memoria USB, K/OPc y el día de laboratorio.
+
+---
+
+## 2026-11-09 — Día de laboratorio: bladeRF 2.0 micro en lugar de la B200 y decisión de Linux nativo
+
+**Contexto:** en el laboratorio no estuvo la USRP B200; hay una **bladeRF 2.0 micro** y un
+generador vectorial **R&S SMBV100A**. Se trabaja en el portátil i5-8250U (con `git pull` hecho).
+
+**Hallazgos (medidos en el i5, WSL2 Ubuntu-22.04 + usbipd-win 5.3.0):**
+- srsRAN Project solo trae los drivers de radio `uhd` y `zmq` (`lib/radio`): no hay driver bladeRF.
+  Se usa el módulo de UHD `uhd-soapysdr` (UHD → SoapySDR → libbladeRF), en paquetes de Ubuntu 22.04.
+- Equipo: **bladeRF 2.0 micro xA9** (FPGA 301 KLE), firmware 2.4.0, FPGA 0.14.0 cargada desde su
+  flash, VID:PID `2cf0:5250`. Con el primer cable/puerto enumeró en *full-speed*
+  (`not running at top speed`) y libbladeRF respondía `A bladeRF running incompatible firmware` y
+  `No devices are available`; en un puerto USB 3 enumeró en SuperSpeed y funcionó.
+- **usbipd no sostiene la tasa:** RX nativo con `bladeRF-cli` (230,4 M muestras = 10 s a 23,04 MS/s)
+  tardó 50 s (≈ 4,6 MS/s ≈ 18 MB/s) con `Hit stall` y `vhci_hcd: urb->status -104`;
+  `benchmark_rate` por el puente a 23,04 MS/s TX + RX, 20 s: 17,8 M muestras perdidas (4,4 %),
+  18 093 *overruns*, 10 timeouts de RX. La celda de 20 MHz necesita ≈ 184 MB/s: el gNB tiene que
+  correr en Linux nativo (también habría pasado con la B200). Tras estas pruebas la bladeRF se
+  desconectó de WSL dos veces y hubo que repetir `usbipd attach`.
+- Rangos por SoapySDR (`SoapySDRUtil --probe`): RX −15..60 dB, TX −23,75..66 dB, 70–6000 MHz,
+  formatos CS16/CF32 (sin sc12).
+
+**Decisión:** se consigue una memoria USB con Ubuntu 22.04 (*live* con persistencia) para arrancar
+el i5 en Linux nativo y trabajar desde ahí; la guía (sección 4) tiene el procedimiento.
+
+**Cambios realizados:**
+- `docker/gnb/Dockerfile`: la etapa final instala `uhd-soapysdr`, `soapysdr0.8-module-bladerf` y
+  `soapysdr-tools` (sin recompilar srsRAN).
+- `docker/gnb/gnb_b210_n3.yaml` / `gnb_b210_n78.yaml`: `otw_format: ${SDR_OTW_FORMAT}` (antes fijo
+  en `sc12`, que la bladeRF no ofrece) y nota de que sirven para la bladeRF.
+- `.env.example` y `docker-compose.yml` (`gnb-sdr`): variable `SDR_OTW_FORMAT` (por defecto `sc12`),
+  valores para B200 y bladeRF y rangos de ganancia de SoapySDR.
+- `banco/laboratorio.py`: `lab` elige el SDR según `SDR_DEVICE_ARGS` (`sdr_de`: B200 `2500:0020` o
+  bladeRF `2cf0:5250`), lo busca en `usbipd list` y en `uhd_find_devices`, y en Windows avisa del
+  límite de `usbipd`. Prueba nueva `banco/tests/test_laboratorio.py`.
+- `.env` local del i5: `SDR_DEVICE_ARGS=type=soapy,driver=bladerf`, `SDR_OTW_FORMAT=sc16` (n78, TX 30).
+- `docs/fase3_guia_laboratorio.md` (sección 4 reescrita: Linux nativo desde memoria USB; 4.1 nueva:
+  bladeRF; diagnóstico), `README.md`, skill `ingeniero-telecom-5g`.
+- En WSL (fuera del repositorio): PPA de Nuand (`bladerf` 2022.08), `uhd-host`, `uhd-soapysdr`,
+  `soapysdr0.8-module-bladerf`, `soapysdr-tools`.
+
+**Verificación:**
+- `py -m unittest discover -s banco/tests -t .`: 51 pruebas OK.
+- `docker compose build gnb`: solo se rehízo la etapa final. En la imagen: `ldd` sin bibliotecas
+  faltantes, `libsoapySupport.so` en los módulos de UHD, fábrica `bladerf`, `libbladerf2`
+  0.2021.10-2 (Ubuntu); la plantilla n78 se renderiza con `type=soapy,driver=bladerf` y `sc16`;
+  `uhd_find_devices` **dentro del contenedor** encuentra `type: soapy, driver: bladerf`.
+- `docker compose --profile sdr config`: `SDR_OTW_FORMAT: sc16`.
+- **No verificado:** `lab` completo y el arranque del gNB con la bladeRF (no tiene sentido por
+  usbipd); si srsRAN acepta todas las llamadas de UHD sobre el puente Soapy (reloj, sensores,
+  marcas de tiempo); `benchmark_rate` en Linux nativo; la referencia de 10 MHz del SMBV100A.
+
+**Pendiente:** memoria USB con Ubuntu, `docker save` de las imágenes, `benchmark_rate` y `lab` en
+Linux nativo (OAI si el puente pierde muestras), calibración CW con el SMBV100A. `docker save` ya
+hecho: `D:ed5g_imagenes.tar` (0,46 GB, gnb + open5gs + webui + mongo:6.0).

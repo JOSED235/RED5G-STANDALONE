@@ -75,11 +75,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gettext-base \
     ca-certificates \
     && if [ "$ENABLE_UHD" = "ON" ]; then \
-         apt-get install -y --no-install-recommends libuhd4.1.0 uhd-host python3 && \
+         apt-get install -y --no-install-recommends libuhd4.1.0 uhd-host python3 \
+                 uhd-soapysdr soapysdr0.8-module-bladerf soapysdr-tools && \
          uhd_images_downloader -t b2xx; \
        fi \
     && rm -rf /var/lib/apt/lists/*
 # (uhd_images_downloader -t b2xx: imágenes FPGA/firmware de B200/B210 que UHD carga al abrir el equipo)
+# bladeRF 2.0 micro: srsRAN Project no tiene driver bladeRF (solo uhd y zmq). uhd-soapysdr es un
+# módulo de UHD que expone los equipos SoapySDR como 'type=soapy', y soapysdr0.8-module-bladerf
+# maneja la bladeRF; así el mismo binario la usa con device_args 'type=soapy,driver=bladerf'.
+# La FPGA de la bladeRF se carga sola desde su flash (no hace falta imagen en el contenedor).
 
 COPY --from=builder /usr/local/bin/gnb /usr/local/bin/gnb
 

@@ -129,7 +129,7 @@ services:
       red5g_net:
         ipv4_address: ${GNB_IP}
 
-  # Fase 3: gNB con USRP B210 (UHD). Solo arranca con el perfil 'sdr' (manage_lab.ps1 up-sdr /
+  # Fase 3: gNB con SDR: USRP B200/B210 (UHD) o bladeRF 2.0 (UHD -> SoapySDR). Solo arranca con el perfil 'sdr' (manage_lab.ps1 up-sdr /
   # make up-sdr), que no levanta el gNB ni el UE de ZMQ. Usa la misma imagen que 'gnb' (el binario
   # trae ZMQ y UHD; la plantilla elige el driver), así que no se compila aparte.
   gnb-sdr:
@@ -154,6 +154,7 @@ services:
       OPEN5GS_IP: ${OPEN5GS_IP}
       GNB_SDR_IP: ${GNB_SDR_IP:-10.53.0.7}
       SDR_DEVICE_ARGS: ${SDR_DEVICE_ARGS:-type=b200,num_recv_frames=64,num_send_frames=64}
+      SDR_OTW_FORMAT: ${SDR_OTW_FORMAT:-sc12}
       SDR_CLOCK: ${SDR_CLOCK:-default}
       SDR_SYNC: ${SDR_SYNC:-default}
       SDR_TX_GAIN: ${SDR_TX_GAIN:-50}

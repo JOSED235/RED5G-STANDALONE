@@ -2,6 +2,8 @@
 
 Guía operativa para llevar la red al laboratorio con una USRP B200, una SIM programable y un
 teléfono comercial 5G SA. Sirve para **cualquiera de los dos portátiles** del proyecto (sección 0).
+**Desde el 2026-11-09 el SDR disponible es una bladeRF 2.0 micro xA9 (sección 4.1) y la celda de
+20 MHz exige Linux nativo desde una memoria USB (sección 4).**
 Complementa (no reemplaza) el plan de pruebas [`fase3_plan_pruebas.md`](fase3_plan_pruebas.md), que
 define los criterios F3-1 a F3-8 y los riesgos.
 
@@ -355,22 +357,79 @@ revisarlas** (llevan el IMSI).
 
 ---
 
-## 4. Plan B: Linux nativo en el mismo portátil
+## 4. Linux nativo desde una memoria USB (necesario para la celda de 20 MHz)
 
-Si Docker Desktop no ve la B200 o hay *underflows* persistentes por `usbipd`:
+**Medido el 2026-11-09 con la bladeRF en el i5-8250U:** por `usbipd` (WSL2) la recepción nativa
+de libbladeRF solo alcanza ≈ 4,6 MS/s (≈ 18 MB/s, con `Hit stall` y `vhci_hcd: urb->status -104`),
+y `benchmark_rate` a 23,04 MS/s TX + RX perdió el 4,4 % de las muestras (18 093 *overruns*). La
+celda de 20 MHz necesita ≈ 184 MB/s, así que **con cualquier SDR USB el gNB debe correr en Linux
+nativo**; Windows + WSL2 queda para la red ZMQ, las pruebas de baja tasa (calibración con el
+generador) y la preparación. La B200 tendría el mismo límite.
 
-1. Antes de ir, exporte las imágenes ya construidas (misma CPU, así que `-march=native` sirve):
+**Decisión (2026-11-09):** se consigue una memoria USB con Ubuntu 22.04 para arrancar el i5
+directamente en Linux y trabajar desde ahí.
+
+1. **Memoria:** 32 GB o más, USB 3. Ubuntu 22.04.5 Desktop *live* con **persistencia** (Rufus en
+   Windows: imagen ISO, esquema GPT, "Tamaño de la partición persistente" ≥ 16 GB), para que
+   Docker, las imágenes y los paquetes sobrevivan al reinicio. En la BIOS: arranque desde USB
+   (F12/F9 según el equipo) y, si no arranca, Secure Boot desactivado.
+2. **Antes, en Windows**, exporte las imágenes ya construidas (misma CPU: `-march=native` sirve).
+   Incluya `mongo:6.0`, que `lab` levanta (≈ 0,5 GB: el tar guarda las capas comprimidas):
    ```powershell
-   docker save red5g-gnb red5g-open5gs red5g-webui -o <disco con espacio>\red5g_imagenes.tar
+   cd D:\devJose\RED5G-STANDALONE
+   docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar
    ```
-2. Arranque desde una memoria USB con Ubuntu 22.04 (live), instale Docker Engine
-   (`curl -fsSL https://get.docker.com | sh`), monte el disco del repositorio y:
+3. **En Ubuntu nativo** (terminal):
    ```bash
-   docker load -i <ruta>/red5g_imagenes.tar
-   cd <ruta del repositorio>
+   sudo apt update && sudo apt install -y git python3 make
+   curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker
+   # El disco D: (NTFS) aparece en /media/$USER/<etiqueta>; o clone de nuevo el repositorio
+   docker load -i /media/$USER/<etiqueta>/red5g_imagenes.tar
+   cd /media/$USER/<etiqueta>/devJose/RED5G-STANDALONE
+   python3 -m banco verificar
    make lab
    ```
-   En Linux nativo `/dev/bus/usb` es el del propio equipo: `lab` omite `usbipd`.
+   En Linux nativo `/dev/bus/usb` es el del propio equipo: `lab` omite `usbipd`. Si el `.env` del
+   repositorio no está en esa copia, cópielo (contiene K/OPc: no lo deje en la memoria al terminar).
+4. **Primero el caudal USB** (debe dar 0 *overruns* y 0 *underruns* durante 30 s):
+   ```bash
+   docker compose --profile sdr run --rm --no-deps --entrypoint /usr/lib/uhd/examples/benchmark_rate gnb-sdr \
+     --args "type=soapy,driver=bladerf" --rx_rate 23.04e6 --tx_rate 23.04e6 --duration 30
+   ```
+   (con la B200, `--args "type=b200"`). Si aun así pierde muestras con la bladeRF, el puente
+   UHD → SoapySDR es el límite: siguiente opción, el gNB de OpenAirInterface (driver bladeRF propio).
+
+### 4.1 Trabajar con la bladeRF 2.0 micro en lugar de la B200
+
+srsRAN Project solo trae los drivers `uhd` y `zmq` (verificado en `lib/radio` el 2026-11-09). La
+imagen `red5g-gnb` incluye `uhd-soapysdr` (módulo de UHD que expone los equipos SoapySDR como
+`type=soapy`) y `soapysdr0.8-module-bladerf`, así que el mismo binario, las mismas plantillas
+`gnb_b210_*` y `lab` / `telefono` sirven sin cambios. En `.env`:
+
+```ini
+SDR_DEVICE_ARGS=type=soapy,driver=bladerf
+SDR_OTW_FORMAT=sc16        # la bladeRF solo ofrece CS16/CF32 por Soapy (sc12 es de la B200)
+SDR_TX_GAIN=30             # escala de SoapySDR: TX -23,75..66 dB, RX -15..60 dB (SoapySDRUtil --probe)
+```
+
+Equipo del laboratorio (2026-11-09): **bladeRF 2.0 micro xA9** (FPGA 301 KLE), firmware 2.4.0,
+FPGA 0.14.0 cargada desde su flash, VID:PID `2cf0:5250`. Comprobaciones en el host (Ubuntu o WSL):
+
+```bash
+sudo add-apt-repository -y ppa:nuandllc/bladerf && sudo apt install -y bladerf uhd-host uhd-soapysdr soapysdr0.8-module-bladerf soapysdr-tools
+bladeRF-cli -p && bladeRF-cli -e info -e version   # USB speed: SuperSpeed
+uhd_find_devices                                     # type: soapy, driver: bladerf
+```
+
+- **USB 3 obligatorio:** con un cable o puerto que no sea USB 3 la bladeRF enumera en *full-speed*
+  (`not running at top speed`) y libbladeRF responde `A bladeRF running incompatible firmware` y
+  `No devices are available`. Use el cable Micro-B USB 3 (conector ancho) directo al portátil.
+- **Referencia de 10 MHz:** la bladeRF 2.0 acepta una referencia externa por su entrada de reloj
+  U.FL (`bladeRF-cli -e "set clock_ref enable"`); el generador del laboratorio (R&S SMBV100A) da
+  10 MHz por REF OUT y sirve para quitar el offset de frecuencia del VCTCXO.
+- **Calibración con el SMBV100A** (portadora CW, siempre con ≥ 30 dB de atenuación hacia RX1;
+  la RX del AD9361 admite como máximo ≈ +2,5 dBm): offset de frecuencia en ppm y ganancia real de
+  RX a baja tasa, que sí funciona por `usbipd`. Pendiente de hacer.
 
 ---
 
@@ -381,7 +440,9 @@ Si Docker Desktop no ve la B200 o hay *underflows* persistentes por `usbipd`:
 | `lab` se detiene en 2/5 | El mensaje dice qué falta: instalar `usbipd-win`, `usbipd bind` como administrador o conectar la B200 |
 | `No UHD Devices Found` con la B200 conectada | `usbipd list` (¿`Attached`?), ventana de `--auto-attach` abierta, cable USB 3.0, fuente de la B200 |
 | `Unable to create radio session` en el gNB | UHD no abrió la B200: lo mismo que la fila anterior |
-| `U`/`O`/`L` continuos en el log del gNB | Corriente, `powercfg`, USB 3.0, CPU libre; si persiste, plan B |
+| `U`/`O`/`L` continuos en el log del gNB | Corriente, `powercfg`, USB 3.0, CPU libre; en WSL2 es `usbipd` (≈ 18 MB/s): Linux nativo (sección 4) |
+| bladeRF: `incompatible firmware` / `No devices are available` | Enumeró en *full-speed*: cable Micro-B USB 3 y puerto USB 3 (sección 4.1) |
+| bladeRF desaparece de `usbipd list` o de WSL tras una prueba | Re-conectar y `usbipd attach --wsl --busid <bus> --auto-attach`; en Linux nativo no ocurre |
 | El teléfono no ve la celda | SA en esa banda, modo solo 5G, subir `SDR_TX_GAIN` de 5 en 5 dB vigilando la Prx (`up-sdr` tras cada cambio), deriva del TCXO (GPSDO) |
 | Ve la celda pero no se registra | IMSI/K/OPc de la SIM = `.env`, `banco suscriptor` ejecutado; en la traza `Authentication failure` / `MAC failure` |
 | No hay PRACH / `RAR` en el gNB | RX2 conectado, `SDR_RX_GAIN`, atenuación en RX |
