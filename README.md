@@ -19,7 +19,64 @@ La arquitectura integra:
 * **Interfaz Radio y Transmisión:**
   * **Fases 1 y 2 (Zero-RF):** Emulación de canal radio por software mediante **ZeroMQ (ZMQ)** vía sockets TCP locales, permitiendo pruebas exhaustivas extremo a extremo sin radiación electromagnética ni riesgo regulatorio.
   * **Fase 3 (RF física):** Conexión mediante Radios Definidos por Software (**SDR**) de la familia AD9361 (USRP B200/B210 o bladeRF 2.0 micro; se usará una **USRP B200**) hacia un terminal comercial con tarjeta SIM programable.
-* **Aprovisionamiento de Suscriptor (SIM):** Configuración de credenciales de seguridad 5G-AKA (IMSI, K, OPc, algoritmo Milenage) con [grsimwrite](https://smacarte.com/wp/grsimwrite_download/) o [cyberflex-shell](https://gitea.osmocom.org/laforge/cyberflex-shell/).
+* **Aprovisionamiento de Suscriptor (SIM):** Configuración de credenciales de seguridad 5G-AKA (IMSI, K, OPc, algoritmo Milenage) con [grsimwrite](https://smacarte.com/wp/grsimwrite_download/) o [pySim](https://gitea.osmocom.org/sim-card/pysim) (lector PC/SC).
+
+### 1.1 Para qué sirve
+
+* **Aprender y demostrar 5G SA de extremo a extremo** con software libre: la misma cadena que usa un operador (registro 5G-AKA, cifrado NAS/AS, sesión PDU, túnel GTP-U, salida a Internet), pero en un portátil.
+* **Medir y contrastar con la teoría**: latencia, caudal, MCS, BLER y CPU frente a TS 38.306, Shannon y el presupuesto de enlace, con intervalos de confianza.
+* **Llevarla a radio real** en la Fase 3: un teléfono comercial con una SIM programada por nosotros se registra en nuestra celda (conducida, con atenuadores, sin emitir al aire).
+
+### 1.2 Tecnologías y cómo se usa cada una
+
+| Tecnología | Papel en el proyecto | Cómo se usa aquí |
+| :--- | :--- | :--- |
+| **Open5GS 2.8.0** | Núcleo 5G (11 NF: NRF, SCP, AMF, SMF, UPF, AUSF, UDM, UDR, PCF, NSSF, BSF) | Compilado desde la etiqueta `v2.8.0` en la imagen `red5g-open5gs`; su configuración son plantillas `${VARIABLE}` en `docker/open5gs/` que se rellenan con `.env` al arrancar |
+| **MongoDB** | Base de datos de suscriptores (UDR) | Contenedor `mongodb`; `init-mongo.js` crea el suscriptor de prueba y `banco suscriptor` da de alta la SIM física |
+| **WebUI de Open5GS** | Ver y editar suscriptores | <http://localhost:9999> (`admin` / `1423`) |
+| **srsRAN Project** | gNB (estación base 5G) | Imagen `red5g-gnb` con ZMQ y UHD en un solo binario; la plantilla (`gnb_zmq.yaml`, `gnb_b210_n78.yaml`, `gnb_b210_n3.yaml`) elige el radio |
+| **srsUE 26.10** (srsRAN 4G) | Teléfono emulado (Fases 1–2) | Contenedor `ue` con USIM por software; crea `tun_srsue` y saca todo su tráfico por la red 5G |
+| **ZeroMQ** | "Radio" por software entre gNB y UE | Muestras I/Q por TCP entre contenedores (sin RF); gNB y UE siempre se recrean juntos (`restart-ran`) |
+| **UHD + USRP B200** | Radio real (Fase 3) | Servicio `gnb-sdr` (perfil `sdr`); en Windows la B200 llega a Docker por `usbipd-win` → WSL2 |
+| **Docker Compose** | Orquestación (NFV mínima) | `docker-compose.yml`; se maneja con `manage_lab.ps1` (Windows) o `make` (Linux) |
+| **`.env`** | Configuración única | PLMN, TAC, IP, seguridad, radio y SIM en un solo archivo no versionado (plantilla `.env.example`) |
+| **Python 3.10+ (`banco/`)** | Banco de pruebas | Solo biblioteca estándar: verificación del equipo, pruebas P5–P10, registro, captura, análisis de protocolos, estadística, enlace, SIM y Fase 3 (`lab`, `telefono`) |
+| **tshark / Wireshark** | Análisis de trazas | `banco protocolos` disecciona NGAP, NAS-5GS, PFCP, GTP-U y SBI de las capturas de `./capturas` |
+| **matplotlib (`analisis/`)** | Gráficas del informe | `.\manage_lab.ps1 analisis resultados\<carpeta>` |
+| **pySim / grsimwrite** | Programar la SIM física | Lector PC/SC; ver la guía del laboratorio |
+| **LaTeX (IEEEtran)** | Informes | `docs/informe_fase2.tex` compila en Overleaf sin archivos externos |
+| **GitHub Actions** | Integración continua | Pruebas unitarias, `shellcheck`, `yamllint` y `docker compose config` |
+
+### 1.3 Inicio rápido
+
+**En casa, sin hardware (ZMQ):**
+
+```powershell
+.\manage_lab.ps1 up          # verifica el equipo y levanta Core + gNB + srsUE (la 1.ª vez compila srsRAN: 20-90 min)
+.\manage_lab.ps1 status      # contenedores, NF, NG Setup, sesión PDU
+.\manage_lab.ps1 test-ping   # P5: latencia por la red 5G
+.\manage_lab.ps1 down
+```
+
+**En el laboratorio, con la USRP B200 y el teléfono** (guía completa: [`docs/fase3_guia_laboratorio.md`](docs/fase3_guia_laboratorio.md)):
+
+```powershell
+.\manage_lab.ps1 lab                                   # B200 por usbipd + UHD, Core + gNB SDR, NG Setup, alta de la SIM
+.\manage_lab.ps1 pcap-registro                         # quitar el modo avión del teléfono: traza del registro
+.\manage_lab.ps1 telefono --atenuacion 60 --duracion 60   # con iperf3 en el teléfono: RTT, MCS, CQI, SNR, BLER
+.\manage_lab.ps1 down
+```
+
+### 1.4 Equipos
+
+El mismo repositorio funciona en los dos portátiles; cada uno tiene su `.env` (con `EQUIPO=<nombre>`, que queda en los metadatos de cada medición) y construye sus propias imágenes, porque el gNB se compila con `-march=native`.
+
+| Equipo | Carpeta del repositorio | Estado |
+| :--- | :--- | :--- |
+| Portátil A, Intel i5-8250U (previsto para el laboratorio) | `D:\devJose\RED5G-STANDALONE` | Imágenes del 05/11, prueba de humo ZMQ hecha, `usbipd-win` y pySim instalados |
+| Portátil B, Intel i7-13620H | `C:\JoseDev\RED5G-STANDALONE` | `.env` creado y prueba de humo ZMQ hecha el 08/11; falta `usbipd-win` |
+
+Antes de usar un equipo: `git pull`, `.\manage_lab.ps1 verificar` y, si cambió algo en `docker/`, `.\manage_lab.ps1 build`. Lo que falta en cada uno está en la tabla 0.1 de la guía del laboratorio.
 
 ---
 
@@ -31,7 +88,7 @@ El proyecto se estructura en tres fases progresivas alineadas con la rúbrica de
 | :--- | :--- | :--- | :---: |
 | **Fase 1: Planificación, Diseño y Simulación** | Arquitectura lógica, protocolos, modelado matemático y viabilidad. | • Selección y justificación tecnológica (Open5GS vs SD-Core, ZMQ vs SDR).<br>• Definición de arquitectura 5G SA e interfaces (N1, N2, N3, N4, N6, SBI).<br>• Modelado matemático de modulación, MCS, códigos LDPC y Polar, y cotas de Shannon.<br>• Despliegue del banco de simulación ZMQ sobre WSL2.<br>• Registro 5G-AKA exitoso, sesión PDU, medición de RTT ICMP y caudal TCP.<br>• Análisis normativo (MinTIC / ANE), impacto ético y socio-técnico. | **Completada** |
 | **Fase 2: Implementación Core y Red de Acceso (Zero-RF)** | Despliegue de software, estabilidad del núcleo y mensajería NAS/AS. | • [Hecho] Automatización y contenerización del despliegue (Docker Compose, validado de extremo a extremo).<br>• [Hecho] Estabilización del núcleo Open5GS (11 NF activas, healthchecks y reinicio automático).<br>• [Hecho] Ruta por defecto hacia Internet desde el UE por `tun_srsue` (Falla #10 resuelta).<br>• [Hecho] Captura automatizada del flujo NG Setup → Registration → PDU Session (NGAP, NAS-5GS, PFCP, SBI).<br>• [Hecho] Análisis semiautomático de la traza del registro con tshark (`banco protocolos`): identidades, 5G-AKA, seguridad NAS, túneles N3, reglas PFCP, tiempos y diagrama de secuencia.<br>• [Hecho] Configuración única en `.env`, Open5GS fijado en v2.8.0 e integridad NAS NIA2.<br>• [Hecho] Cifrado NAS NEA2 + integridad NIA2 con el srsUE 26.10 (verificado en la traza, 02/11/2026).<br>• [Hecho] Estadística (media, desviación, IC 95 % t-Student, BLER agregada) y gráficas para el informe (`analisis`).<br>• [Hecho] Banco de pruebas automatizado (P5–P10, campañas de N corridas, resultados con metadatos), validado de extremo a extremo.<br>• [Hecho] Campaña completa (P5–P10, 5 corridas; P8 con 3 y P9 de 30 min) y su análisis estadístico con intervalos de confianza. | **Completada** (falta la revisión del informe por el autor) |
-| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• [Hecho] Calculadora de presupuesto de enlace (`python -m banco enlace`): Prx, SNR, MCS y caudal teóricos por atenuación, con fracción TDD (`--fraccion`).<br>• [Hecho, sin hardware] gNB con ZMQ y UHD en una sola imagen (`red5g-gnb`; servicio `gnb-sdr` del perfil `sdr`, `up-sdr`) y plantillas `gnb_b210_n3.yaml` (FDD) y `gnb_b210_n78.yaml` (TDD) verificadas contra el código del commit fijado.<br>• [Hecho, sin hardware] Alta de la SIM física en el Core sin exponer K/OPc (`python -m banco suscriptor`).<br>• [Hecho] Plan de pruebas F3-1 a F3-8, lista de verificación de hardware y riesgos: [`docs/fase3_plan_pruebas.md`](docs/fase3_plan_pruebas.md).<br>• [Hecho] Guía práctica del día de laboratorio (preparación del portátil Windows + WSL2 + `usbipd`, compilación, montaje RF, SIM y pruebas): [`docs/fase3_guia_laboratorio.md`](docs/fase3_guia_laboratorio.md).<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y contraste con el presupuesto de enlace. | **Preparación por software** |
+| **Fase 3: Integración SDR y Terminal Comercial** | Transmisión por radiofrecuencia (conducida/OTA), hardware y validación de usuario. | • Calibración de ganancias RF, frecuencia y estabilidad de reloj en SDR (USRP B210 / bladeRF).<br>• Programación física de SIM comercial mediante lector PC/SC.<br>• Validación de terminal móvil comercial 5G SA y autenticación de red.<br>• Enlace guiado por cable coaxial con atenuadores fijos (60–80 dB) para pruebas conducidas seguras.<br>• [Hecho] Calculadora de presupuesto de enlace (`python -m banco enlace`): Prx, SNR, MCS y caudal teóricos por atenuación, con fracción TDD (`--fraccion`).<br>• [Hecho, sin hardware] gNB con ZMQ y UHD en una sola imagen (`red5g-gnb`; servicio `gnb-sdr` del perfil `sdr`, `up-sdr`) y plantillas `gnb_b210_n3.yaml` (FDD) y `gnb_b210_n78.yaml` (TDD) verificadas contra el código del commit fijado.<br>• [Hecho, sin hardware] Alta de la SIM física en el Core sin exponer K/OPc (`python -m banco suscriptor`).<br>• [Hecho] Plan de pruebas F3-1 a F3-8, lista de verificación de hardware y riesgos: [`docs/fase3_plan_pruebas.md`](docs/fase3_plan_pruebas.md).<br>• [Hecho] Guía práctica del día de laboratorio (preparación del portátil Windows + WSL2 + `usbipd`, compilación, montaje RF, SIM y pruebas): [`docs/fase3_guia_laboratorio.md`](docs/fase3_guia_laboratorio.md).<br>• [Hecho, sin hardware] Arranque en un comando (`lab`: B200 por `usbipd` + UHD, Core + gNB SDR, NG Setup, alta de la SIM) y medición con el teléfono (`telefono`: ping UPF → teléfono y MCS/CQI/SNR/BLER del gNB por nivel de atenuación), ensayada con el srsUE el 08/11/2026.<br>• Medición de KPIs en campo: Throughput, Latencia RTT, SNR, y contraste con el presupuesto de enlace. | **Preparación por software completa; falta el día de laboratorio** |
 
 ---
 
@@ -218,7 +275,9 @@ La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el 
 | 5 repeticiones de varias pruebas | `.\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5` | `make campana ARGS="--corridas 5"` |
 | Captura PCAP (N s / registro completo) | `.\manage_lab.ps1 pcap -Seconds 60` / `pcap-registro` | `make pcap` / `make pcap-registro` |
 | Alta de la SIM física de la Fase 3 (lee `SIM_IMSI`, `SIM_K`, `SIM_OPC` de `.env`) | `.\manage_lab.ps1 banco suscriptor` | `python -m banco suscriptor` |
-| Fase 3: levantar el Core con el gNB de la USRP B210 (sin gNB/UE ZMQ) | `.\manage_lab.ps1 up-sdr` | `make up-sdr` |
+| Fase 3 en un paso: B200 (usbipd + UHD), Core + gNB SDR, NG Setup y alta de la SIM | `.\manage_lab.ps1 lab` | `make lab` |
+| Fase 3: ping UPF → teléfono y métricas del gNB mientras el teléfono corre iperf3 | `.\manage_lab.ps1 telefono --atenuacion 60` | `make telefono ARGS="--atenuacion 60"` |
+| Fase 3: solo levantar el Core con el gNB de la USRP B200 (sin gNB/UE ZMQ) | `.\manage_lab.ps1 up-sdr` | `make up-sdr` |
 | Presupuesto de enlace para la Fase 3 (sin Docker) | `.\manage_lab.ps1 banco enlace --atenuacion 60,70,80` | `python -m banco enlace` |
 | Paso 3: estadística de una carpeta (media, desviación, IC 95 %, BLER agregada; sin Docker) | `.\manage_lab.ps1 banco estadistica resultados\<carpeta>` | `python -m banco estadistica` |
 | Paso 4: análisis de protocolos de una traza (SUCI, 5G-AKA, NEA/NIA, TEID N3, PDR/FAR/QER, tiempos y diagrama de secuencia; requiere tshark) | `.\manage_lab.ps1 banco protocolos [capturas\<traza>.pcap]` (se ejecuta solo tras `pcap-registro`) | `python -m banco protocolos` |
@@ -273,7 +332,7 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 * [`docker-compose.yml`](docker-compose.yml): Orquestador principal de contenedores para la Fase 2.
 * [`manage_lab.ps1`](manage_lab.ps1): Script de control en PowerShell para Windows (ciclo de vida y acceso al banco de pruebas).
 * [`Makefile`](Makefile): Comandos abreviados para entornos Linux / WSL.
-* [`banco/`](banco): Banco de pruebas automatizado en Python (P5–P10, prueba de registro, campañas, captura PCAP, análisis de protocolos con tshark, alta de la SIM, estadística con IC 95 %, calculadora de presupuesto de enlace de la Fase 3) con pruebas unitarias en `banco/tests/`.
+* [`banco/`](banco): Banco de pruebas automatizado en Python (P5–P10, prueba de registro, campañas, captura PCAP, análisis de protocolos con tshark, alta de la SIM, estadística con IC 95 %, calculadora de presupuesto de enlace y, en `laboratorio.py`, el arranque `lab` y la medición `telefono` de la Fase 3) con pruebas unitarias en `banco/tests/`.
 * [`analisis/`](analisis): Gráficas del informe (`python -m analisis.graficas`); va aparte del banco porque necesita matplotlib (`analisis/requirements.txt`).
 * `resultados/`: Salida del banco de pruebas (no versionada; copie a `docs/` lo que use en el informe).
 * [`docker/README.md`](docker/README.md): Manual operativo de la infraestructura Docker.

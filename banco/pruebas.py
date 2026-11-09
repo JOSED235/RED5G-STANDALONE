@@ -87,13 +87,14 @@ class Contexto:
     # --- Métricas del gNB durante una medición ------------------------------
 
     @contextmanager
-    def metricas_gnb(self, prueba: str, corrida: int, parametro: str = "", valor_parametro=""):
-        """Recoge la tabla de métricas del gNB emitida durante el bloque 'with'."""
+    def metricas_gnb(self, prueba: str, corrida: int, parametro: str = "", valor_parametro="",
+                     servicio: str = "gnb"):
+        """Recoge la tabla de métricas del gNB emitida durante el bloque 'with' (servicio gnb o gnb-sdr)."""
         resumen = {}
-        t0 = self.compose.reloj("gnb")
+        t0 = self.compose.reloj(servicio)
         yield resumen
-        t1 = self.compose.reloj("gnb")
-        filas = parsers.parse_metricas_gnb(self.compose.logs("gnb", desde=t0, hasta=t1 + 1))
+        t1 = self.compose.reloj(servicio)
+        filas = parsers.parse_metricas_gnb(self.compose.logs(servicio, desde=t0, hasta=t1 + 1))
         filas = [f for f in filas if f["t"] is None or t0 <= f["t"] <= t1 + 1]
         self.sesion.tabla("metricas_gnb", filas, {"prueba": prueba, "corrida": corrida,
                                                   "parametro": parametro, "valor_parametro": valor_parametro})
@@ -527,7 +528,9 @@ def estado(compose: Compose) -> None:
                        verificar=False)
     print("  " + "\n  ".join(l.strip() for l in res.stdout.splitlines()) if res.stdout else "  no disponible")
     seccion("ASOCIACIÓN NGAP gNB <-> AMF")
-    lineas = [l for l in compose.logs("gnb").splitlines() if re.search(r"(?i)NG setup|connection to AMF", l)]
+    from .laboratorio import servicio_gnb  # gnb-sdr en la Fase 3
+    lineas = [l for l in compose.logs(servicio_gnb(compose)).splitlines()
+              if re.search(r"(?i)NG setup|connection to AMF", l)]
     print("\n".join(lineas[-3:]) or "  sin registros de NG Setup")
     seccion("SESIÓN PDU DEL UE")
     ip = compose.ip_ue()

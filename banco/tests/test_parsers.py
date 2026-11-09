@@ -181,3 +181,35 @@ class PruebasParsers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PruebasFase3(unittest.TestCase):
+    def test_sesiones_smf(self):
+        # Líneas reales de 'docker compose logs open5gs' (2026-11-08), con colores ANSI
+        texto = (
+            "red5g-open5gs  | \x1b[32m11/09 02:21:50.332\x1b[0m: [\x1b[33mgmm\x1b[0m] INFO: UE SUPI[imsi-001010123456780]"
+            " DNN[internet] LBO[0] S_NSSAI[SST:1 SD:0xffffff] smContextRef[NULL]\n"
+            "red5g-open5gs  | \x1b[32m11/09 02:21:50.373\x1b[0m: [\x1b[33msmf\x1b[0m] INFO: UE SUPI[imsi-001010123456780]"
+            " DNN[internet] IPv4[10.45.0.2] IPv6[] (../src/smf/npcf-handler.c:647)\n"
+            "[smf] INFO: UE SUPI[imsi-001019999999999] DNN[internet] IPv4[10.45.0.3] IPv6[]\n"
+            "[smf] INFO: UE SUPI[imsi-001010123456780] DNN[internet] IPv4[10.45.0.4] IPv6[]\n"
+        )
+        sesiones = parsers.parse_sesiones_smf(texto)
+        self.assertEqual(sesiones, {"001019999999999": "10.45.0.3", "001010123456780": "10.45.0.4"})
+        self.assertEqual(list(sesiones)[-1], "001010123456780")  # la más reciente al final
+
+    def test_usbipd_list(self):
+        texto = (
+            "Connected:\n"
+            "BUSID  VID:PID    DEVICE                                                        STATE\n"
+            "1-3    2500:0020  USRP B200                                                     Not shared\n"
+            "2-1    0BDA:0129  Realtek USB 2.0 Card Reader                                   Shared\n"
+            "2-4    076b:3031  OMNIKEY 3x21 Smart Card Reader                                Attached\n"
+            "\nPersisted:\nGUID                                  DEVICE\n"
+        )
+        filas = parsers.parse_usbipd_list(texto)
+        self.assertEqual([f["busid"] for f in filas], ["1-3", "2-1", "2-4"])
+        self.assertEqual(filas[0]["vid_pid"], "2500:0020")
+        self.assertEqual(filas[0]["estado"], "Not shared")
+        self.assertEqual(filas[1]["vid_pid"], "0bda:0129")
+        self.assertEqual(filas[2]["estado"], "Attached")

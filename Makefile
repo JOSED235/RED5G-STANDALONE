@@ -1,6 +1,6 @@
 .PHONY: verificar up build down restart restart-ran logs logs-gnb logs-ue logs-core ps status \
         test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro analisis test-banco clean \
-        up-sdr registro
+        up-sdr registro lab telefono
 
 # Intérprete del banco de pruebas y opciones extra, p. ej.: make p7 ARGS="--tasas 2,5,10"
 PYTHON ?= python3
@@ -36,6 +36,14 @@ down:
 up-sdr: verificar
 	docker compose stop gnb ue
 	docker compose --profile sdr up -d mongodb open5gs webui gnb-sdr
+
+# Fase 3 en un paso: B200 visible para UHD, Core + gNB SDR, NG Setup y alta de la SIM de .env
+lab: verificar
+	$(BANCO) lab
+
+# Fase 3: ping UPF->teléfono y métricas del gNB mientras el teléfono corre iperf3
+telefono:
+	$(BANCO) telefono $(ARGS)
 
 # Aplica los cambios de .env
 restart: .env

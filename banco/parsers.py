@@ -357,3 +357,29 @@ def parse_tshark_campos(texto: str) -> list[dict]:
                 fila[campo] = [v for v in valor.split(TSHARK_AGREGADOR) if v] if valor else []
         filas.append(fila)
     return filas
+
+
+# --- Fase 3: sesión PDU del teléfono y USB de la B200 ------------------------------
+
+_SESION_SMF = re.compile(r"\[smf\].*?UE SUPI\[imsi-(\d+)\].*?IPv4\[(\d+\.\d+\.\d+\.\d+)\]")
+
+
+def parse_sesiones_smf(texto: str) -> dict:
+    """IMSI -> IPv4 de la sesión PDU según el log del SMF (la última sesión de cada IMSI gana)."""
+    sesiones = {}
+    for linea in texto.splitlines():
+        m = _SESION_SMF.search(limpiar(linea))
+        if m:
+            sesiones.pop(m.group(1), None)  # reinsertar: el orden refleja la sesión más reciente
+            sesiones[m.group(1)] = m.group(2)
+    return sesiones
+
+
+_USBIPD_FILA = re.compile(
+    r"^(\S+)\s+([0-9a-fA-F]{4}:[0-9a-fA-F]{4})\s+(.+?)\s{2,}(Not shared|Shared.*|Attached)\s*$")
+
+
+def parse_usbipd_list(texto: str) -> list[dict]:
+    """Dispositivos conectados de 'usbipd list' (usbipd-win 4/5): busid, vid_pid, nombre, estado."""
+    return [{"busid": m.group(1), "vid_pid": m.group(2).lower(), "nombre": m.group(3), "estado": m.group(4)}
+            for m in (_USBIPD_FILA.match(l.rstrip()) for l in texto.splitlines()) if m]

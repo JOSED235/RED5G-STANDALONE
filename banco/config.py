@@ -15,7 +15,7 @@ IP_UPF = "10.45.0.1"
 INTERFAZ_UE = "tun_srsue"
 DESTINO_INTERNET = "8.8.8.8"
 
-SERVICIOS = ("mongodb", "open5gs", "webui", "gnb", "ue")
+SERVICIOS = ("mongodb", "open5gs", "webui", "gnb", "ue", "gnb-sdr")
 IMAGENES = ("red5g-open5gs", "red5g-webui", "red5g-gnb", "red5g-ue")
 
 # Nunca se copian a los metadatos de los resultados (Ley 1581 de 2012)

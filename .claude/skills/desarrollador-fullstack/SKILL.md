@@ -17,7 +17,7 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
 | `docker-compose.yml` | Servicios; valores `${VAR}` desde `.env`; anclas `x-identidad-red` y `x-suscriptor` |
 | `docker/<servicio>/` | Dockerfile, entrypoint y plantilla de configuración de cada contenedor |
 | `docker/comun/renderizar_plantilla.sh` | `envsubst` restringido a las variables definidas; aborta si queda `${...}` |
-| `banco/` | Banco de pruebas: `config`, `compose`, `parsers` (funciones puras), `resultados`, `pruebas`, `verificacion`, `enlace`, `estadistica` (IC 95 %), `protocolos` (tshark), `suscriptores` (SIM física), `__main__` (CLI) |
+| `banco/` | Banco de pruebas: `config`, `compose`, `parsers` (funciones puras), `resultados`, `pruebas`, `verificacion`, `enlace`, `estadistica` (IC 95 %), `protocolos` (tshark), `suscriptores` (SIM física), `laboratorio` (Fase 3: `lab` y `telefono`), `__main__` (CLI) |
 | `analisis/` | Gráficas del informe (matplotlib, `requirements.txt` propio); consume `banco.estadistica` |
 | `banco/tests/` | `unittest` de la biblioteca estándar, con fixtures de salidas reales |
 | `manage_lab.ps1`, `Makefile` | Envolturas finas: ciclo de vida de Compose y llamadas al banco |

@@ -54,7 +54,10 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Portátil i5-8250U: prueba de humo ZMQ (guía 1.5), `uhd_find_devices` sin SDR (1.6) y `banco enlace` n78 en `D:\enlace_n78.txt` (1.7) (2026-11-05).
 - [ ] Portátil i5-8250U: prueba `usbipd` → Docker con memoria USB (1.2), K/OPc en `.env`, `docker save` para el plan B y `pcsc_scan` con el lector.
 - [x] SDR elegido: **USRP B200**; guía ajustada (las plantillas `gnb_b210_*` sirven sin cambios) (2026-11-05).
-- [ ] Adaptar el banco a las mediciones con teléfono (P5–P10 hoy miden desde el contenedor `ue`).
+- [x] Adaptar el banco a las mediciones con teléfono: `banco telefono` (ping UPF → teléfono y métricas del gNB por atenuación) y arranque en un comando `banco lab` (2026-11-08).
+- [ ] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva.
+- [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
+- [ ] Con la B200 real: comprobar los pasos 2/5 a 5/5 de `lab` (attach con `--auto-attach`, UHD, NG Setup del `gnb-sdr`); sin hardware solo se verificaron las rutas de error.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1035,4 +1038,54 @@ acorde al SDR elegido (B200).
   de `ping`); no se revisó. Sin hardware: prueba USB → Docker, lector PC/SC y la B200 real.
 
 **Pendiente / siguientes pasos:** guía 1.2 (memoria USB con `usbipd`), K/OPc en `.env`, `docker save`
-a `D:ed5g_imagenes.tar` y `pcsc_scan` con el lector; luego el día de laboratorio (sección 2).
+a `D:
+ed5g_imagenes.tar` y `pcsc_scan` con el lector; luego el día de laboratorio (sección 2).
+
+---
+
+## 2026-11-08 — Arranque de la Fase 3 en un comando, medición con el teléfono y guía para los dos portátiles
+
+**Objetivo:** que el día del laboratorio baste con llegar, conectar y ejecutar un comando; que el
+banco mida con el teléfono comercial; y que la guía y el README sirvan en cualquiera de los dos
+portátiles (el trabajo de hoy se hizo en el portátil i7-13620H, `C:\JoseDev\RED5G-STANDALONE`).
+
+**Cambios realizados:**
+- `banco/laboratorio.py` (nuevo):
+  - `lab`: comprueba `GNB_CONFIG` y `SIM_*`; en Windows lee `usbipd list`, busca la B200
+    (`2500:0020`) y, si está compartida, abre `usbipd attach --wsl --auto-attach` en otra ventana (si
+    no está compartida, indica el `usbipd bind` como administrador); confirma con `uhd_find_devices`
+    dentro de la imagen; detiene gNB/UE de ZMQ, levanta `mongodb open5gs webui gnb-sdr`, espera el NG
+    Setup (180 s, o falla en cuanto el contenedor termina) y da de alta la SIM.
+  - `telefono`: IP del teléfono desde el log del SMF (sesión de `SIM_IMSI` o la más reciente),
+    servidor iperf3 en el UPF, ping UPF → teléfono a 1 Hz y tabla de métricas del gNB durante la
+    ventana; guarda RTT, MCS, CQI, SNR, BLER y caudal con la atenuación como parámetro.
+- `banco/parsers.py`: `parse_sesiones_smf` y `parse_usbipd_list`, con pruebas en `banco/tests/test_parsers.py`.
+- `banco/pruebas.py`: `metricas_gnb` acepta el servicio (`gnb` o `gnb-sdr`); `estado` busca el NG
+  Setup en el gNB activo. `banco/config.py`: `gnb-sdr` en `SERVICIOS` (aparece en `status`).
+- `banco/__main__.py`, `manage_lab.ps1` (`lab` ejecuta antes `verificar`), `Makefile`: comandos `lab` y `telefono`.
+- `docs/fase3_guia_laboratorio.md`: reescrita para los dos portátiles (tabla de equipos y de
+  pendientes por equipo, rutas genéricas), "Ruta rápida" del día y pruebas F3-1 a F3-8 con `lab` y `telefono`.
+- `README.md`: para qué sirve, tabla de tecnologías y cómo se usa cada una, inicio rápido (casa y
+  laboratorio), equipos y comandos nuevos. `docker/README.md`, `docs/fase3_plan_pruebas.md` y la skill
+  `desarrollador-fullstack`: referencias a `lab`/`telefono`.
+- `.env` creado en el portátil i7-13620H (`EQUIPO=portatil-i7-13620H`, n78, TX 30 dB; no versionado).
+
+**Verificación (portátil i7-13620H, Docker Desktop 29.9.1 con 8 CPU / 7,8 GiB):**
+- `python -m unittest discover -s banco/tests -t .`: 49 pruebas OK.
+- `verificar`: 0 avisos. No hacía falta `build`: desde las imágenes del 2026-11-02 no cambió nada en `docker/`.
+- Prueba de humo ZMQ: `up`, sesión PDU 10.45.0.2, ping del UPF al UE sin pérdida.
+- `banco telefono` con el srsUE como "teléfono" e iperf3 DL en paralelo
+  (`resultados/20261108_212925_telefono_prueba_zmq`): IP 10.45.0.3 tomada del SMF (sesión más
+  reciente), RTT medio 256 ms sin pérdida, DL MCS 27,5 / CQI 15 / 31,5 Mbit/s / BLER 0 %, UL SNR 4 dB.
+  Hallazgo: el primer intento dio 100 % de pérdida porque el srsUE recibió `RRC Release` por
+  inactividad y no vuelve solo; recreando la RAN funcionó. Un teléfono responde al paging. Documentado
+  en la guía (1.5).
+- `lab` sin hardware: se detiene en 2/5 con el mensaje de instalar `usbipd-win`; `uhd_find_devices`
+  devuelve "no B200" sin excepción; `gnb-sdr` sin SDR termina con `Unable to create radio session` y
+  la espera del NG Setup lo detecta en ~20 s. `.\manage_lab.ps1 lab` y `telefono --help` desde PowerShell.
+- **No verificado:** el camino con la B200 (bind/attach de `usbipd`, UHD con dispositivo, NG Setup
+  del `gnb-sdr`, alta de la SIM física) y la medición con un teléfono real. Tampoco el RTT mínimo
+  0,00 ms de P5 visto el 2026-11-05 (no se reprodujo aquí).
+
+**Pendiente / siguientes pasos:** los de "Pendientes vigentes": `git pull` en el portátil i5,
+`usbipd-win` en el i7, prueba con memoria USB, K/OPc y el día de laboratorio.

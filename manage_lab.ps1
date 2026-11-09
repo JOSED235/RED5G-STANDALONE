@@ -5,7 +5,9 @@
 #   Pruebas (banco de pruebas en Python, guarda resultados en .\resultados):
 #     .\manage_lab.ps1 test-ping | test-iperf | p7 | p8 | p9 | p10 | registro | campana  [opciones del banco]
 #     .\manage_lab.ps1 pcap [-Seconds 60] | pcap-registro [-Seconds 60]
-#   Fase 3 (SDR):   .\manage_lab.ps1 up-sdr   (gNB con USRP B210, misma imagen; ver docs/fase3_plan_pruebas.md)
+#   Fase 3 (SDR):   .\manage_lab.ps1 lab      (B200 por usbipd + UHD, Core + gNB SDR, NG Setup y alta de la SIM)
+#                   .\manage_lab.ps1 telefono --atenuacion 60   (RTT y métricas del gNB con el teléfono)
+#                   .\manage_lab.ps1 up-sdr   (solo levanta Core + gNB SDR; ver docs/fase3_guia_laboratorio.md)
 #   Análisis (paso 3, requiere matplotlib):  .\manage_lab.ps1 analisis [resultados\<carpeta>]
 #   Ejemplos:
 #     .\manage_lab.ps1 p7 --tasas 2,5,10,20 --sentidos dl
@@ -16,7 +18,7 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
                  "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean",
-                 "up-sdr", "registro")]
+                 "up-sdr", "registro", "lab", "telefono")]
     [string]$Action = "up",
     [int]$Seconds = 60,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -51,14 +53,14 @@ function Get-Python {
     return $null
 }
 
-function Invoke-Banco([string[]]$Argumentos, [string]$Modulo = "banco") {
+function Invoke-Banco([string[]]$Argumentos, [string]$Modulo = "banco", [bool]$Salir = $true) {
     $Python = Get-Python
     if (-not $Python) {
         Write-Error "Se requiere Python 3.10 o superior para el banco de pruebas (https://www.python.org/downloads/)."
         exit 1
     }
     & $Python[0] @($Python | Select-Object -Skip 1) -m $Modulo @Argumentos
-    exit $LASTEXITCODE
+    if ($Salir -or $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 switch ($Action) {
@@ -130,6 +132,11 @@ switch ($Action) {
     "p9"            { Invoke-Banco (@("p9") + $Opciones) }
     "p10"           { Invoke-Banco (@("p10") + $Opciones) }
     "registro"      { Invoke-Banco (@("registro") + $Opciones) }
+    "telefono"      { Invoke-Banco (@("telefono") + $Opciones) }
+    "lab" {
+        Invoke-Banco @("verificar") "banco" $false
+        Invoke-Banco (@("lab") + $Opciones)
+    }
     "campana"       { Invoke-Banco (@("campana") + $Opciones) }
     "banco"         { Invoke-Banco $Opciones }
     "analisis"      { Invoke-Banco $Opciones "analisis.graficas" }

@@ -70,7 +70,7 @@ la hoja de datos y empiece con **más** atenuación y ganancia de TX baja (`SDR_
 5. **Alta en el Core:** con la red levantada, `python -m banco suscriptor`. Es idempotente
    (reemplaza el suscriptor con ese IMSI) y no imprime K ni OPc.
 6. **Cifrado NAS:** ya es NEA2 + NIA2 por defecto (`AMF_CIPHERING_ORDER=NEA2, NEA1, NEA0`).
-7. **Levantar Core + gNB SDR:** `.\manage_lab.ps1 up-sdr` (detiene el gNB y el UE de ZMQ) y
+7. **Levantar Core + gNB SDR:** `.\manage_lab.ps1 lab` hace los pasos 5 a 7 en uno (USB, UHD, `up-sdr`, NG Setup y alta). A mano: `.\manage_lab.ps1 up-sdr` (detiene el gNB y el UE de ZMQ) y
    seguir `docker compose logs -f gnb-sdr`: debe aparecer NG Setup y la celda activa sin
    underflows persistentes.
 8. **Teléfono:** SIM insertada, modo solo 5G / SA, selección manual de red `001 01` (puede
