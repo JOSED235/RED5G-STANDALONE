@@ -78,6 +78,8 @@ El mismo repositorio funciona en los dos portátiles; cada uno tiene su `.env` (
 
 Antes de usar un equipo: `git pull`, `.\manage_lab.ps1 verificar` y, si cambió algo en `docker/`, `.\manage_lab.ps1 build`. Lo que falta en cada uno está en la tabla 0.1 de la guía del laboratorio.
 
+**Linux nativo (plan B de la Fase 3):** una memoria USB de 32 GB con Ubuntu 24.04 live con persistencia (Rufus) arranca cualquiera de los dos portátiles sin WSL2 ni `usbipd`. `docker/host/preparar_ubuntu.sh` se ejecuta una vez desde la USB e instala Docker Engine, UHD, pySim, tshark, iperf3 y las herramientas de desarrollo, y clona el repositorio; después se usa `make lab`. Paso a paso detallado en [`docs/ubuntu_usb_paso_a_paso.md`](docs/ubuntu_usb_paso_a_paso.md); resumen en la sección 4 de la guía del laboratorio.
+
 ---
 
 ## 2. Fases del Proyecto y Estado de Avance
@@ -336,6 +338,7 @@ Para más detalles sobre la arquitectura de contenedores, consulte el manual en 
 * [`analisis/`](analisis): Gráficas del informe (`python -m analisis.graficas`); va aparte del banco porque necesita matplotlib (`analisis/requirements.txt`).
 * `resultados/`: Salida del banco de pruebas (no versionada; copie a `docs/` lo que use en el informe).
 * [`docker/README.md`](docker/README.md): Manual operativo de la infraestructura Docker.
+* [`docker/host/preparar_ubuntu.sh`](docker/host/preparar_ubuntu.sh): Prepara un Ubuntu 24.04 (live USB con persistencia o instalado) para el plan B con Linux nativo: Docker Engine, UHD + FPGA b2xx, pySim, tshark, iperf3, Python, Node.js, VS Code, `gh`, Claude Code y el repositorio.
 * [`docs/fase3_plan_pruebas.md`](docs/fase3_plan_pruebas.md): Plan de pruebas de la Fase 3, lista de verificación de hardware, niveles de potencia, procedimiento y riesgos.
 * [`docs/fase3_guia_laboratorio.md`](docs/fase3_guia_laboratorio.md): Guía práctica para el día de laboratorio: qué falta en el equipo, compilación y preparación en Windows + WSL2 (`usbipd-win`), montaje RF, programación de la SIM, pruebas F3-1 a F3-8 y plan B con Linux nativo.
 * [`.github/workflows/ci.yml`](.github/workflows/ci.yml): Integración continua (pruebas unitarias, `shellcheck`, `yamllint` de las plantillas renderizadas y `docker compose config`), con reglas en [`.yamllint`](.yamllint).

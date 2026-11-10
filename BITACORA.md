@@ -58,6 +58,8 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva.
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
 - [ ] Con la B200 real: comprobar los pasos 2/5 a 5/5 de `lab` (attach con `--auto-attach`, UHD, NG Setup del `gnb-sdr`); sin hardware solo se verificaron las rutas de error.
+- [x] Memoria USB de Ubuntu 24.04 para el plan B (Linux nativo): ISO verificado, Rufus y `docker/host/preparar_ubuntu.sh` (2026-11-10).
+- [ ] Escribir la USB con Rufus (persistencia al máximo), arrancar el portátil desde ella y ejecutar `bash /cdrom/preparar_ubuntu.sh`; luego `make lab` sin hardware (debe detenerse en 3/5 sin la B200).
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1089,3 +1091,36 @@ portátiles (el trabajo de hoy se hizo en el portátil i7-13620H, `C:\JoseDev\RE
 
 **Pendiente / siguientes pasos:** los de "Pendientes vigentes": `git pull` en el portátil i5,
 `usbipd-win` en el i7, prueba con memoria USB, K/OPc y el día de laboratorio.
+
+## 2026-11-10 — Memoria USB con Ubuntu 24.04 para el plan B (Linux nativo)
+
+**Objetivo:** tener lista una memoria USB (D:, 29,3 GB) que arranque Ubuntu con persistencia, para
+el plan B de la Fase 3 (B200 sin WSL2 ni `usbipd`) y para otros proyectos que necesiten Linux.
+
+**Cambios realizados:**
+- `docker/host/preparar_ubuntu.sh` (nuevo): se ejecuta una vez desde Ubuntu 24.04 e instala la base de
+  desarrollo, Python, Wireshark/tshark, tcpdump, iperf3, SCTP, UHD + FPGA b2xx, `pcscd` + pySim
+  (`~/pysim`), Docker Engine + Compose, Node.js LTS, VS Code, `gh` y Claude Code; clona el repositorio en
+  `~/RED5G-STANDALONE`. En la live retiene los paquetes del kernel (arranca del ISO) y guarda los datos
+  de Docker en un archivo ext4 montado en bucle (`/var/lib/docker.img`, unidad systemd porque casper
+  reescribe `/etc/fstab`): overlay2 no funciona sobre la raíz overlayfs. Desactiva el almacén de
+  containerd para que las imágenes queden en ese ext4. Pone el reloj en hora local (arranque dual con Windows).
+- `docs/fase3_guia_laboratorio.md` (sección 4): Ubuntu 24.04 en lugar de 22.04, pasos de Rufus con
+  persistencia, el script y la advertencia de BitLocker en `C:` del portátil i7.
+- `README.md` (1.4 y 9): plan B con Linux nativo y el script nuevo.
+- `docs/ubuntu_usb_paso_a_paso.md` (nuevo): paso a paso detallado para cualquiera de los dos
+  portátiles (descarga y SHA256, Rufus, copia del script y del `.env`, `docker save`, arranque, script,
+  comprobaciones y uso diario).
+- Fuera del repositorio: `ubuntu-24.04.5.1-desktop-amd64.iso` y `rufus-4.15p.exe` en
+  `%USERPROFILE%\Downloads\ubuntu-usb\`.
+
+**Verificación:**
+- SHA256 del ISO igual al de `releases.ubuntu.com/24.04/SHA256SUMS` (`4da4a0c9…f85a7`).
+- Los 39 paquetes de apt del script existen en Ubuntu 24.04.4 (consulta `apt-cache show` en WSL, sin instalar).
+- `bash -n` y `shellcheck` 0.11.0 sin hallazgos (la CI revisa todo `docker/**/*.sh`).
+- `C:` tiene BitLocker activo (propiedad `System.Volume.BitLockerProtection` = 1).
+- **No verificado:** la escritura con Rufus (interfaz gráfica, la hace el autor), el arranque desde la
+  USB ni la ejecución del script en la live (Docker sobre el ext4 en bucle, UHD con la B200, `make lab`).
+
+**Pendiente / siguientes pasos:** escribir la USB con Rufus, copiar el script a su raíz, arrancar y
+ejecutarlo; exportar las imágenes (`docker save`) a otra memoria para no compilar desde la USB.

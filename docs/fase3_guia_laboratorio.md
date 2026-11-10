@@ -363,14 +363,29 @@ Si Docker Desktop no ve la B200 o hay *underflows* persistentes por `usbipd`:
    ```powershell
    docker save red5g-gnb red5g-open5gs red5g-webui -o <disco con espacio>\red5g_imagenes.tar
    ```
-2. Arranque desde una memoria USB con Ubuntu 22.04 (live), instale Docker Engine
-   (`curl -fsSL https://get.docker.com | sh`), monte el disco del repositorio y:
+2. Prepare (en casa) una memoria USB con Ubuntu 24.04 live **con persistencia** (paso a paso
+   detallado en [`ubuntu_usb_paso_a_paso.md`](ubuntu_usb_paso_a_paso.md)):
+   - Descargue `ubuntu-24.04.x-desktop-amd64.iso` y compruebe su SHA256 con
+     <https://releases.ubuntu.com/24.04/SHA256SUMS>. Descargue Rufus portable (<https://rufus.ie>).
+   - Rufus: dispositivo = la memoria (se borra), elegir el ISO, **Tamaño de partición persistente**
+     al máximo, esquema GPT / UEFI, "Empezar" y, si pregunta, **modo ISO** (no DD).
+   - Copie `docker/host/preparar_ubuntu.sh` a la raíz de la memoria.
+   - Arranque el portátil desde la USB (HP Victus: `F9` al encender; en otros, `F12`/`Esc`) y elija
+     "Try Ubuntu". Una sola vez, con Internet: `bash /cdrom/preparar_ubuntu.sh`. Instala Docker
+     Engine (datos en un archivo ext4 de la persistencia, porque overlay2 no funciona sobre la raíz
+     overlayfs de la live), UHD + FPGA b2xx, `pcscd` + pySim, tshark, iperf3, Python, Node.js, VS Code,
+     `gh` y Claude Code, y clona el repositorio en `~/RED5G-STANDALONE`. Cierre sesión y entre de nuevo.
+   - El disco `C:` del portátil i7 tiene BitLocker: Ubuntu no lo lee sin la clave de recuperación.
+     Por eso el repositorio se clona de GitHub y el `.env` y el `.tar` se llevan en otra memoria (o se
+     escriben a mano: el `.env` lleva K y OPc, no lo deje en la memoria de Ubuntu sin necesidad).
+3. En el laboratorio, arrancando desde la USB:
    ```bash
-   docker load -i <ruta>/red5g_imagenes.tar
-   cd <ruta del repositorio>
+   docker load -i <ruta>/red5g_imagenes.tar   # o: make build (lento desde la USB)
+   cd ~/RED5G-STANDALONE
    make lab
    ```
-   En Linux nativo `/dev/bus/usb` es el del propio equipo: `lab` omite `usbipd`.
+   En Linux nativo `/dev/bus/usb` es el del propio equipo: `lab` omite `usbipd`. Conecte la B200 a
+   un puerto USB 3.0 distinto del de la memoria de Ubuntu.
 
 ---
 
