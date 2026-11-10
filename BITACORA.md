@@ -55,15 +55,20 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Portátil i5-8250U: prueba `usbipd` → Docker con memoria USB (1.2), K/OPc en `.env`, `docker save` para el plan B y `pcsc_scan` con el lector.
 - [x] SDR elegido: **USRP B200**; guía ajustada (las plantillas `gnb_b210_*` sirven sin cambios) (2026-11-05).
 - [x] Adaptar el banco a las mediciones con teléfono: `banco telefono` (ping UPF → teléfono y métricas del gNB por atenuación) y arranque en un comando `banco lab` (2026-11-08).
-- [ ] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva.
+- [x] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva (2026-11-10).
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
-- [ ] ~~Con la B200 real: comprobar los pasos 2/5 a 5/5 de `lab`~~ (2026-11-09: la B200 no estuvo disponible; se sigue con la bladeRF).
+- [ ] Con la B200 real (2026-11-10: vuelve a estar disponible; el 2026-11-09 se usó la bladeRF): desde la USB de Ubuntu en el i5, `uhd_find_devices`, `benchmark_rate` a 23,04 MS/s y los pasos 2/5 a 5/5 de `lab` (NG Setup del `gnb-sdr`).
 - [x] SDR de reemplazo: **bladeRF 2.0 micro xA9** detectada en USB 3 y vista por UHD vía SoapySDR (`type=soapy,driver=bladerf`); imagen del gNB, plantillas (`SDR_OTW_FORMAT`) y `lab` adaptados (2026-11-09).
-- [ ] **Conseguir una memoria USB (≥ 32 GB, USB 3) con Ubuntu 22.04 *live* con persistencia** para arrancar el i5 en Linux nativo y trabajar desde ahí: `usbipd` (WSL2) solo da ≈ 18 MB/s y la celda de 20 MHz necesita ≈ 184 MB/s (guía, sección 4).
+- [x] Linux nativo porque `usbipd` (WSL2) solo da ≈ 18 MB/s y la celda de 20 MHz necesita ≈ 184 MB/s (guía, sección 4): memoria USB con Ubuntu 24.04 *live* con persistencia (2026-11-10, líneas siguientes).
 - [x] Antes de pasar a Ubuntu: `docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar` en el i5 (2026-11-09: 0,46 GB, las cuatro imágenes).
 - [ ] En Ubuntu nativo: `benchmark_rate` a 23,04 MS/s TX + RX con la bladeRF (0 *overruns*); si el puente SoapySDR pierde muestras, evaluar el gNB de OpenAirInterface (driver bladeRF propio).
 - [ ] En Ubuntu nativo: `lab` con la bladeRF (NG Setup del `gnb-sdr`), ajuste de `SDR_TX_GAIN`/`SDR_RX_GAIN` en la escala de SoapySDR y registro del teléfono.
 - [ ] Calibración con el R&S SMBV100A: portadora CW → atenuador ≥ 30 dB → RX1 de la bladeRF (offset en ppm sin y con referencia de 10 MHz, ganancia real de RX) para la calculadora de enlace.
+- [x] Memoria USB de Ubuntu 24.04 para el plan B (Linux nativo): ISO verificado, Rufus y `docker/host/preparar_ubuntu.sh` (2026-11-10).
+- [x] USB de Ubuntu: Partes A y B de `docs/ubuntu_usb_paso_a_paso.md` (Rufus con persistencia, script y `.env` en la raíz), hechas y verificadas en el portátil i7 (2026-11-10).
+- [x] USB de Ubuntu: Parte C, `red5g_imagenes.tar` del i5 en la raíz de la USB (2026-11-10).
+- [ ] USB de Ubuntu: Parte D, en el i5 (arrancar, `bash /cdrom/preparar_ubuntu.sh`, comprobaciones, `make lab` sin hardware: debe detenerse en 3/5) de `docs/ubuntu_usb_paso_a_paso.md`.
+- [ ] USB de Ubuntu: borrar el `.env` de la raíz de la USB después de copiarlo a Ubuntu (D5/D8); hoy está ahí con K y OPc.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1044,8 +1049,8 @@ acorde al SDR elegido (B200).
   de `ping`); no se revisó. Sin hardware: prueba USB → Docker, lector PC/SC y la B200 real.
 
 **Pendiente / siguientes pasos:** guía 1.2 (memoria USB con `usbipd`), K/OPc en `.env`, `docker save`
-a `D:
-ed5g_imagenes.tar` y `pcsc_scan` con el lector; luego el día de laboratorio (sección 2).
+a `D:\red5g_imagenes.tar`
+ y `pcsc_scan` con el lector; luego el día de laboratorio (sección 2).
 
 ---
 
@@ -1151,4 +1156,97 @@ el i5 en Linux nativo y trabajar desde ahí; la guía (sección 4) tiene el proc
 
 **Pendiente:** memoria USB con Ubuntu, `docker save` de las imágenes, `benchmark_rate` y `lab` en
 Linux nativo (OAI si el puente pierde muestras), calibración CW con el SMBV100A. `docker save` ya
-hecho: `D:ed5g_imagenes.tar` (0,46 GB, gnb + open5gs + webui + mongo:6.0).
+hecho: `D:\red5g_imagenes.tar`
+ (0,46 GB, gnb + open5gs + webui + mongo:6.0).
+
+---
+
+## 2026-11-10 — Memoria USB con Ubuntu 24.04 para el plan B (Linux nativo)
+
+**Objetivo:** tener lista una memoria USB (D:, 29,3 GB) que arranque Ubuntu con persistencia, para
+el plan B de la Fase 3 (B200 sin WSL2 ni `usbipd`) y para otros proyectos que necesiten Linux.
+
+**Cambios realizados:**
+- `docker/host/preparar_ubuntu.sh` (nuevo): se ejecuta una vez desde Ubuntu 24.04 e instala la base de
+  desarrollo, Python, Wireshark/tshark, tcpdump, iperf3, SCTP, UHD + FPGA b2xx, `pcscd` + pySim
+  (`~/pysim`), Docker Engine + Compose, Node.js LTS, VS Code, `gh` y Claude Code; clona el repositorio en
+  `~/RED5G-STANDALONE`. En la live retiene los paquetes del kernel (arranca del ISO) y guarda los datos
+  de Docker en un archivo ext4 montado en bucle (`/var/lib/docker.img`, unidad systemd porque casper
+  reescribe `/etc/fstab`): overlay2 no funciona sobre la raíz overlayfs. Desactiva el almacén de
+  containerd para que las imágenes queden en ese ext4. Pone el reloj en hora local (arranque dual con Windows).
+- `docs/fase3_guia_laboratorio.md` (sección 4): Ubuntu 24.04 en lugar de 22.04, pasos de Rufus con
+  persistencia, el script y la advertencia de BitLocker en `C:` del portátil i7.
+- `README.md` (1.4 y 9): plan B con Linux nativo y el script nuevo.
+- `docs/ubuntu_usb_paso_a_paso.md` (nuevo): paso a paso detallado para cualquiera de los dos
+  portátiles (descarga y SHA256, Rufus, copia del script y del `.env`, `docker save`, arranque, script,
+  comprobaciones y uso diario).
+- Fuera del repositorio: `ubuntu-24.04.5.1-desktop-amd64.iso` y `rufus-4.15p.exe` en
+  `%USERPROFILE%\Downloads\ubuntu-usb\`.
+
+**Verificación:**
+- SHA256 del ISO igual al de `releases.ubuntu.com/24.04/SHA256SUMS` (`4da4a0c9…f85a7`).
+- Los 39 paquetes de apt del script existen en Ubuntu 24.04.4 (consulta `apt-cache show` en WSL, sin instalar).
+- `bash -n` y `shellcheck` 0.11.0 sin hallazgos (la CI revisa todo `docker/**/*.sh`).
+- `C:` tiene BitLocker activo (propiedad `System.Volume.BitLockerProtection` = 1).
+- **No verificado:** la escritura con Rufus (interfaz gráfica, la hace el autor), el arranque desde la
+  USB ni la ejecución del script en la live (Docker sobre el ext4 en bucle, UHD con la B200, `make lab`).
+
+**Pendiente / siguientes pasos:** escribir la USB con Rufus, copiar el script a su raíz, arrancar y
+ejecutarlo; exportar las imágenes (`docker save`) a otra memoria para no compilar desde la USB.
+
+## 2026-11-10 — USB de Ubuntu: Partes A y B hechas y verificadas
+
+**Objetivo:** confirmar que la memoria USB quedó bien grabada antes de seguir con las Partes C y D de
+`docs/ubuntu_usb_paso_a_paso.md`.
+
+**Cambios realizados:**
+- Memoria USB (VendorCo ProductCode, 29,3 GB), grabada por el autor en el portátil i7 con Rufus 4.15 y
+  `ubuntu-24.04.5.1-desktop-amd64.iso`. Fuera del repositorio.
+- `BITACORA.md`: pendientes de la USB actualizados (A y B hechas; faltan C y D y borrar el `.env` de la USB).
+- `docs/ubuntu_usb_paso_a_paso.md`: línea de estado al inicio.
+
+**Verificación (PowerShell, solo lectura):**
+- Disco GPT con dos particiones: 1) FAT32 de 8,3 GB, etiqueta `UBUNTU 24_0`, con Ubuntu (`D:`);
+  2) partición Linux de 21 GB (persistencia, sin letra en Windows, como debe ser).
+- Los 448 archivos de `md5sum.txt` del ISO coinciden en la USB (0 errores).
+- `boot/grub/grub.cfg` arranca con `persistent`; están `casper/vmlinuz`, `casper/initrd` y `EFI/boot/bootx64.efi`.
+- `D:\preparar_ubuntu.sh` y `D:\.env` son idénticos (SHA256) a los del repositorio, con finales de línea LF.
+- **No verificado:** el arranque desde la USB ni nada de la Parte D.
+
+**Pendiente / siguientes pasos:** Partes C y D; borrar `D:\.env` cuando esté copiado en Ubuntu.
+
+---
+
+## 2026-11-10 — USB de Ubuntu completa en el portátil i5 (Parte C) y lista para la B200
+
+**Objetivo:** fusionar el trabajo del i7 (USB de Ubuntu 24.04) con el del i5 (bladeRF, 2026-11-09) y
+dejar la memoria USB lista para arrancar el i5 en Linux nativo con la USRP B200, que vuelve a estar
+disponible (la bladeRF queda como alternativa).
+
+**Cambios realizados:**
+- `git pull` con conflictos en `BITACORA.md` y `docs/fase3_guia_laboratorio.md` (el commit del
+  2026-11-09 no se había subido): se conservaron ambos trabajos; la sección 4 de la guía queda con
+  Ubuntu 24.04, el `.tar` en la USB (`/cdrom`), la prueba de caudal y la 4.1 (bladeRF). Se corrigieron
+  dos menciones de `D:\red5g_imagenes.tar` a las que PowerShell les había comido el `\r`.
+- `docker/host/preparar_ubuntu.sh`: instala también `bladerf`, `uhd-soapysdr`,
+  `soapysdr0.8-module-bladerf` y `soapysdr-tools` (en *universe* de Ubuntu 24.04, sin PPA) y el último
+  paso sugiere `docker load -i /cdrom/red5g_imagenes.tar`.
+- `.env` del i5 (no versionado): `SDR_DEVICE_ARGS=type=b200,num_recv_frames=64,num_send_frames=64` y
+  `SDR_OTW_FORMAT=sc12`, con la línea de la bladeRF comentada.
+- Memoria USB (`E:` en el i5, fuera del repositorio): `preparar_ubuntu.sh` nuevo, `.env` del i5 (antes
+  tenía el del i7: misma K/OPc, solo cambiaban `EQUIPO` y el SDR) y `red5g_imagenes.tar` (gnb con UHD +
+  FPGA b2xx + SoapySDR, open5gs, webui, mongo:6.0). Quedan ≈ 2 GB libres en la FAT32.
+- `docs/ubuntu_usb_paso_a_paso.md` (estado, Parte C con el `.tar` en la USB, D6 desde `/cdrom`, uso
+  diario con B200 y bladeRF) y `README.md`.
+
+**Verificación:**
+- SHA256 de `preparar_ubuntu.sh`, `.env` y `red5g_imagenes.tar` iguales en el repositorio/`D:` y en `E:`.
+- `manifest.json` del `.tar` en la USB: `red5g-gnb`, `red5g-open5gs`, `red5g-webui`, `mongo:6.0`.
+- Los cinco paquetes nuevos existen en Ubuntu 24.04 (packages.ubuntu.com/noble).
+- `bash -n` del script sin errores; `.env` y script con finales LF.
+- **No verificado:** `shellcheck` (no está instalado en este equipo; lo corre la CI), el arranque desde
+  la USB, la ejecución del script, `docker load` y `lab` con la B200 (Parte D).
+
+**Pendiente:** Parte D en el i5 (arrancar con F12/F9, `bash /cdrom/preparar_ubuntu.sh`,
+`cp /cdrom/.env ~/RED5G-STANDALONE/.env`, `docker load -i /cdrom/red5g_imagenes.tar`, `make lab`);
+borrar el `.env` de la USB al terminar; con la B200, `benchmark_rate` y `lab` completo.

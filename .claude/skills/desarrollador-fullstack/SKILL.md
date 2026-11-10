@@ -98,6 +98,10 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   ocurrió: clone de GitHub fuera de OneDrive, copie el árbol de trabajo, haga commit y push allí
   y reemplace el `.git` dañado (dejando respaldo).
 - **Salida en Windows:** con stdout redirigido, Python usa cp1252; el banco fuerza UTF-8.
+- **Ubuntu live USB (plan B):** la raíz es overlayfs (casper) y Docker no puede usar overlay2 encima;
+  `docker/host/preparar_ubuntu.sh` monta un archivo ext4 en `/var/lib/docker` con una unidad
+  systemd (casper reescribe `/etc/fstab`) y desactiva el almacén de containerd. `C:` del portátil
+  i7 tiene BitLocker: desde Ubuntu el repositorio se clona de GitHub.
 
 ## 4. Flujo de verificación antes de dar algo por terminado
 

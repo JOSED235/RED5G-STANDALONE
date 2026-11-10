@@ -366,31 +366,39 @@ celda de 20 MHz necesita ≈ 184 MB/s, así que **con cualquier SDR USB el gNB d
 nativo**; Windows + WSL2 queda para la red ZMQ, las pruebas de baja tasa (calibración con el
 generador) y la preparación. La B200 tendría el mismo límite.
 
-**Decisión (2026-11-09):** se consigue una memoria USB con Ubuntu 22.04 para arrancar el i5
-directamente en Linux y trabajar desde ahí.
+**Decisión (2026-11-09, hecha el 2026-11-10):** memoria USB con Ubuntu 24.04 *live* con
+persistencia para arrancar el portátil directamente en Linux y trabajar desde ahí.
 
-1. **Memoria:** 32 GB o más, USB 3. Ubuntu 22.04.5 Desktop *live* con **persistencia** (Rufus en
-   Windows: imagen ISO, esquema GPT, "Tamaño de la partición persistente" ≥ 16 GB), para que
-   Docker, las imágenes y los paquetes sobrevivan al reinicio. En la BIOS: arranque desde USB
-   (F12/F9 según el equipo) y, si no arranca, Secure Boot desactivado.
-2. **Antes, en Windows**, exporte las imágenes ya construidas (misma CPU: `-march=native` sirve).
-   Incluya `mongo:6.0`, que `lab` levanta (≈ 0,5 GB: el tar guarda las capas comprimidas):
+1. **Antes, en Windows**, exporte las imágenes ya construidas (misma CPU: `-march=native` sirve).
+   Incluya `mongo:6.0`, que `lab` levanta (≈ 0,5 GB: el tar guarda las capas comprimidas). Cabe en la
+   partición FAT32 de la propia USB de Ubuntu (≈ 2,6 GB libres), que en Linux es `/cdrom`:
    ```powershell
    cd D:\devJose\RED5G-STANDALONE
    docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar
    ```
-3. **En Ubuntu nativo** (terminal):
+2. Prepare (en casa) una memoria USB con Ubuntu 24.04 live **con persistencia** (paso a paso
+   detallado en [`ubuntu_usb_paso_a_paso.md`](ubuntu_usb_paso_a_paso.md)):
+   - Descargue `ubuntu-24.04.x-desktop-amd64.iso` y compruebe su SHA256 con
+     <https://releases.ubuntu.com/24.04/SHA256SUMS>. Descargue Rufus portable (<https://rufus.ie>).
+   - Rufus: dispositivo = la memoria (se borra), elegir el ISO, **Tamaño de partición persistente**
+     al máximo, esquema GPT / UEFI, "Empezar" y, si pregunta, **modo ISO** (no DD).
+   - Copie `docker/host/preparar_ubuntu.sh` a la raíz de la memoria.
+   - Arranque el portátil desde la USB (HP Victus: `F9` al encender; en otros, `F12`/`Esc`) y elija
+     "Try Ubuntu". Una sola vez, con Internet: `bash /cdrom/preparar_ubuntu.sh`. Instala Docker
+     Engine (datos en un archivo ext4 de la persistencia, porque overlay2 no funciona sobre la raíz
+     overlayfs de la live), UHD + FPGA b2xx, bladeRF + SoapySDR, `pcscd` + pySim, tshark, iperf3, Python, Node.js, VS Code,
+     `gh` y Claude Code, y clona el repositorio en `~/RED5G-STANDALONE`. Cierre sesión y entre de nuevo.
+   - El disco `C:` del portátil i7 tiene BitLocker: Ubuntu no lo lee sin la clave de recuperación.
+     Por eso el repositorio se clona de GitHub y el `.env` y el `.tar` se llevan en otra memoria (o se
+     escriben a mano: el `.env` lleva K y OPc, no lo deje en la memoria de Ubuntu sin necesidad).
+3. En el laboratorio, arrancando desde la USB:
    ```bash
-   sudo apt update && sudo apt install -y git python3 make
-   curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker
-   # El disco D: (NTFS) aparece en /media/$USER/<etiqueta>; o clone de nuevo el repositorio
-   docker load -i /media/$USER/<etiqueta>/red5g_imagenes.tar
-   cd /media/$USER/<etiqueta>/devJose/RED5G-STANDALONE
-   python3 -m banco verificar
+   docker load -i /cdrom/red5g_imagenes.tar   # o: make build (lento desde la USB)
+   cd ~/RED5G-STANDALONE
    make lab
    ```
-   En Linux nativo `/dev/bus/usb` es el del propio equipo: `lab` omite `usbipd`. Si el `.env` del
-   repositorio no está en esa copia, cópielo (contiene K/OPc: no lo deje en la memoria al terminar).
+   En Linux nativo `/dev/bus/usb` es el del propio equipo: `lab` omite `usbipd`. Conecte el SDR (B200 o
+   bladeRF) a un puerto USB 3.0 distinto del de la memoria de Ubuntu.
 4. **Primero el caudal USB** (debe dar 0 *overruns* y 0 *underruns* durante 30 s):
    ```bash
    docker compose --profile sdr run --rm --no-deps --entrypoint /usr/lib/uhd/examples/benchmark_rate gnb-sdr \
@@ -413,10 +421,12 @@ SDR_TX_GAIN=30             # escala de SoapySDR: TX -23,75..66 dB, RX -15..60 dB
 ```
 
 Equipo del laboratorio (2026-11-09): **bladeRF 2.0 micro xA9** (FPGA 301 KLE), firmware 2.4.0,
-FPGA 0.14.0 cargada desde su flash, VID:PID `2cf0:5250`. Comprobaciones en el host (Ubuntu o WSL):
+FPGA 0.14.0 cargada desde su flash, VID:PID `2cf0:5250`. Comprobaciones en el host (en la USB de
+Ubuntu 24.04 `preparar_ubuntu.sh` ya instala estos paquetes de *universe*; en WSL 22.04 se usó el
+PPA `nuandllc/bladerf`):
 
 ```bash
-sudo add-apt-repository -y ppa:nuandllc/bladerf && sudo apt install -y bladerf uhd-host uhd-soapysdr soapysdr0.8-module-bladerf soapysdr-tools
+sudo apt install -y bladerf uhd-host uhd-soapysdr soapysdr0.8-module-bladerf soapysdr-tools
 bladeRF-cli -p && bladeRF-cli -e info -e version   # USB speed: SuperSpeed
 uhd_find_devices                                     # type: soapy, driver: bladerf
 ```
