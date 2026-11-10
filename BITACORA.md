@@ -59,7 +59,9 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
 - [ ] Con la B200 real: comprobar los pasos 2/5 a 5/5 de `lab` (attach con `--auto-attach`, UHD, NG Setup del `gnb-sdr`); sin hardware solo se verificaron las rutas de error.
 - [x] Memoria USB de Ubuntu 24.04 para el plan B (Linux nativo): ISO verificado, Rufus y `docker/host/preparar_ubuntu.sh` (2026-11-10).
-- [ ] Escribir la USB con Rufus (persistencia al máximo), arrancar el portátil desde ella y ejecutar `bash /cdrom/preparar_ubuntu.sh`; luego `make lab` sin hardware (debe detenerse en 3/5 sin la B200).
+- [x] USB de Ubuntu: Partes A y B de `docs/ubuntu_usb_paso_a_paso.md` (Rufus con persistencia, script y `.env` en la raíz), hechas y verificadas en el portátil i7 (2026-11-10).
+- [ ] USB de Ubuntu: Parte C (`docker save` de las imágenes del portátil en que se usará) y Parte D (arrancar, `bash /cdrom/preparar_ubuntu.sh`, comprobaciones, `make lab` sin hardware: debe detenerse en 3/5) de `docs/ubuntu_usb_paso_a_paso.md`.
+- [ ] USB de Ubuntu: borrar el `.env` de la raíz de la USB después de copiarlo a Ubuntu (D5/D8); hoy está ahí con K y OPc.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1124,3 +1126,24 @@ el plan B de la Fase 3 (B200 sin WSL2 ni `usbipd`) y para otros proyectos que ne
 
 **Pendiente / siguientes pasos:** escribir la USB con Rufus, copiar el script a su raíz, arrancar y
 ejecutarlo; exportar las imágenes (`docker save`) a otra memoria para no compilar desde la USB.
+
+## 2026-11-10 — USB de Ubuntu: Partes A y B hechas y verificadas
+
+**Objetivo:** confirmar que la memoria USB quedó bien grabada antes de seguir con las Partes C y D de
+`docs/ubuntu_usb_paso_a_paso.md`.
+
+**Cambios realizados:**
+- Memoria USB (VendorCo ProductCode, 29,3 GB), grabada por el autor en el portátil i7 con Rufus 4.15 y
+  `ubuntu-24.04.5.1-desktop-amd64.iso`. Fuera del repositorio.
+- `BITACORA.md`: pendientes de la USB actualizados (A y B hechas; faltan C y D y borrar el `.env` de la USB).
+- `docs/ubuntu_usb_paso_a_paso.md`: línea de estado al inicio.
+
+**Verificación (PowerShell, solo lectura):**
+- Disco GPT con dos particiones: 1) FAT32 de 8,3 GB, etiqueta `UBUNTU 24_0`, con Ubuntu (`D:`);
+  2) partición Linux de 21 GB (persistencia, sin letra en Windows, como debe ser).
+- Los 448 archivos de `md5sum.txt` del ISO coinciden en la USB (0 errores).
+- `boot/grub/grub.cfg` arranca con `persistent`; están `casper/vmlinuz`, `casper/initrd` y `EFI/boot/bootx64.efi`.
+- `D:\preparar_ubuntu.sh` y `D:\.env` son idénticos (SHA256) a los del repositorio, con finales de línea LF.
+- **No verificado:** el arranque desde la USB ni nada de la Parte D.
+
+**Pendiente / siguientes pasos:** Partes C y D; borrar `D:\.env` cuando esté copiado en Ubuntu.

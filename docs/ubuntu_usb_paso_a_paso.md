@@ -4,6 +4,9 @@ Para el plan B de la Fase 3 (Linux nativo: la B200 sin WSL2 ni `usbipd`) y para 
 necesiten Linux. Resumen técnico en la sección 4 de [`fase3_guia_laboratorio.md`](fase3_guia_laboratorio.md);
 el script es [`docker/host/preparar_ubuntu.sh`](../docker/host/preparar_ubuntu.sh).
 
+**Estado (2026-11-10):** Partes 0, A y B hechas y verificadas en el portátil i7 (USB grabada, script y
+`.env` en su raíz). Sigue la **Parte C** (o la D si no se exportan las imágenes). Detalle en `BITACORA.md`.
+
 En este documento, **`<repo>`** es la carpeta del repositorio en el equipo:
 
 | Equipo | `<repo>` |
