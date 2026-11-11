@@ -68,8 +68,11 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] USB de Ubuntu: Partes A y B de `docs/ubuntu_usb_paso_a_paso.md` (Rufus con persistencia, script y `.env` en la raíz), hechas y verificadas en el portátil i7 (2026-11-10).
 - [x] USB de Ubuntu: Parte C, `red5g_imagenes.tar` del i5 en la raíz de la USB (2026-11-10).
 - [x] ~~USB de Ubuntu: Parte D~~ — descartada el 2026-11-10: la memoria es demasiado lenta para la persistencia (escritura 1,6 MB/s, 39 IOPS 4K) y Ubuntu se congela en ambos portátiles.
-- [ ] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): ~~Fase 1~~ y ~~2~~ (hechas 2026-11-10: `powercfg /h off`, `D:` reducida 200 GB) → 3 (USB sin `persistent`) → 4 (instalar) → 5 (GRUB) → 6 (`preparar_ubuntu.sh`, `.env`, `docker load`, `make lab` hasta 3/5).
-- [ ] Limpiar la USB tras la Fase 6: borrar `.env` (K y OPc) y `_prueba_vel.bin` (256 MB) de su raíz.
+- [x] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): Fases 1–6 hechas (2026-11-11: Ubuntu 24.04.5 nativo, imágenes cargadas, `red5g-ue` compilada, prueba de humo ZMQ OK, `make lab` hasta 3/5 sin la B200).
+- [ ] Limpiar la USB tras la Fase 6: el `.env` ya no está en su raíz (2026-11-11); falta borrar `_prueba_vel.bin` (256 MB) (lo borra el autor: la protección de Claude Code lo bloqueó).
+- [ ] En el i5 (Ubuntu): llenar `SIM_IMSI`/`SIM_K`/`SIM_OPC` en `.env` con los datos de la SIM programada (sin ellos `lab` avisa y el teléfono no se registra).
+- [ ] En el i5 (Ubuntu): cerrar sesión y volver a entrar para usar `docker` sin `sg docker` (grupos `docker` y `wireshark`); opcional: borrar `~/red5g_imagenes.tar` (copia idéntica en la USB, ya cargada).
+- [ ] Revalidar con el srsUE `a5ed6e78f` el cifrado NEA2 en traza (`pcap-registro` + `banco protocolos`): la prueba de humo del 2026-11-11 solo comprobó registro, sesión PDU y ping.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1312,3 +1315,35 @@ inexistente y `powercfg /a` (hibernación e inicio rápido no disponibles). F12 
 
 **Pendiente:** Fases 3–7 (arrancar la USB sin `persistent`, instalación manual con GRUB en el disco
 de 256 GB, preparar el proyecto en Ubuntu y limpiar la USB).
+
+---
+
+## 2026-11-11 — Ubuntu nativo en el i5: proyecto listo para el laboratorio (Fase 6) y srsUE refijado
+
+**Qué se hizo:** se terminó la Fase 6 de `docs/ubuntu_dual_boot_i5.md` en el i5 (Ubuntu 24.04.5,
+`preparar_ubuntu.sh` ya ejecutado por el autor) y se ordenaron los archivos sueltos de `~`.
+- `~/env.red5g` → `.env` del repositorio (permisos 600; mismas 39 variables que `.env.example`,
+  n78, B200 sc12, TX 30 dB; `SIM_*` vacíos). Borrada la copia duplicada `~/preparar_ubuntu.sh`.
+- `docker load` de `red5g_imagenes.tar` (gnb, open5gs, webui, mongo:6.0).
+- `red5g-ue` (no venía en el `.tar`) compilada en el i5. El primer intento falló:
+  `git checkout 06f0b1e23` → *pathspec did not match*. Aguas arriba la etiqueta `release_26_10` se
+  rehízo el 2026-11-06 (cambio de licencia a AGPL) y ese commit ya no existe; la etiqueta apunta a
+  `a5ed6e78f`, que sigue incluyendo `2144cb589` (corrección de F2-15). Falla **F3-U1**.
+- `docker/ue/Dockerfile`: `SRSRAN_4G_COMMIT=a5ed6e78f`; referencias vigentes actualizadas en
+  `README.md`, `docker/README.md`, `.env.example` y la skill `ingeniero-telecom-5g` (las entradas
+  anteriores de esta bitácora y `docs/informe_fase2.tex` conservan `06f0b1e23`: es con lo que se midió).
+- `.venv/` (no versionado, añadido a `.gitignore`) con matplotlib 3.11 (el de apt es 3.6 y
+  `analisis/requirements.txt` pide ≥ 3.7), yamllint 1.35.1 y shellcheck; README y `docker/README.md`
+  explican `make analisis PYTHON=.venv/bin/python`.
+
+**Verificación:** `banco verificar` sin avisos; 51 pruebas unitarias OK; shellcheck y
+`docker compose config` (con y sin `sdr`) OK. Prueba de humo ZMQ con el srsUE `a5ed6e78f`: UE
+`healthy`, 11 NF, NG Setup, sesión PDU (`tun_srsue` 10.45.0.2), NEA2 primero en el AMF; `banco ping`
+10 paquetes: core 33,1 ms de media e Internet 51,9 ms, 0 % de pérdida. `make lab` sin la B200: pasos
+1/5 (aviso de SIM vacía) y 2/5 OK, se detiene en 3/5 (*No UHD Devices Found*), como prevé la guía.
+pySim (`~/pysim/.venv`), `pcscd`, FPGA b2xx de UHD y `soapysdr0.8-module-bladerf` presentes (la
+bladeRF carga su FPGA desde la flash). Commit del gNB `4bf1543936` comprobado en GitHub.
+**No verificado:** NEA2 en traza con el srsUE nuevo; nada con la B200 ni con el teléfono.
+
+**Pendiente:** llenar `SIM_*`; borrar `_prueba_vel.bin` de la USB; con la B200, `make lab` 3/5 a 5/5.
+

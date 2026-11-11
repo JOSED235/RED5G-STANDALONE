@@ -18,11 +18,11 @@ _Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa con Claude Code 
 
 - [x] Fase 1 — Revisión del disco, BitLocker y espacio (Windows) — 2026-11-10, ver "Datos del i5"
 - [x] Fase 2 — Preparar Windows: desactivar inicio rápido, BitLocker, encoger la partición — 2026-11-10 (`D:` reducida 204800 MB; 200 GB sin asignar en el disco 0)
-- [ ] Fase 3 — Arrancar la USB sin persistencia
-- [ ] Fase 4 — Instalar Ubuntu en el espacio libre
-- [ ] Fase 5 — Primer arranque y menú GRUB (Ubuntu / Windows)
-- [ ] Fase 6 — Preparar el proyecto (`preparar_ubuntu.sh`, `.env`, imágenes, `make lab`)
-- [ ] Fase 7 — Limpiar la USB (`.env` con K/OPc y archivo de prueba)
+- [x] Fase 3 — Arrancar la USB sin persistencia — 2026-11-10
+- [x] Fase 4 — Instalar Ubuntu en el espacio libre — 2026-11-10 (Ubuntu 24.04.5, `/dev/sda3` ext4 199 GB)
+- [x] Fase 5 — Primer arranque y menú GRUB (Ubuntu / Windows) — 2026-11-10
+- [x] Fase 6 — Preparar el proyecto (`preparar_ubuntu.sh`, `.env`, imágenes, `make lab`) — 2026-11-11: imágenes cargadas, `red5g-ue` compilada en el i5, prueba de humo ZMQ OK y `make lab` hasta 3/5 (sin la B200)
+- [ ] Fase 7 — Limpiar la USB (`.env` con K/OPc y archivo de prueba) — el `.env` ya no está en la USB; falta borrar `_prueba_vel.bin`
 
 ### Datos del i5 (Fase 1, 2026-11-10)
 

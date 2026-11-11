@@ -19,11 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Commit verificado de srsRAN 4G / srsUE: 06f0b1e23 (rama release_26_10, versión 26.10.0).
+# Commit de srsRAN 4G / srsUE: a5ed6e78f (etiqueta release_26_10, versión 26.10.0). El commit verificado
+# el 2026-11-02 (06f0b1e23) desapareció aguas arriba cuando la etiqueta se rehízo el 2026-11-06 con
+# el cambio de licencia a AGPL (falla F3-U1, 2026-11-11).
 # Incluye 2144cb589 ("nas: fix NAS COUNT used for deciphering of 5G NAS messages"), sin el cual el
 # srsUE anterior (bef8680d5, 25.10) no completaba el registro con NEA1/2/3 (falla F2-15).
 # Se puede probar otro con --build-arg SRSRAN_4G_COMMIT=...
-ARG SRSRAN_4G_COMMIT=06f0b1e23
+ARG SRSRAN_4G_COMMIT=a5ed6e78f
 COPY --from=comun trabajos_compilacion.sh /usr/local/bin/trabajos_compilacion.sh
 RUN sed -i 's/\r$//' /usr/local/bin/trabajos_compilacion.sh && chmod +x /usr/local/bin/trabajos_compilacion.sh
 # Solo se compila lo que usa la imagen: srsue y el plugin de radio ZMQ (srsran_rf_zmq). Sin eNB ni

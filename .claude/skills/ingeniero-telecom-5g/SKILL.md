@@ -16,7 +16,7 @@ en la configuración, los logs o las capturas: no supongas.
 | :--- | :--- | :--- |
 | Core | Open5GS v2.8.0 compilado desde fuente, 11 NF (NRF, SCP, AMF, SMF, UPF, AUSF, UDM, UDR, PCF, NSSF, BSF) | `docker/open5gs/` |
 | gNB | srsRAN Project commit `4bf1543936` (25.10, rama `main`), `-march=native` | `docker/gnb/` |
-| UE | srsUE 26.10 (srsRAN_4G commit `06f0b1e23`, rama `release_26_10`), USIM `soft` Milenage | `docker/ue/` (`ARG SRSRAN_4G_COMMIT`) |
+| UE | srsUE 26.10 (srsRAN_4G commit `a5ed6e78f`, etiqueta `release_26_10`; el `06f0b1e23` de la Fase 2 desapareció aguas arriba el 2026-11-06), USIM `soft` Milenage | `docker/ue/` (`ARG SRSRAN_4G_COMMIT`) |
 | PLMN / TAC / slice / DNN | 001/01 (pruebas, nunca 732), TAC 7, SST 1 sin SD, `internet` | `.env` |
 | Celda | Banda n3 FDD, DL ARFCN 368500 (1842,5 MHz), SSB ARFCN 368410, 20 MHz, SCS 15 kHz (µ=0), 106 PRB, PCI 1 | `gnb_zmq.yaml` |
 | Muestreo | 23,04 MS/s (ZMQ, puertos 2000 gNB TX / 2001 UE TX) | `gnb_zmq.yaml`, `ue_zmq.conf` |

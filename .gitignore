@@ -19,4 +19,5 @@ resultados/*
 
 # Python
 __pycache__/
+.venv/
 *.pyc
