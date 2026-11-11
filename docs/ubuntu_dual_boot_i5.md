@@ -16,13 +16,28 @@ sí sirve como instalador si se arranca sin persistencia** (Fase 2): así casi n
 
 _Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa con Claude Code en el i5, empezar aquí._
 
-- [ ] Fase 1 — Revisión del disco, BitLocker y espacio (Windows)
-- [ ] Fase 2 — Preparar Windows: desactivar inicio rápido, BitLocker, encoger la partición
+- [x] Fase 1 — Revisión del disco, BitLocker y espacio (Windows) — 2026-11-10, ver "Datos del i5"
+- [x] Fase 2 — Preparar Windows: desactivar inicio rápido, BitLocker, encoger la partición — 2026-11-10 (`D:` reducida 204800 MB; 200 GB sin asignar en el disco 0)
 - [ ] Fase 3 — Arrancar la USB sin persistencia
 - [ ] Fase 4 — Instalar Ubuntu en el espacio libre
 - [ ] Fase 5 — Primer arranque y menú GRUB (Ubuntu / Windows)
 - [ ] Fase 6 — Preparar el proyecto (`preparar_ubuntu.sh`, `.env`, imágenes, `make lab`)
 - [ ] Fase 7 — Limpiar la USB (`.env` con K/OPc y archivo de prueba)
+
+### Datos del i5 (Fase 1, 2026-11-10)
+
+| Dato | Valor |
+| :--- | :--- |
+| Equipo | Acer Aspire A315-53G (probable GPU NVIDIA MX: el instalador puede pedir contraseña MOK) |
+| Disco 0 | KINGSTON SA400S37960G, SSD SATA 960 GB, GPT → `D:` "Nuevo vol" NTFS 894 GB, 761 GB libres. **Aquí va Ubuntu.** |
+| Disco 1 | Micron_1100 256 GB, SSD SATA, GPT → EFI (System, 100 MB), MSR, `C:` "Acer" 237 GB (13 GB libres), Recovery. **No se toca**, salvo que GRUB se instala en su EFI. |
+| BitLocker | `C:` y `D:` "Descifrado completo" → no hay que descifrar. |
+| Secure Boot | `Confirm-SecureBootUEFI` = `True` (UEFI, se deja activo). |
+| Tamaño para Ubuntu | **200 GB** (204800 MB) reducidos de `D:`: Ubuntu del proyecto y de proyectos futuros; a `D:` le quedan ~560 GB. |
+| Menú de arranque | Acer: **F12**, que suele venir desactivada: BIOS (F2) → Main → *F12 Boot Menu: Enabled*. |
+
+Como Ubuntu (disco 0) y la EFI de Windows (disco 1) están en discos distintos, en la Fase 4 se usa la
+**instalación manual** y el gestor de arranque se instala en el **disco 1 (Micron 256 GB)**.
 
 ---
 
@@ -69,8 +84,10 @@ _Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa con Claude Code 
    Antes, guarde la clave de recuperación (<https://aka.ms/myrecoverykey>) por si acaso.
 3. **Encoger la partición** con el Administrador de discos (`Win + X` → *Administración de discos*):
    - Clic derecho en la partición elegida → **Reducir volumen…**
-   - "Tamaño del espacio que desea reducir, en MB": **81920** (80 GB) → **Reducir**.
-   - Debe aparecer un bloque negro **"No asignado"** de ~80 GB. **No cree ningún volumen en él**:
+   - En el i5: partición **`D:` "Nuevo vol" del Disco 0** (KINGSTON).
+   - "Tamaño del espacio que desea reducir, en MB": **204800** (200 GB en el i5; 81920 = 80 GB es el
+     mínimo recomendado en otro equipo) → **Reducir**.
+   - Debe aparecer un bloque negro **"No asignado"** de ~200 GB. **No cree ningún volumen en él**:
      el instalador de Ubuntu lo usará.
    - Si Windows ofrece menos de lo pedido (archivos inamovibles): desactive temporalmente la
      protección del sistema (*Crear un punto de restauración → Configurar → Desactivar*), reinicie y
@@ -100,12 +117,13 @@ _Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa con Claude Code 
    - Si pide una **contraseña de Secure Boot** (pasa si el equipo tiene GPU NVIDIA): invente una
      corta y anótela; se usa una sola vez en la Fase 5.
 4. **Tipo de instalación** — elija con cuidado:
-   - **"Instalar Ubuntu junto a Windows Boot Manager"** → si lo ofrece, úselo: ocupa el espacio "No
+   - **En el i5 use directamente "Instalación manual"** (Ubuntu y la EFI están en discos distintos).
+   - **"Instalar Ubuntu junto a Windows Boot Manager"** → en un equipo de un solo disco, si lo ofrece, úselo: ocupa el espacio "No
      asignado". Compruebe en la pantalla siguiente que el tamaño de Ubuntu es ≈ 80 GB y el disco el correcto.
    - Si no aparece esa opción → **"Instalación manual"**:
-     - Seleccione la fila **"Espacio libre"** de ~80 GB (del disco correcto) → **`+`** → Formato
+     - Seleccione la fila **"Espacio libre"** de ~200 GB en el i5 (disco de 960 GB) (del disco correcto) → **`+`** → Formato
        **ext4**, punto de montaje **`/`**, todo el tamaño → Aceptar.
-     - "Dispositivo para el gestor de arranque": el **disco** donde está Windows (el que tiene la
+     - "Dispositivo para el gestor de arranque": en el i5 el **disco de 256 GB (Micron)**; en general, el **disco** donde está Windows (el que tiene la
        partición EFI de ~100–300 MB, FAT32). No formatee la partición EFI ni toque ninguna NTFS.
      - No hace falta partición *swap*: Ubuntu 24.04 crea un `/swap.img`.
    - ⚠️ **Nunca** elija "Borrar disco e instalar Ubuntu": borra Windows.

@@ -68,7 +68,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] USB de Ubuntu: Partes A y B de `docs/ubuntu_usb_paso_a_paso.md` (Rufus con persistencia, script y `.env` en la raíz), hechas y verificadas en el portátil i7 (2026-11-10).
 - [x] USB de Ubuntu: Parte C, `red5g_imagenes.tar` del i5 en la raíz de la USB (2026-11-10).
 - [x] ~~USB de Ubuntu: Parte D~~ — descartada el 2026-11-10: la memoria es demasiado lenta para la persistencia (escritura 1,6 MB/s, 39 IOPS 4K) y Ubuntu se congela en ambos portátiles.
-- [ ] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): Fase 1 (revisión del disco/BitLocker) → 2 (inicio rápido, BitLocker, encoger ~80 GB) → 3 (USB sin `persistent`) → 4 (instalar) → 5 (GRUB) → 6 (`preparar_ubuntu.sh`, `.env`, `docker load`, `make lab` hasta 3/5).
+- [ ] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): ~~Fase 1~~ y ~~2~~ (hechas 2026-11-10: `powercfg /h off`, `D:` reducida 200 GB) → 3 (USB sin `persistent`) → 4 (instalar) → 5 (GRUB) → 6 (`preparar_ubuntu.sh`, `.env`, `docker load`, `make lab` hasta 3/5).
 - [ ] Limpiar la USB tras la Fase 6: borrar `.env` (K y OPc) y `_prueba_vel.bin` (256 MB) de su raíz.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
@@ -1287,3 +1287,28 @@ marca); la guía no se ha seguido todavía; `preparar_ubuntu.sh` en un Ubuntu in
 
 **Pendiente:** seguir `docs/ubuntu_dual_boot_i5.md` desde la Fase 1 en el i5 (con Claude Code allí);
 borrar `.env` y `_prueba_vel.bin` de la USB al terminar la Fase 6.
+
+---
+
+## 2026-11-10 — Dual boot en el i5: Fase 1 (revisión del disco) hecha
+
+**Qué se hizo:** revisión de discos, BitLocker y Secure Boot del i5 (Acer Aspire A315-53G) según la
+Fase 1 de `docs/ubuntu_dual_boot_i5.md`. Ubuntu irá en 200 GB reducidos de `D:` "Nuevo vol"
+(KINGSTON SA400 960 GB, SSD SATA, GPT, 761 GB libres); el autor pidió espacio para proyectos futuros.
+`C:` está en otro SSD (Micron 256 GB, solo 13 GB libres) junto con la partición EFI de Windows.
+
+**Cambios realizados:**
+- `docs/ubuntu_dual_boot_i5.md`: Fase 1 marcada; tabla "Datos del i5"; Fase 2 con 204800 MB sobre
+  `D:`; Fase 4 con instalación manual y gestor de arranque en el disco de 256 GB (EFI en otro disco);
+  aviso de activar F12 en la BIOS Acer.
+
+**Verificación:** `Get-Disk`, `Get-PhysicalDisk`, `Get-Partition`, `Get-Volume` (Claude Code);
+`manage-bde -status C:`/`D:` = "Descifrado completo" y `Confirm-SecureBootUEFI` = `True` (autor,
+PowerShell administrador). **No verificado:** si el equipo tiene GPU NVIDIA (MOK) y si F12 está activa.
+
+**Fase 2 (mismo día):** `powercfg /h off` y `D:` reducida 204800 MB en Administración de discos
+(autor). Verificado con `Get-Disk 0` (`LargestFreeExtent` = 200 GB, `D:` = 694 GB), `C:\hiberfil.sys`
+inexistente y `powercfg /a` (hibernación e inicio rápido no disponibles). F12 en la BIOS no verificada.
+
+**Pendiente:** Fases 3–7 (arrancar la USB sin `persistent`, instalación manual con GRUB en el disco
+de 256 GB, preparar el proyecto en Ubuntu y limpiar la USB).
