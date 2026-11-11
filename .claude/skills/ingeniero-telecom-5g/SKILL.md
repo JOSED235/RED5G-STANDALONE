@@ -128,6 +128,12 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
   `SDR_OTW_FORMAT=sc16` (sc12 es solo de la B200); ganancias en la escala de SoapySDR. Si el
   puente pierde muestras en Linux nativo, la alternativa es el gNB de OAI. Sin USB 3 enumera en
   *full-speed* y libbladeRF dice `incompatible firmware` / `No devices are available`.
+- **USRP B200 en el i5 (2026-11-11):** UHD dice `product: B200` aunque `lsusb` muestre "B210" (mismo ID
+  `2500:0020`). El Acer A315-53G tiene un solo puerto USB 3 (`usb1-port1` ↔ `usb2-port1`); en USB 2 el gNB
+  aborta con `USRP operating over USB version 2, USB 3 is required`. En USB 3, `benchmark_rate` a
+  23,04 MS/s TX+RX pierde 0,006 %.
+- **SIM del kit (Gialer LTE USIM):** pySim `-t gialersim`, sin `-a` (clave fija); EHPLMN se reescribe en
+  `pySim-shell` con `verify_chv --pin-nr 12 84796153`. Pasos en la guía del laboratorio, 2.2.
 - **Generador R&S SMBV100A:** referencia de 10 MHz (REF OUT → entrada de reloj U.FL de la bladeRF)
   y portadora CW para calibrar offset de frecuencia y ganancia de RX (siempre ≥ 30 dB de
   atenuación; la RX del AD9361 admite ≈ +2,5 dBm). No genera NR (eso es del SMBV100B).

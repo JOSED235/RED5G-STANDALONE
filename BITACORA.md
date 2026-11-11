@@ -57,20 +57,23 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Adaptar el banco a las mediciones con teléfono: `banco telefono` (ping UPF → teléfono y métricas del gNB por atenuación) y arranque en un comando `banco lab` (2026-11-08).
 - [x] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva (2026-11-10).
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
-- [ ] Con la B200 real (2026-11-10: vuelve a estar disponible; el 2026-11-09 se usó la bladeRF): desde Ubuntu nativo (dual boot) en el i5, `uhd_find_devices`, `benchmark_rate` a 23,04 MS/s y los pasos 2/5 a 5/5 de `lab` (NG Setup del `gnb-sdr`).
+- [x] Con la B200 real desde Ubuntu nativo en el i5: `uhd_find_devices` (serie 307B57F) y `benchmark_rate` a 23,04 MS/s TX+RX en USB 3 (0,006 % de muestras perdidas, 1 U y 1 O al arrancar) (2026-11-11).
+- [ ] `make lab` pasos 4/5 y 5/5 con la B200: el 2026-11-11 el `gnb-sdr` abrió la B200 en **USB 2** (`USRP operating over USB version 2, USB 3 is required`) y no hubo NG Setup. Primero reasentar el cable Micro-B USB 3 en el único puerto USB 3 del i5 y comprobar la velocidad (`/sys/bus/usb/devices/1-1/speed` o `lsusb -t`) **después** de que el contenedor (UHD 4.1) cargue el firmware; si sigue en 480, investigar el firmware de UHD 4.1 de la imagen frente a UHD 4.6 del anfitrión.
 - [x] SDR de reemplazo: **bladeRF 2.0 micro xA9** detectada en USB 3 y vista por UHD vía SoapySDR (`type=soapy,driver=bladerf`); imagen del gNB, plantillas (`SDR_OTW_FORMAT`) y `lab` adaptados (2026-11-09).
 - [x] Linux nativo porque `usbipd` (WSL2) solo da ≈ 18 MB/s y la celda de 20 MHz necesita ≈ 184 MB/s (guía, sección 4): memoria USB con Ubuntu 24.04 *live* con persistencia (2026-11-10, líneas siguientes).
 - [x] Antes de pasar a Ubuntu: `docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar` en el i5 (2026-11-09: 0,46 GB, las cuatro imágenes).
 - [ ] En Ubuntu nativo: `benchmark_rate` a 23,04 MS/s TX + RX con la bladeRF (0 *overruns*); si el puente SoapySDR pierde muestras, evaluar el gNB de OpenAirInterface (driver bladeRF propio).
 - [ ] En Ubuntu nativo: `lab` con la bladeRF (NG Setup del `gnb-sdr`), ajuste de `SDR_TX_GAIN`/`SDR_RX_GAIN` en la escala de SoapySDR y registro del teléfono.
-- [ ] Calibración con el R&S SMBV100A: portadora CW → atenuador ≥ 30 dB → RX1 de la bladeRF (offset en ppm sin y con referencia de 10 MHz, ganancia real de RX) para la calculadora de enlace.
+- [ ] Calibración con el R&S SMBV100A: portadora CW → atenuador ≥ 30 dB → RX de la B200 o la bladeRF (offset en ppm sin y con referencia de 10 MHz, ganancia real de RX) para la calculadora de enlace.
 - [x] Memoria USB de Ubuntu 24.04 para el plan B (Linux nativo): ISO verificado, Rufus y `docker/host/preparar_ubuntu.sh` (2026-11-10).
 - [x] USB de Ubuntu: Partes A y B de `docs/ubuntu_usb_paso_a_paso.md` (Rufus con persistencia, script y `.env` en la raíz), hechas y verificadas en el portátil i7 (2026-11-10).
 - [x] USB de Ubuntu: Parte C, `red5g_imagenes.tar` del i5 en la raíz de la USB (2026-11-10).
 - [x] ~~USB de Ubuntu: Parte D~~ — descartada el 2026-11-10: la memoria es demasiado lenta para la persistencia (escritura 1,6 MB/s, 39 IOPS 4K) y Ubuntu se congela en ambos portátiles.
 - [x] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): Fases 1–6 hechas (2026-11-11: Ubuntu 24.04.5 nativo, imágenes cargadas, `red5g-ue` compilada, prueba de humo ZMQ OK, `make lab` hasta 3/5 sin la B200).
 - [x] Limpiar la USB tras la Fase 6: `.env` (K y OPc), `preparar_ubuntu.sh`, `_prueba_vel.bin` y `red5g_imagenes.tar` borrados; queda el instalador de Ubuntu como USB de rescate (2026-11-11).
-- [ ] En el i5 (Ubuntu): llenar `SIM_IMSI`/`SIM_K`/`SIM_OPC` en `.env` con los datos de la SIM programada (sin ellos `lab` avisa y el teléfono no se registra).
+- [x] En el i5 (Ubuntu): SIM física programada con pySim (Gialer, IMSI 001010000000001, EHPLMN 001/01) y `SIM_*` llenos en `.env` (2026-11-11).
+- [ ] Registrar el teléfono **OnePlus Nord CE 2 Lite 5G** (n78/n3) en la celda n78: el profesor autorizó transmitir al aire con las antenas de la B200 a potencia mínima (`SDR_TX_GAIN=30`, subir de 10 en 10 hasta 80 si no ve la celda). En el teléfono ya hay SIM, modo 5G, roaming de datos y APN `internet` (2026-11-11).
+- [ ] Opcional: reescribir también EF.OPLMNwAcT / EF.PLMNwAcT de la SIM (siguen con PLMN 732 de Movistar); si el teléfono la toma como red visitante, roaming de datos activado.
 - [ ] En el i5 (Ubuntu): cerrar sesión y volver a entrar para usar `docker` sin `sg docker` (grupos `docker` y `wireshark`); opcional: borrar `~/red5g_imagenes.tar` (copia idéntica en la USB, ya cargada).
 - [ ] Revalidar con el srsUE `a5ed6e78f` el cifrado NEA2 en traza (`pcap-registro` + `banco protocolos`): la prueba de humo del 2026-11-11 solo comprobó registro, sesión PDU y ping.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
@@ -1356,3 +1359,45 @@ el `.env` y `preparar_ubuntu.sh` de la USB eran idénticos a los del repositorio
 24.04 (`sdc1`, 2,5 GB libres) y la partición `casper-rw`, como medio de rescate. Verificado con
 `ls -A` sobre la raíz de la USB.
 
+---
+
+## 2026-11-11 — Día de laboratorio con la USRP B200: SIM programada, B200 en USB 3 y `lab` hasta 3/5
+
+**Qué se hizo (en el i5 con Ubuntu nativo, sin cambios de código):**
+- **SDR:** el equipo es una **USRP B200** (UHD lee `product: B200`; `lsusb` muestra "B210" para
+  toda la familia porque comparten el ID `2500:0020`). Primero enumeró en USB 2 (480M) y
+  `benchmark_rate` a 23,04 MS/s dio *underruns/overruns* continuos. Causa: el Acer Aspire A315-53G
+  tiene **un solo puerto USB 3 externo** (`usb1-port1`, con par SuperSpeed `usb2-port1`; los puertos
+  3 y 4 son solo USB 2) y lo ocupaba el lector de SIM. En ese puerto: `Operating over USB 3` y
+  691 830 238 muestras recibidas con 42 254 perdidas (0,006 %), 1 *overrun* y 1 *underrun* al arrancar.
+- **Kit de SIM entregado** (memoria USB "BOMFLORE"): GRSIMWrite 4.4.4 (solo Windows), driver y
+  manual del lector **N99 / Alcor Micro AU9540** (CCID; en Ubuntu basta `pcscd`). El RAR se abrió
+  sin `sudo` con el códec de `7zip-rar` (`apt download` + `dpkg-deb -x`).
+- **SIM:** ATR `3B9F95801FC78031A073B6A10067CF3215CA9CD70920`, **Gialer LTE USIM**; pySim la
+  autodetecta (`gialersim`) y la programa con su clave fija (sin ADM1). Venía con un perfil de
+  Movistar (IMSI 732123…, EHPLMN 732/123, 732/103, 732/111, 732/101). Pasos: respaldo con
+  `pySim-read`, K y OPc con `openssl rand -hex 16`, `pySim-prog.py -t gialersim -x 001 -y 01 -i
+  001010000000001 -s <ICCID> -k <K> -o <OPc>` (primero `--dry-run`) y, en `pySim-shell`,
+  `verify_chv --pin-nr 12 84796153` + `update_binary 00f110ffffffffffffffffff` sobre
+  `ADF.USIM/EF.EHPLMN`. `SIM_IMSI`/`SIM_K`/`SIM_OPC` en `.env` (se quitó un espacio tras el `=`).
+- **Teléfono:** OnePlus Nord CE 2 Lite 5G (Snapdragon 695, n78 y n3 según sus especificaciones),
+  con la SIM, modo 5G, roaming de datos y APN `internet`.
+- **RF:** no hay atenuadores ni caja apantallada; **el profesor autorizó transmitir al aire** con las
+  dos antenas de la B200 (TX/RX y RX2) a potencia mínima (`SDR_TX_GAIN=30`), teléfono a 30–50 cm.
+- `make lab`: 0 (verificar), 1/5 (`.env` y SIM), 2/5 (Linux, sin usbipd) y 3/5 (UHD en la imagen)
+  OK. **4/5 falló:** el `gnb-sdr` (UHD 4.1 de la imagen) abrió la B200 en USB 2 (`USRP operating
+  over USB version 2, USB 3 is required` → `Unable to create radio session`), en el mismo puerto
+  donde `benchmark_rate` había dado USB 3; `/sys/bus/usb/devices/1-1/speed` = 480. Sospecha: el
+  cable se movió al enroscar las antenas. Quedan arriba `mongodb`, `open5gs` y `webui`; el gNB no
+  transmite.
+
+**Verificación:** salidas de `lsusb -t`, `uhd_find_devices`, `benchmark_rate`, `pcsc_scan`,
+`pySim-read` (IMSI 001010000000001) y `pySim-shell` (`read_binary_decoded` de EF.EHPLMN = 001/01),
+y la salida de `make lab`. `pySim-read` termina con un `UnicodeDecodeError` al decodificar el SMSP
+que escribió `pySim-prog` (byte `0xE1`): es un fallo de presentación de pySim, no de la SIM.
+**No verificado:** el registro del teléfono (no hubo celda), NG Setup con la B200 ni la calibración
+con el SMBV100A. Las claves de la SIM solo están en `.env` (no versionado).
+
+**Pendiente:** reasentar el cable de la B200 y repetir `make lab` comprobando la velocidad USB tras
+la carga del firmware del contenedor; luego el registro del teléfono (F3-3/F3-4) con `make
+pcap-registro`, y después F3-5 a F3-8 y la calibración con el SMBV100A.

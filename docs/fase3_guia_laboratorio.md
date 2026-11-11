@@ -297,6 +297,39 @@ Las opciones exactas dependen de la versión: `./pySim-prog.py --help`. Deje el 
 Copie los valores a `.env` (`SIM_IMSI`, `SIM_K`, `SIM_OPC`). Si ya levantó la red, aplique el alta
 con `.\manage_lab.ps1 banco suscriptor` (idempotente; no imprime K ni OPc).
 
+**SIM del kit del laboratorio (Gialer LTE USIM, 2026-11-11).** ATR
+`3B 9F 95 80 1F C7 80 31 A0 73 B6 A1 00 67 CF 32 15 CA 9C D7 09 20` (`pcsc_scan` la identifica como
+"Gialer LTE USIM"). pySim la reconoce sola (`Autodetected card type: gialersim`) y usa la clave fija de
+estas tarjetas: **no se pasa `-a`**. El lector del kit (N99, Alcor Micro AU9540) funciona en Ubuntu con
+`pcscd`, sin el driver de la USB. Desde Ubuntu nativo, con el lector en un puerto USB 2 (el USB 3 es para
+la B200):
+
+```bash
+cd ~/pysim && . .venv/bin/activate
+./pySim-read.py -p 0 > ~/sim_original_<ICCID>.txt      # respaldo
+openssl rand -hex 16                                     # K   (dos veces: K y OPc)
+./pySim-prog.py -p 0 -t gialersim -x 001 -y 01 -i 001010000000001 -s <ICCID> -k <K> -o <OPc> --dry-run
+./pySim-prog.py -p 0 -t gialersim -x 001 -y 01 -i 001010000000001 -s <ICCID> -k <K> -o <OPc>
+./pySim-shell.py -p 0
+```
+
+`pySim-prog` no toca EF.EHPLMN (venía con los PLMN 732 de Movistar): dentro de `pySim-shell`
+(los comandos se escriben en su propio prompt, no en bash):
+
+```
+verify_chv --pin-nr 12 84796153
+select ADF.USIM
+select EF.EHPLMN
+update_binary 00f110ffffffffffffffffff
+read_binary_decoded        # [{"mcc": "001", "mnc": "01"}, null, null, null]
+quit
+```
+
+`pySim-read` termina con `UnicodeDecodeError ... 0xe1` al decodificar el SMSP escrito por
+`pySim-prog`: es un fallo de presentación de pySim; el IMSI se lee antes del error. Las claves van
+solo en `.env`, **sin espacio después del `=`**. Como alternativa en Windows, la USB del kit trae
+GRSIMWrite 4.4.4 (Read Card → Input data → Write Card).
+
 ### 2.3 Arranque: `lab`
 
 ```powershell
@@ -456,6 +489,7 @@ uhd_find_devices                                     # type: soapy, driver: blad
 | `lab` se detiene en 2/5 | El mensaje dice qué falta: instalar `usbipd-win`, `usbipd bind` como administrador o conectar la B200 |
 | `No UHD Devices Found` con la B200 conectada | `usbipd list` (¿`Attached`?), ventana de `--auto-attach` abierta, cable USB 3.0, fuente de la B200 |
 | `Unable to create radio session` en el gNB | UHD no abrió la B200: lo mismo que la fila anterior |
+| `USRP operating over USB version 2, USB 3 is required` | La B200 enumeró en USB 2. En el i5 (Acer A315-53G) solo hay **un** puerto USB 3 (el `Port 001` del bus 001 en `lsusb -t`); el conector Micro-B USB 3 debe entrar hasta el fondo. Comprobar `cat /sys/bus/usb/devices/1-1/speed` = 5000 tras cargar el firmware |
 | `U`/`O`/`L` continuos en el log del gNB | Corriente, `powercfg`, USB 3.0, CPU libre; en WSL2 es `usbipd` (≈ 18 MB/s): Linux nativo (sección 4) |
 | bladeRF: `incompatible firmware` / `No devices are available` | Enumeró en *full-speed*: cable Micro-B USB 3 y puerto USB 3 (sección 4.1) |
 | bladeRF desaparece de `usbipd list` o de WSL tras una prueba | Re-conectar y `usbipd attach --wsl --busid <bus> --auto-attach`; en Linux nativo no ocurre |
