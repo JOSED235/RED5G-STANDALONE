@@ -69,7 +69,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] USB de Ubuntu: Parte C, `red5g_imagenes.tar` del i5 en la raíz de la USB (2026-11-10).
 - [x] ~~USB de Ubuntu: Parte D~~ — descartada el 2026-11-10: la memoria es demasiado lenta para la persistencia (escritura 1,6 MB/s, 39 IOPS 4K) y Ubuntu se congela en ambos portátiles.
 - [x] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): Fases 1–6 hechas (2026-11-11: Ubuntu 24.04.5 nativo, imágenes cargadas, `red5g-ue` compilada, prueba de humo ZMQ OK, `make lab` hasta 3/5 sin la B200).
-- [ ] Limpiar la USB tras la Fase 6: el `.env` ya no está en su raíz (2026-11-11); falta borrar `_prueba_vel.bin` (256 MB) (lo borra el autor: la protección de Claude Code lo bloqueó).
+- [x] Limpiar la USB tras la Fase 6: `.env` (K y OPc), `preparar_ubuntu.sh`, `_prueba_vel.bin` y `red5g_imagenes.tar` borrados; queda el instalador de Ubuntu como USB de rescate (2026-11-11).
 - [ ] En el i5 (Ubuntu): llenar `SIM_IMSI`/`SIM_K`/`SIM_OPC` en `.env` con los datos de la SIM programada (sin ellos `lab` avisa y el teléfono no se registra).
 - [ ] En el i5 (Ubuntu): cerrar sesión y volver a entrar para usar `docker` sin `sg docker` (grupos `docker` y `wireshark`); opcional: borrar `~/red5g_imagenes.tar` (copia idéntica en la USB, ya cargada).
 - [ ] Revalidar con el srsUE `a5ed6e78f` el cifrado NEA2 en traza (`pcap-registro` + `banco protocolos`): la prueba de humo del 2026-11-11 solo comprobó registro, sesión PDU y ping.
@@ -1345,5 +1345,14 @@ pySim (`~/pysim/.venv`), `pcscd`, FPGA b2xx de UHD y `soapysdr0.8-module-bladerf
 bladeRF carga su FPGA desde la flash). Commit del gNB `4bf1543936` comprobado en GitHub.
 **No verificado:** NEA2 en traza con el srsUE nuevo; nada con la B200 ni con el teléfono.
 
-**Pendiente:** llenar `SIM_*`; borrar `_prueba_vel.bin` de la USB; con la B200, `make lab` 3/5 a 5/5.
+**Pendiente:** llenar `SIM_*`; con la B200, `make lab` 3/5 a 5/5.
+
+**Corrección y Fase 7 (mismo día):** la afirmación anterior "el `.env` ya no está en la USB" era
+falsa: es un archivo oculto y el `ls` usado no lo mostraba. Antes de borrar se comprobó con `cmp` que
+el `.env` y `preparar_ubuntu.sh` de la USB eran idénticos a los del repositorio, y que
+`red5g_imagenes.tar` (que el autor había mandado a la papelera de la USB, `.Trash-1000`, junto con
+`_prueba_vel.bin`) tiene copia en `~` y ya está cargado en Docker. A pedido del autor se borraron
+`.env`, `preparar_ubuntu.sh` y `.Trash-1000` (729 MB). La USB conserva solo el instalador de Ubuntu
+24.04 (`sdc1`, 2,5 GB libres) y la partición `casper-rw`, como medio de rescate. Verificado con
+`ls -A` sobre la raíz de la USB.
 

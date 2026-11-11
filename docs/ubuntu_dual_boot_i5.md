@@ -22,7 +22,7 @@ _Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa con Claude Code 
 - [x] Fase 4 — Instalar Ubuntu en el espacio libre — 2026-11-10 (Ubuntu 24.04.5, `/dev/sda3` ext4 199 GB)
 - [x] Fase 5 — Primer arranque y menú GRUB (Ubuntu / Windows) — 2026-11-10
 - [x] Fase 6 — Preparar el proyecto (`preparar_ubuntu.sh`, `.env`, imágenes, `make lab`) — 2026-11-11: imágenes cargadas, `red5g-ue` compilada en el i5, prueba de humo ZMQ OK y `make lab` hasta 3/5 (sin la B200)
-- [ ] Fase 7 — Limpiar la USB (`.env` con K/OPc y archivo de prueba) — el `.env` ya no está en la USB; falta borrar `_prueba_vel.bin`
+- [x] Fase 7 — Limpiar la USB (`.env` con K/OPc y archivo de prueba) — 2026-11-11: borrados `.env`, `preparar_ubuntu.sh`, `_prueba_vel.bin` y `red5g_imagenes.tar`; queda solo el instalador de Ubuntu como USB de rescate
 
 ### Datos del i5 (Fase 1, 2026-11-10)
 
