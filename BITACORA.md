@@ -57,7 +57,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Adaptar el banco a las mediciones con teléfono: `banco telefono` (ping UPF → teléfono y métricas del gNB por atenuación) y arranque en un comando `banco lab` (2026-11-08).
 - [x] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva (2026-11-10).
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
-- [ ] Con la B200 real (2026-11-10: vuelve a estar disponible; el 2026-11-09 se usó la bladeRF): desde la USB de Ubuntu en el i5, `uhd_find_devices`, `benchmark_rate` a 23,04 MS/s y los pasos 2/5 a 5/5 de `lab` (NG Setup del `gnb-sdr`).
+- [ ] Con la B200 real (2026-11-10: vuelve a estar disponible; el 2026-11-09 se usó la bladeRF): desde Ubuntu nativo (dual boot) en el i5, `uhd_find_devices`, `benchmark_rate` a 23,04 MS/s y los pasos 2/5 a 5/5 de `lab` (NG Setup del `gnb-sdr`).
 - [x] SDR de reemplazo: **bladeRF 2.0 micro xA9** detectada en USB 3 y vista por UHD vía SoapySDR (`type=soapy,driver=bladerf`); imagen del gNB, plantillas (`SDR_OTW_FORMAT`) y `lab` adaptados (2026-11-09).
 - [x] Linux nativo porque `usbipd` (WSL2) solo da ≈ 18 MB/s y la celda de 20 MHz necesita ≈ 184 MB/s (guía, sección 4): memoria USB con Ubuntu 24.04 *live* con persistencia (2026-11-10, líneas siguientes).
 - [x] Antes de pasar a Ubuntu: `docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar` en el i5 (2026-11-09: 0,46 GB, las cuatro imágenes).
@@ -67,8 +67,9 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Memoria USB de Ubuntu 24.04 para el plan B (Linux nativo): ISO verificado, Rufus y `docker/host/preparar_ubuntu.sh` (2026-11-10).
 - [x] USB de Ubuntu: Partes A y B de `docs/ubuntu_usb_paso_a_paso.md` (Rufus con persistencia, script y `.env` en la raíz), hechas y verificadas en el portátil i7 (2026-11-10).
 - [x] USB de Ubuntu: Parte C, `red5g_imagenes.tar` del i5 en la raíz de la USB (2026-11-10).
-- [ ] USB de Ubuntu: Parte D, en el i5 (arrancar, `bash /cdrom/preparar_ubuntu.sh`, comprobaciones, `make lab` sin hardware: debe detenerse en 3/5) de `docs/ubuntu_usb_paso_a_paso.md`.
-- [ ] USB de Ubuntu: borrar el `.env` de la raíz de la USB después de copiarlo a Ubuntu (D5/D8); hoy está ahí con K y OPc.
+- [x] ~~USB de Ubuntu: Parte D~~ — descartada el 2026-11-10: la memoria es demasiado lenta para la persistencia (escritura 1,6 MB/s, 39 IOPS 4K) y Ubuntu se congela en ambos portátiles.
+- [ ] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): Fase 1 (revisión del disco/BitLocker) → 2 (inicio rápido, BitLocker, encoger ~80 GB) → 3 (USB sin `persistent`) → 4 (instalar) → 5 (GRUB) → 6 (`preparar_ubuntu.sh`, `.env`, `docker load`, `make lab` hasta 3/5).
+- [ ] Limpiar la USB tras la Fase 6: borrar `.env` (K y OPc) y `_prueba_vel.bin` (256 MB) de su raíz.
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1250,3 +1251,39 @@ disponible (la bladeRF queda como alternativa).
 **Pendiente:** Parte D en el i5 (arrancar con F12/F9, `bash /cdrom/preparar_ubuntu.sh`,
 `cp /cdrom/.env ~/RED5G-STANDALONE/.env`, `docker load -i /cdrom/red5g_imagenes.tar`, `make lab`);
 borrar el `.env` de la USB al terminar; con la B200, `benchmark_rate` y `lab` completo.
+
+---
+
+## 2026-11-10 — USB live descartada por lenta; plan de dual boot en el i5
+
+**Objetivo:** averiguar por qué Ubuntu desde la USB con persistencia era "exageradamente lento" en los
+dos portátiles (todo fallaba o se quedaba cargando) y definir otra forma de tener Linux nativo.
+
+**Diagnóstico (medido en el i7, con la USB conectada):**
+- La memoria es genérica: `USB\VID_346D&PID_5678`, "VendorCo ProductCode", REV 2.00, 29,3 GB.
+- Lectura secuencial 21,8 MB/s (`casper/minimal.squashfs`, sin caché); escritura secuencial 1,6 MB/s
+  (256 MB con *write-through* en la FAT32); escritura aleatoria 4K: 39 IOPS (0,15 MB/s).
+- La persistencia escribe todo (configuración, caché, apt) en la memoria con escrituras pequeñas
+  aleatorias: con 39 IOPS el escritorio se congela. Por eso falla igual en los dos equipos.
+- No hubo error de configuración: el ISO verificó (448 archivos de `md5sum.txt`), la partición de
+  persistencia existe (22,5 GB, sin formatear desde Windows) y el script no llegó a ejecutarse.
+
+**Decisión:** instalar Ubuntu 24.04 en **dual boot en el disco interno del i5** (gratis, velocidad de
+disco interno, sirve para la B200/bladeRF). La USB queda como instalador, arrancada sin `persistent`.
+
+**Cambios realizados:**
+- `docs/ubuntu_dual_boot_i5.md` (nuevo): paso a paso en 7 fases con casilla de estado (revisión,
+  inicio rápido/BitLocker/encoger, arrancar sin persistencia, instalar, GRUB/MOK, preparar el proyecto,
+  limpiar la USB), uso diario y cómo deshacerlo.
+- `docs/ubuntu_usb_paso_a_paso.md` y `docs/fase3_guia_laboratorio.md` (sección 4): aviso del cambio de plan.
+- `README.md`: párrafo de Linux nativo y descripción de `preparar_ubuntu.sh`.
+- Skills `desarrollador-fullstack` y `ingeniero-telecom-5g`: la USB del proyecto es lenta; plan vigente.
+- Quedó en la raíz de la USB `_prueba_vel.bin` (256 MB) de la medición: el borrado lo bloqueó la
+  protección de Claude Code; lo borra el autor (Fase 7 de la guía).
+
+**Verificación:** mediciones de arriba. **No verificado:** nada del i5 (disco, BitLocker, espacio,
+marca); la guía no se ha seguido todavía; `preparar_ubuntu.sh` en un Ubuntu instalado (rama
+`EN_LIVE=0`) sigue sin probarse.
+
+**Pendiente:** seguir `docs/ubuntu_dual_boot_i5.md` desde la Fase 1 en el i5 (con Claude Code allí);
+borrar `.env` y `_prueba_vel.bin` de la USB al terminar la Fase 6.

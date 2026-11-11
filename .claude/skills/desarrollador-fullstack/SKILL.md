@@ -102,6 +102,9 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   `docker/host/preparar_ubuntu.sh` monta un archivo ext4 en `/var/lib/docker` con una unidad
   systemd (casper reescribe `/etc/fstab`) y desactiva el almacén de containerd. `C:` del portátil
   i7 tiene BitLocker: desde Ubuntu el repositorio se clona de GitHub.
+- **La USB live del proyecto es demasiado lenta** (`VID_346D:PID_5678`, escritura 1,6 MB/s, 39 IOPS
+  4K): con persistencia Ubuntu se congela. Plan vigente: dual boot en el i5
+  (`docs/ubuntu_dual_boot_i5.md`). Antes de culpar a la configuración de una live, medir la memoria.
 
 ## 4. Flujo de verificación antes de dar algo por terminado
 

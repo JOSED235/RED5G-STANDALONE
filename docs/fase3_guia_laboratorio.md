@@ -369,6 +369,12 @@ generador) y la preparación. La B200 tendría el mismo límite.
 **Decisión (2026-11-09, hecha el 2026-11-10):** memoria USB con Ubuntu 24.04 *live* con
 persistencia para arrancar el portátil directamente en Linux y trabajar desde ahí.
 
+> **Cambio de plan (2026-11-10):** la memoria del proyecto resultó demasiado lenta para la
+> persistencia (escritura 1,6 MB/s, 39 IOPS aleatorias; Ubuntu se congela). Linux nativo se hace
+> con **dual boot en el i5**, paso a paso en [`ubuntu_dual_boot_i5.md`](ubuntu_dual_boot_i5.md). El
+> script, el `.env` y el `.tar` son los mismos; las rutas `/cdrom/...` de abajo pasan a ser `~/...`
+> (se copian de la USB al disco). El resto de esta sección vale igual.
+
 1. **Antes, en Windows**, exporte las imágenes ya construidas (misma CPU: `-march=native` sirve).
    Incluya `mongo:6.0`, que `lab` levanta (≈ 0,5 GB: el tar guarda las capas comprimidas). Cabe en la
    partición FAT32 de la propia USB de Ubuntu (≈ 2,6 GB libres), que en Linux es `/cdrom`:

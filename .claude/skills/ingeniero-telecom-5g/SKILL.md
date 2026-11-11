@@ -121,7 +121,8 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
   `clock`/`sync` si hay GPSDO o referencia externa. Vigila el offset de frecuencia y los
   underflows/late en los logs del gNB. En Windows, el USB necesita `usbipd-win` para llegar a WSL2,
   pero **usbipd solo da ≈ 18 MB/s** (medido el 2026-11-09: 4,6 MS/s de RX, 4,4 % de pérdida a
-  23,04 MS/s TX+RX): la celda de 20 MHz (≈ 184 MB/s) exige Linux nativo (memoria USB con Ubuntu).
+  23,04 MS/s TX+RX): la celda de 20 MHz (≈ 184 MB/s) exige Linux nativo (Ubuntu en dual boot en el i5, `docs/ubuntu_dual_boot_i5.md`; la USB live
+  se descartó por lenta).
 - **bladeRF 2.0 micro (equipo actual, xA9):** srsRAN Project solo tiene drivers `uhd` y `zmq`. La
   imagen trae `uhd-soapysdr` + `soapysdr0.8-module-bladerf`: `SDR_DEVICE_ARGS=type=soapy,driver=bladerf`,
   `SDR_OTW_FORMAT=sc16` (sc12 es solo de la B200); ganancias en la escala de SoapySDR. Si el

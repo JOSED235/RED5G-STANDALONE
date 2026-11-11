@@ -4,6 +4,13 @@ Para el plan B de la Fase 3 (Linux nativo: la B200 sin WSL2 ni `usbipd`) y para 
 necesiten Linux. Resumen técnico en la sección 4 de [`fase3_guia_laboratorio.md`](fase3_guia_laboratorio.md);
 el script es [`docker/host/preparar_ubuntu.sh`](../docker/host/preparar_ubuntu.sh).
 
+> **Descartada como entorno de trabajo (2026-11-10).** La memoria del proyecto es demasiado lenta
+> para la persistencia (escritura 1,6 MB/s, 39 IOPS aleatorias): Ubuntu se congela en los dos
+> portátiles. El plan vigente es **dual boot en el i5**: [`ubuntu_dual_boot_i5.md`](ubuntu_dual_boot_i5.md).
+> Esta USB se usa solo como instalador, arrancada **sin** `persistent`, y para llevar el script,
+> el `.env` y `red5g_imagenes.tar`. Lo que sigue queda como referencia (sirve con una memoria USB 3
+> rápida de marca).
+
 **Estado (2026-11-10):** Partes 0, A, B y C hechas y verificadas (USB grabada en el portátil i7; en el
 i5 se copiaron a su raíz el script con bladeRF/SoapySDR, el `.env` del i5 con la **B200** como SDR y
 `red5g_imagenes.tar` del i5). Sigue la **Parte D** en el portátil **i5-8250U** (las imágenes son de esa
