@@ -383,3 +383,12 @@ def parse_usbipd_list(texto: str) -> list[dict]:
     """Dispositivos conectados de 'usbipd list' (usbipd-win 4/5): busid, vid_pid, nombre, estado."""
     return [{"busid": m.group(1), "vid_pid": m.group(2).lower(), "nombre": m.group(3), "estado": m.group(4)}
             for m in (_USBIPD_FILA.match(l.rstrip()) for l in texto.splitlines()) if m]
+
+
+_BENCHMARK_FILA = re.compile(r"^\s*Num (.+?):\s+(\d+)\s*$")
+
+
+def parse_benchmark_rate(texto: str) -> dict:
+    """Resumen de benchmark_rate de UHD ('Num dropped samples: 0', ...) -> {etiqueta en minúsculas: n}."""
+    return {m.group(1).lower(): int(m.group(2))
+            for m in (_BENCHMARK_FILA.match(l) for l in texto.splitlines()) if m}

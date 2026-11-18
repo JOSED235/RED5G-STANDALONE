@@ -144,7 +144,10 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--k", help="por defecto SIM_K de .env (mejor en .env: la línea de comandos queda en el historial)")
     p.add_argument("--opc", help="por defecto SIM_OPC de .env")
 
-    sub.add_parser("lab", help="Fase 3: comprueba la B200 (usbipd + UHD), levanta Core + gNB SDR y da de alta la SIM")
+    sub.add_parser("lab", help="Fase 3: comprueba el SDR (USB 3 o usbipd + UHD), levanta Core + gNB SDR y da de alta la SIM")
+
+    p = sub.add_parser("benchmark", help="Fase 3: caudal USB del SDR (benchmark_rate a 23,04 MS/s TX + RX, 0 pérdidas)")
+    p.add_argument("--duracion", type=int, default=30, help="segundos de medición")
 
     p = sub.add_parser("telefono", help="Fase 3: ping UPF->teléfono y métricas del gNB mientras el teléfono corre iperf3")
     p.add_argument("--atenuacion", type=float, help="dB de atenuación conducida (se guarda como parámetro)")
@@ -183,6 +186,8 @@ def main(argv=None) -> int:
             return suscriptores.ejecutar(compose, leer_env(), args.imsi, args.k, args.opc)
         if args.comando == "lab":
             return laboratorio.preparar(compose)
+        if args.comando == "benchmark":
+            return laboratorio.benchmark(compose, args.duracion)
         if args.comando == "estado":
             pruebas.estado(compose)
             return 0

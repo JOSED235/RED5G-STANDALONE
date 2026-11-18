@@ -438,7 +438,9 @@ persistencia para arrancar el portátil directamente en Linux y trabajar desde a
    ```
    En Linux nativo `/dev/bus/usb` es el del propio equipo: `lab` omite `usbipd`. Conecte el SDR (B200 o
    bladeRF) a un puerto USB 3.0 distinto del de la memoria de Ubuntu.
-4. **Primero el caudal USB** (debe dar 0 *overruns* y 0 *underruns* durante 30 s):
+4. **Primero el caudal USB** (debe dar 0 *overruns* y 0 *underruns* durante 30 s). `make benchmark`
+   (o `python3 -m banco benchmark --duracion 30`) comprueba que el SDR enumeró en USB 3, ejecuta lo
+   siguiente con el `SDR_DEVICE_ARGS` de `.env` y da el veredicto; a mano sería:
    ```bash
    docker compose --profile sdr run --rm --no-deps --entrypoint /usr/lib/uhd/examples/benchmark_rate gnb-sdr \
      --args "type=soapy,driver=bladerf" --rx_rate 23.04e6 --tx_rate 23.04e6 --duration 30

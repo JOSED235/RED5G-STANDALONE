@@ -58,11 +58,12 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva (2026-11-10).
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
 - [x] Con la B200 real desde Ubuntu nativo en el i5: `uhd_find_devices` (serie 307B57F) y `benchmark_rate` a 23,04 MS/s TX+RX en USB 3 (0,006 % de muestras perdidas, 1 U y 1 O al arrancar) (2026-11-11).
-- [ ] `make lab` pasos 4/5 y 5/5 con la B200: el 2026-11-11 el `gnb-sdr` abrió la B200 en **USB 2** (`USRP operating over USB version 2, USB 3 is required`) y no hubo NG Setup. Primero reasentar el cable Micro-B USB 3 en el único puerto USB 3 del i5 y comprobar la velocidad (`/sys/bus/usb/devices/1-1/speed` o `lsusb -t`) **después** de que el contenedor (UHD 4.1) cargue el firmware; si sigue en 480, investigar el firmware de UHD 4.1 de la imagen frente a UHD 4.6 del anfitrión.
+- [ ] `make lab` pasos 4/5 y 5/5 con la B200: el 2026-11-11 el `gnb-sdr` abrió la B200 en **USB 2** (`USRP operating over USB version 2, USB 3 is required`) y no hubo NG Setup. Primero reasentar el cable Micro-B USB 3 en el único puerto USB 3 del i5 y comprobar la velocidad (`/sys/bus/usb/devices/1-1/speed` o `lsusb -t`) **después** de que el contenedor (UHD 4.1) cargue el firmware; si sigue en 480, investigar el firmware de UHD 4.1 de la imagen frente a UHD 4.6 del anfitrión. Desde el 2026-11-17 `make lab` vuelve a medir la velocidad tras el 3/5 (firmware cargado) y se detiene con una pista si quedó en USB 2.
 - [x] SDR de reemplazo: **bladeRF 2.0 micro xA9** detectada en USB 3 y vista por UHD vía SoapySDR (`type=soapy,driver=bladerf`); imagen del gNB, plantillas (`SDR_OTW_FORMAT`) y `lab` adaptados (2026-11-09).
 - [x] Linux nativo porque `usbipd` (WSL2) solo da ≈ 18 MB/s y la celda de 20 MHz necesita ≈ 184 MB/s (guía, sección 4): memoria USB con Ubuntu 24.04 *live* con persistencia (2026-11-10, líneas siguientes).
 - [x] Antes de pasar a Ubuntu: `docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar` en el i5 (2026-11-09: 0,46 GB, las cuatro imágenes).
-- [ ] En Ubuntu nativo: `benchmark_rate` a 23,04 MS/s TX + RX con la bladeRF (0 *overruns*); si el puente SoapySDR pierde muestras, evaluar el gNB de OpenAirInterface (driver bladeRF propio).
+- [x] Automatizar el `benchmark_rate` del SDR: `make benchmark` / `banco benchmark` (USB 3 + veredicto) (2026-11-17).
+- [ ] En Ubuntu nativo: `make benchmark` (23,04 MS/s TX + RX) con la bladeRF (con la B200 ya se midió a mano el 2026-11-11); si el puente SoapySDR pierde muestras, evaluar el gNB de OpenAirInterface (driver bladeRF propio).
 - [ ] En Ubuntu nativo: `lab` con la bladeRF (NG Setup del `gnb-sdr`), ajuste de `SDR_TX_GAIN`/`SDR_RX_GAIN` en la escala de SoapySDR y registro del teléfono.
 - [ ] Calibración con el R&S SMBV100A: portadora CW → atenuador ≥ 30 dB → RX de la B200 o la bladeRF (offset en ppm sin y con referencia de 10 MHz, ganancia real de RX) para la calculadora de enlace.
 - [x] Memoria USB de Ubuntu 24.04 para el plan B (Linux nativo): ISO verificado, Rufus y `docker/host/preparar_ubuntu.sh` (2026-11-10).
@@ -1321,6 +1322,33 @@ de 256 GB, preparar el proyecto en Ubuntu y limpiar la USB).
 
 ---
 
+## 2026-11-10 — Dual boot en el i5: Fases 3–5 hechas (Ubuntu 24.04 instalado)
+
+**Qué se hizo:** el autor arrancó la USB sin `persistent`, instaló Ubuntu 24.04 en el i5 con
+instalación manual y entró a Ubuntu. Particiones en el KINGSTON 960 GB (`sda`): `sda3` ext4 en `/`
+(espacio libre de 200 GB) y `sda4` FAT32 en `/boot/efi` (EFI nueva); sin cifrado; "Códecs y
+controladores". Se desvió de la guía (GRUB en la EFI del Micron 256 GB) a una EFI propia en el
+Kingston: así el disco de Windows no se toca. Revisado con Claude Code desde el i7 antes de instalar.
+
+**Cambios realizados:**
+- `docs/ubuntu_dual_boot_i5.md`: Fases 3–5 marcadas y nota de la EFI nueva en el Kingston.
+- `README.md`: estado del dual boot (Fases 1–5).
+
+**Verificación:** resumen del instalador revisado (solo `sda3` y `sda4` formateadas; ninguna NTFS);
+el autor inició sesión en Ubuntu. **No verificado:** tamaños exactos de `sda3`/`sda4`, que el menú GRUB
+muestre Windows Boot Manager y que Windows siga arrancando con `D:` intacta.
+
+**Pendiente:** Fase 6 (`preparar_ubuntu.sh`, `.env`, imágenes, `make lab`) y Fase 7 (limpiar la USB).
+
+**Fase 6 en curso (mismo día):** al ejecutar `preparar_ubuntu.sh`, el paquete `iperf3` preguntó si
+arrancarlo como demonio (el autor respondió No). `DEBIAN_FRONTEND=noninteractive` no llega a
+`sudo apt-get` (sudo limpia el entorno). Se añadió en el script la respuesta previa
+`iperf3/start_daemon false` con `debconf-set-selections`, igual que la de Wireshark. **No verificado:**
+no se ha vuelto a ejecutar el script con el cambio. En la misma sesión el autor tuvo que cambiar la
+contraseña de su usuario desde el modo de recuperación (no la aceptaba en la pantalla de inicio).
+
+---
+
 ## 2026-11-11 — Ubuntu nativo en el i5: proyecto listo para el laboratorio (Fase 6) y srsUE refijado
 
 **Qué se hizo:** se terminó la Fase 6 de `docs/ubuntu_dual_boot_i5.md` en el i5 (Ubuntu 24.04.5,
@@ -1401,3 +1429,45 @@ con el SMBV100A. Las claves de la SIM solo están en `.env` (no versionado).
 **Pendiente:** reasentar el cable de la B200 y repetir `make lab` comprobando la velocidad USB tras
 la carga del firmware del contenedor; luego el registro del teléfono (F3-3/F3-4) con `make
 pcap-registro`, y después F3-5 a F3-8 y la calibración con el SMBV100A.
+
+---
+
+## 2026-11-17 — Menos pasos manuales para el día de laboratorio (benchmark, USB 3 y carga automática)
+
+**Qué se hizo:** automatización de pasos que se hacían a mano en el laboratorio. Se programó primero
+sobre una copia local desactualizada (sin los commits del 2026-11-11) y al integrar se ajustó al estado
+real: Fases 6 y 7 del dual boot ya hechas, `benchmark_rate` de la B200 medido a mano en USB 3 y `lab`
+detenido en 4/5 porque el `gnb-sdr` abrió la B200 en USB 2.
+- `banco/laboratorio.py`: comando nuevo `benchmark` (`benchmark_rate` de UHD dentro de la imagen del
+  gNB a 23,04 MS/s TX + RX con el `SDR_DEVICE_ARGS` de `.env`; detiene `gnb-sdr` antes porque el SDR
+  admite un solo proceso; veredicto OK solo con 0 muestras perdidas, *overruns*, *underruns*,
+  errores de secuencia, *timeouts* y comandos tardíos). En Linux, `lab` y `benchmark` leen
+  `/sys/bus/usb/devices` (`usb_linux`) y se detienen si el SDR no está o enumeró por debajo de USB 3
+  (antes `lab` daba OK sin mirar). Tras el 3/5 (`uhd_find_devices` carga el firmware y la B200 se
+  reenumera) `lab` vuelve a medir la velocidad, y si el NG Setup falla con `USB version 2` o el
+  dispositivo está por debajo de 5000 Mbit/s imprime la pista de reasentar el cable (falla del
+  2026-11-11). El cierre de `lab` sugiere `make …` en Linux en vez de `manage_lab.ps1`.
+- `banco/parsers.py`: `parse_benchmark_rate`. `banco/__main__.py`: subcomando `benchmark --duracion`.
+- `Makefile` (`benchmark`) y `manage_lab.ps1` (`benchmark`).
+- `docker/host/preparar_ubuntu.sh`: busca `red5g_imagenes.tar` y el `.env` del proyecto (el que tiene
+  `GNB_CONFIG`) en `/cdrom`, `/media/$USER/*`, `/mnt/*` y en las particiones NTFS sin montar (las monta
+  solo lectura y las desmonta al final); carga las imágenes si falta `red5g-gnb` y copia el `.env` con
+  permisos 600 si el repositorio no tiene uno. Mensaje final con `make benchmark` y `make lab`. En el
+  i5 la Fase 6 ya se hizo a mano; esto sirve para reinstalar o preparar otro equipo.
+- `docs/ubuntu_dual_boot_i5.md` (Fase 6 para una reinstalación y uso diario), `README.md` (estado del
+  i5 y del dual boot, que en `main` seguía en "Fases 1–2"), `docs/fase3_guia_laboratorio.md` (sección 4),
+  `docs/fase3_plan_pruebas.md` (paso 7), `docker/README.md` (tabla de comandos), `README.md` y skill
+  `desarrollador-fullstack`. `docs/ubuntu_usb_paso_a_paso.md` no se cambia: la USB live está descartada.
+
+**Verificación:** `python -m unittest discover -s banco/tests -t .`: 54 pruebas OK (nuevas: resumen
+de `benchmark_rate` y velocidad USB con un sysfs falso). `python -m banco benchmark --help` correcto.
+`bash -n docker/host/preparar_ubuntu.sh` sin errores. **No verificado:** `shellcheck` (no está en este
+equipo; lo corre la CI), el script en Ubuntu (montaje NTFS y `docker load`), `benchmark` con un SDR
+real, y que el resumen de `benchmark_rate` de la versión de UHD de la imagen use las mismas etiquetas
+(`Num dropped samples`, …) que el ejemplo de la prueba.
+
+Incluye también la entrada local del 2026-11-10 (Fases 3–5 y respuesta previa de `iperf3` en
+`preparar_ubuntu.sh`), que no se había subido.
+
+**Pendiente:** con la B200, reasentar el cable y repetir `make lab` (ahora avisa si queda en USB 2);
+luego el registro del teléfono y F3-5 a F3-8 (ver "Pendientes vigentes").

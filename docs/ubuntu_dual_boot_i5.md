@@ -37,7 +37,10 @@ _Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa con Claude Code 
 | Menú de arranque | Acer: **F12**, que suele venir desactivada: BIOS (F2) → Main → *F12 Boot Menu: Enabled*. |
 
 Como Ubuntu (disco 0) y la EFI de Windows (disco 1) están en discos distintos, en la Fase 4 se usa la
-**instalación manual** y el gestor de arranque se instala en el **disco 1 (Micron 256 GB)**.
+**instalación manual**. **Hecho así (2026-11-10):** en el espacio libre del Kingston se crearon `sda3`
+(ext4, `/`) y `sda4` (FAT32, `/boot/efi`, EFI nueva), con el gestor de arranque en `sda`. GRUB queda en
+el Kingston y el disco de Windows (Micron) no se toca: si se borra Ubuntu, Windows sigue arrancando solo.
+Es preferible a instalar GRUB en la EFI del Micron, que era lo previsto.
 
 ---
 
@@ -146,6 +149,9 @@ Como Ubuntu (disco 0) y la EFI de Windows (disco 1) están en discos distintos, 
 
 ## Fase 6 — Preparar el proyecto en Ubuntu (~30–60 min, con Internet)
 
+> **Hecha en el i5 el 2026-11-11** (a mano, ver la bitácora). Estos pasos quedan para reinstalar o
+> preparar otro equipo: desde el 2026-11-17 el script carga el `.tar` y copia el `.env` solo.
+
 A diferencia de la live, esto es una instalación normal: `sudo apt upgrade` sí está permitido y
 Docker usa `overlay2` directamente sobre ext4 (el script detecta que no es live y se salta el disco
 en bucle).
@@ -154,13 +160,13 @@ en bucle).
    ```bash
    sudo apt update && sudo apt full-upgrade -y
    ```
-2. Conecte la USB del proyecto. Ubuntu la monta en `/media/$USER/<etiqueta>/`:
+2. Conecte la USB del proyecto (Ubuntu la monta en `/media/$USER/<etiqueta>/`) y copie el script:
    ```bash
-   ls /media/$USER/                         # la etiqueta suele ser "UBUNTU 24_0"
-   U="/media/$USER/UBUNTU 24_0"             # ajústela si sale otra
-   cp "$U/preparar_ubuntu.sh" "$U/red5g_imagenes.tar" ~/
-   cp "$U/.env" ~/env.red5g && chmod 600 ~/env.red5g
+   cp /media/$USER/*/preparar_ubuntu.sh ~/
    ```
+   No hace falta copiar el `.tar` ni el `.env`: el script los busca en la USB (`/media`) y en `D:`
+   de Windows (monta las NTFS solo lectura), carga las imágenes con `docker load` y copia el `.env`
+   al repositorio con permisos 600.
 3. Ejecute el script (instala todo y clona el repositorio en `~/RED5G-STANDALONE`):
    ```bash
    bash ~/preparar_ubuntu.sh
@@ -169,15 +175,14 @@ en bucle).
      `gh auth login` (GitHub.com → HTTPS → navegador) y `gh repo clone JOSED235/RED5G-STANDALONE ~/RED5G-STANDALONE`,
      y vuelva a ejecutar el script (lo ya instalado no se repite).
 4. Cuando diga **"Listo"**, **cierre sesión y vuelva a entrar** (grupos `docker`, `wireshark`, `usrp`).
-5. `.env`, imágenes y comprobaciones:
+5. Comprobaciones (el script ya cargó las imágenes y copió el `.env`; si avisó que no los encontró,
+   cópielos a mano: `docker load -i <ruta>/red5g_imagenes.tar` y `cp <ruta>/.env ~/RED5G-STANDALONE/`):
    ```bash
-   mv ~/env.red5g ~/RED5G-STANDALONE/.env
    docker run --rm hello-world               # sin sudo: "Hello from Docker!"
-   docker load -i ~/red5g_imagenes.tar && rm ~/red5g_imagenes.tar
-   docker images | grep -E 'red5g|mongo'
-   uhd_find_devices                          # sin la B200: "No UHD Devices Found" (normal)
-   cd ~/RED5G-STANDALONE && python3 -m banco verificar
-   make lab                                  # sin la B200 se detiene en el paso 3/5: correcto
+   docker images | grep -E 'red5g|mongo'     # gnb, open5gs, webui y mongo:6.0 (red5g-ue no hace falta para el SDR)
+   cd ~/RED5G-STANDALONE && git pull && python3 -m banco verificar
+   make benchmark                            # sin SDR: "no aparece en el USB" (normal)
+   make lab                                  # sin SDR se detiene en el paso 2/5: correcto
    ```
    Las imágenes son del i5 (`-march=native`): en este mismo equipo funcionan. Si alguna da
    "Illegal instruction", `make build`.
@@ -199,7 +204,7 @@ La memoria puede quedarse como instalador de rescate; para trabajar ya no se usa
 | Entrar a Ubuntu | Encender → menú GRUB → Ubuntu (predeterminado) |
 | Entrar a Windows | Encender → menú GRUB → Windows Boot Manager |
 | Ir al proyecto | `cd ~/RED5G-STANDALONE && git pull` |
-| Día de laboratorio | B200 en un puerto **USB 3.0** → `uhd_find_devices` → `make lab` |
+| Día de laboratorio | SDR en un puerto **USB 3.0** → `make benchmark` (0 pérdidas) → `make lab` |
 | bladeRF en vez de B200 | En `.env`: `SDR_DEVICE_ARGS=type=soapy,driver=bladerf` y `SDR_OTW_FORMAT=sc16` (guía, 4.1) |
 | Programar la SIM | `cd ~/pysim && . .venv/bin/activate && ./pySim-read.py -p 0` |
 | Ver archivos de Windows | Gestor de archivos → "Otras ubicaciones" → la partición NTFS (solo si no está cifrada) |

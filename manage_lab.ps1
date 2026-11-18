@@ -7,6 +7,7 @@
 #     .\manage_lab.ps1 pcap [-Seconds 60] | pcap-registro [-Seconds 60]
 #   Fase 3 (SDR):   .\manage_lab.ps1 lab      (B200 por usbipd + UHD, Core + gNB SDR, NG Setup y alta de la SIM)
 #                   .\manage_lab.ps1 telefono --atenuacion 60   (RTT y métricas del gNB con el teléfono)
+#                   .\manage_lab.ps1 benchmark   (caudal USB del SDR; en Windows/usbipd se esperan pérdidas)
 #                   .\manage_lab.ps1 up-sdr   (solo levanta Core + gNB SDR; ver docs/fase3_guia_laboratorio.md)
 #   Análisis (paso 3, requiere matplotlib):  .\manage_lab.ps1 analisis [resultados\<carpeta>]
 #   Ejemplos:
@@ -18,7 +19,7 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
                  "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean",
-                 "up-sdr", "registro", "lab", "telefono")]
+                 "up-sdr", "registro", "lab", "telefono", "benchmark")]
     [string]$Action = "up",
     [int]$Seconds = 60,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -133,6 +134,7 @@ switch ($Action) {
     "p10"           { Invoke-Banco (@("p10") + $Opciones) }
     "registro"      { Invoke-Banco (@("registro") + $Opciones) }
     "telefono"      { Invoke-Banco (@("telefono") + $Opciones) }
+    "benchmark"     { Invoke-Banco (@("benchmark") + $Opciones) }
     "lab" {
         Invoke-Banco @("verificar") "banco" $false
         Invoke-Banco (@("lab") + $Opciones)

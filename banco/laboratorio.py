@@ -2,10 +2,14 @@
 
   python -m banco lab        comprueba .env, el SDR (B200 o bladeRF; usbipd en Windows + UHD), levanta el Core con
                              el gNB SDR, espera el NG Setup y da de alta la SIM de .env.
+  python -m banco benchmark  caudal USB del SDR con benchmark_rate de UHD a la tasa de la celda (23,04 MS/s TX + RX):
+                             debe dar 0 muestras perdidas, overruns y underruns antes de levantar la celda.
   python -m banco telefono   con el teléfono registrado: ping del UPF al teléfono y tabla de métricas
                              del gNB (MCS, CQI, SNR, BLER) mientras el teléfono corre iperf3.
 """
 
+import glob
+import os
 import shutil
 import subprocess
 import sys
@@ -20,6 +24,7 @@ SDRS = {
     "b200": ("2500:0020", "B200"),       # Ettus B200/B210 (el mismo VID:PID para ambas)
     "bladerf": ("2cf0:5250", "bladeRF"),  # bladeRF 2.0 micro, vía UHD -> SoapySDR (type=soapy,driver=bladerf)
 }
+SRATE_MSPS = 23.04  # srate de las plantillas gnb_b210_* (20 MHz, SCS 30 kHz)
 ESPERA_NG_SETUP = 180  # s; con la B200 el gNB carga la FPGA antes de conectar al AMF
 
 
@@ -52,6 +57,31 @@ def _usb_windows(vid_pid: str, nombre: str) -> str | None:
                      creationflags=subprocess.CREATE_NEW_CONSOLE)
     time.sleep(6)
     return None
+
+
+def usb_linux(vid_pid: str, raiz: str = "/sys/bus/usb/devices") -> int | None:
+    """Velocidad en Mbit/s (5000 = USB 3) del dispositivo VID:PID según sysfs; None si no está conectado."""
+    vid, pid = vid_pid.split(":")
+    for disp in glob.glob(os.path.join(raiz, "*")):
+        try:
+            leer = lambda nombre: open(os.path.join(disp, nombre), encoding="ascii").read().strip()
+            if leer("idVendor") == vid and leer("idProduct") == pid:
+                return int(float(leer("speed")))
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def _usb_linux_ok(vid_pid: str, nombre: str) -> bool:
+    velocidad = usb_linux(vid_pid)
+    if velocidad is None:
+        print(f"  [ERROR] La {nombre} ({vid_pid}) no aparece en el USB (lsusb): conéctela a un puerto USB 3.0 (azul)")
+        return False
+    if velocidad < 5000:
+        print(f"  [ERROR] La {nombre} enumeró a {velocidad} Mbit/s (no USB 3): cambie el cable o el puerto (azul)")
+        return False
+    print(f"  [OK]    {nombre} en USB 3 ({velocidad} Mbit/s); el contenedor usa /dev/bus/usb del equipo (sin usbipd)")
+    return True
 
 
 def _uhd_ve_sdr(compose: Compose, clave: str) -> bool:
@@ -99,8 +129,8 @@ def preparar(compose: Compose) -> int:
         if error:
             print(f"  [ERROR] {error}")
             return 1
-    else:
-        print("  [OK]    Linux: el contenedor usa /dev/bus/usb del propio equipo (sin usbipd)")
+    elif not _usb_linux_ok(vid_pid, nombre):
+        return 1
 
     print("\n>>> 3/5 UHD dentro de la imagen (uhd_find_devices)")
     for intento in range(3):  # tras el attach, WSL2 tarda unos segundos en exponer el USB
@@ -112,6 +142,12 @@ def preparar(compose: Compose) -> int:
         print("          USB 3.0 y la ventana de --auto-attach; detalle en docs/fase3_guia_laboratorio.md (sección 5)")
         return 1
     print(f"  [OK]    UHD encuentra la {nombre}")
+    if sys.platform != "win32":
+        # La B200 se reenumera al cargar el firmware: el 2026-11-11 pasó de USB 3 a USB 2 en este punto
+        time.sleep(3)
+        print("  Velocidad USB tras cargar el firmware:")
+        if not _usb_linux_ok(vid_pid, nombre):
+            return 1
 
     print("\n>>> 4/5 Core 5G + gNB SDR (sin gNB/UE ZMQ)")
     compose.ejecutar("stop", "gnb", "ue", verificar=False, timeout=120)
@@ -119,6 +155,9 @@ def preparar(compose: Compose) -> int:
     if not _esperar_ng_setup(compose):
         cola = "\n".join(compose.logs("gnb-sdr").splitlines()[-15:])
         print(f"  [ERROR] El gNB SDR no completó el NG Setup en {ESPERA_NG_SETUP} s. Últimas líneas:\n{cola}")
+        if "USB version 2" in cola or (sys.platform != "win32" and (usb_linux(vid_pid) or 0) < 5000):
+            print(f"  [PISTA] La {nombre} quedó en USB 2 ({usb_linux(vid_pid)} Mbit/s): reasiente el Micro-B USB 3 en el"
+                  " único puerto USB 3 del i5 y repita 'make lab' (guía, sección 5)")
         return 1
     print("  [OK]    NG Setup con el AMF completado: la celda está al aire (conducida)")
 
@@ -129,10 +168,46 @@ def preparar(compose: Compose) -> int:
         suscriptores.alta(compose, env["SIM_IMSI"], env["SIM_K"], env["SIM_OPC"])
 
     print("\n" + "=" * 58)
+    win = sys.platform == "win32"
+    cmd = ".\\manage_lab.ps1" if win else "make"  # fuera del f-string: Python < 3.12 no admite \ en él
     print(">>> Listo. Siguiente:")
-    print("    1. .\\manage_lab.ps1 pcap-registro   y quite el modo avión del teléfono (F3-3/F3-4)")
-    print("    2. .\\manage_lab.ps1 telefono --atenuacion 60   mientras el teléfono corre iperf3 (F3-6/F3-7)")
+    print(f"    1. {cmd} pcap-registro   y quite el modo avión del teléfono (F3-3/F3-4)")
+    print("    2. " + (".\\manage_lab.ps1 telefono --atenuacion 60" if win else 'make telefono ARGS="--atenuacion 60"')
+          + "   mientras el teléfono corre iperf3 (F3-6/F3-7)")
     print("    Métricas en vivo: docker compose logs -f gnb-sdr | WebUI: http://localhost:9999 (admin / 1423)")
+    return 0
+
+
+def benchmark(compose: Compose, duracion: int) -> int:
+    """benchmark_rate de UHD dentro de la imagen del gNB, a la tasa de la celda, con el SDR de .env."""
+    env = leer_env()
+    clave, vid_pid, nombre = sdr_de(env.get("SDR_DEVICE_ARGS", ""))
+    print(f">>> Caudal USB de la {nombre}: benchmark_rate {SRATE_MSPS} MS/s TX + RX durante {duracion} s")
+    if sys.platform == "win32":
+        print("  [AVISO] En Windows pasa por usbipd (~18 MB/s): se esperan pérdidas. Mida en Linux nativo.")
+    elif not _usb_linux_ok(vid_pid, nombre):
+        return 1
+    tasa = f"{SRATE_MSPS}e6"
+    compose.ejecutar("stop", "gnb-sdr", verificar=False, timeout=60)  # el SDR solo admite un proceso
+    res = compose.ejecutar("--profile", "sdr", "run", "--rm", "--no-deps", "--entrypoint",
+                           "/usr/lib/uhd/examples/benchmark_rate", "gnb-sdr",
+                           "--args", env.get("SDR_DEVICE_ARGS", ""), "--rx_rate", tasa, "--tx_rate", tasa,
+                           "--duration", str(duracion), verificar=False, timeout=duracion + 120)
+    resumen = parsers.parse_benchmark_rate(res.stdout + res.stderr)
+    if not resumen:
+        cola = "\n".join((res.stdout + res.stderr).strip().splitlines()[-15:])
+        print(f"  [ERROR] benchmark_rate no dio resumen (¿UHD ve la {nombre}?). Últimas líneas:\n{cola}")
+        return 1
+    for etiqueta, n in resumen.items():
+        print(f"    {etiqueta:<28} {n}")
+    perdidas = {k: v for k, v in resumen.items()
+                if v and any(p in k for p in ("dropped", "overrun", "underrun", "sequence", "timeout", "late"))}
+    if perdidas:
+        print(f"  [ERROR] Pérdidas en el USB: {', '.join(f'{k}={v}' for k, v in perdidas.items())}."
+              " Pruebe otro puerto USB 3 (sin hub) y cierre otros programas; con la bladeRF, si persiste,"
+              " el límite es el puente SoapySDR (guía, sección 4)")
+        return 1
+    print(f"  [OK]    0 pérdidas a {SRATE_MSPS} MS/s: el USB aguanta la celda. Siguiente: make lab")
     return 0
 
 

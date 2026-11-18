@@ -73,12 +73,12 @@ El mismo repositorio funciona en los dos portátiles; cada uno tiene su `.env` (
 
 | Equipo | Carpeta del repositorio | Estado |
 | :--- | :--- | :--- |
-| Portátil A, Intel i5-8250U (previsto para el laboratorio) | `D:\devJose\RED5G-STANDALONE` | Imágenes del 05/11, prueba de humo ZMQ hecha, `usbipd-win` y pySim instalados |
+| Portátil A, Intel i5-8250U (equipo del laboratorio) | Windows: `D:\devJose\RED5G-STANDALONE` · Ubuntu (dual boot): `~/RED5G-STANDALONE` | Ubuntu nativo listo (11/11): imágenes, `.env` con la SIM programada (Gialer, IMSI 001010000000001), pySim y UHD; prueba de humo ZMQ hecha |
 | Portátil B, Intel i7-13620H | `C:\JoseDev\RED5G-STANDALONE` | `.env` creado y prueba de humo ZMQ hecha el 08/11; falta `usbipd-win` |
 
 Antes de usar un equipo: `git pull`, `.\manage_lab.ps1 verificar` y, si cambió algo en `docker/`, `.\manage_lab.ps1 build`. Lo que falta en cada uno está en la tabla 0.1 de la guía del laboratorio.
 
-**Linux nativo (plan B de la Fase 3):** el SDR a 23,04 MS/s no pasa por `usbipd`/WSL2, así que el gNB corre en Ubuntu 24.04 nativo instalado en **dual boot en el portátil i5** (en curso: Fases 1–2 hechas, 200 GB libres reducidos de `D:`; paso a paso en [`docs/ubuntu_dual_boot_i5.md`](docs/ubuntu_dual_boot_i5.md)). `docker/host/preparar_ubuntu.sh` se ejecuta una vez en ese Ubuntu e instala Docker Engine, UHD (B200), bladeRF + SoapySDR, pySim, tshark, iperf3 y las herramientas de desarrollo, y clona el repositorio; después `docker load -i ~/red5g_imagenes.tar` y `make lab`. La USB live con persistencia ([`docs/ubuntu_usb_paso_a_paso.md`](docs/ubuntu_usb_paso_a_paso.md)) se descartó el 2026-11-10 porque la memoria es demasiado lenta (escritura 1,6 MB/s, 39 IOPS aleatorias); queda como instalador y para llevar el script, el `.env` del i5 y las imágenes. Resumen en la sección 4 de la guía del laboratorio.
+**Linux nativo (plan B de la Fase 3):** el SDR a 23,04 MS/s no pasa por `usbipd`/WSL2, así que el gNB corre en Ubuntu 24.04 nativo instalado en **dual boot en el portátil i5** (Fases 1–7 hechas el 10 y 11/11: Ubuntu 24.04.5 en 200 GB del SSD Kingston con su propia EFI, imágenes cargadas, `red5g-ue` compilada y prueba de humo ZMQ OK; con la B200, `benchmark_rate` en USB 3 OK y `make lab` hasta 3/5: el 4/5 falló porque el `gnb-sdr` abrió la B200 en USB 2; paso a paso en [`docs/ubuntu_dual_boot_i5.md`](docs/ubuntu_dual_boot_i5.md)). `docker/host/preparar_ubuntu.sh` se ejecuta una vez en ese Ubuntu e instala Docker Engine, UHD (B200), bladeRF + SoapySDR, pySim, tshark, iperf3 y las herramientas de desarrollo, clona el repositorio y, si los encuentra en la USB o en `D:` de Windows, carga `red5g_imagenes.tar` y copia el `.env`; después `make benchmark` (caudal USB del SDR) y `make lab`. La USB live con persistencia ([`docs/ubuntu_usb_paso_a_paso.md`](docs/ubuntu_usb_paso_a_paso.md)) se descartó el 2026-11-10 porque la memoria es demasiado lenta (escritura 1,6 MB/s, 39 IOPS aleatorias); queda como instalador y para llevar el script, el `.env` del i5 y las imágenes. Resumen en la sección 4 de la guía del laboratorio.
 
 ---
 
@@ -277,7 +277,8 @@ La primera construcción compila srsRAN y tarda entre 20 y 90 minutos según el 
 | 5 repeticiones de varias pruebas | `.\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5` | `make campana ARGS="--corridas 5"` |
 | Captura PCAP (N s / registro completo) | `.\manage_lab.ps1 pcap -Seconds 60` / `pcap-registro` | `make pcap` / `make pcap-registro` |
 | Alta de la SIM física de la Fase 3 (lee `SIM_IMSI`, `SIM_K`, `SIM_OPC` de `.env`) | `.\manage_lab.ps1 banco suscriptor` | `python -m banco suscriptor` |
-| Fase 3 en un paso: B200 o bladeRF según `SDR_DEVICE_ARGS` (usbipd + UHD), Core + gNB SDR, NG Setup y alta de la SIM | `.\manage_lab.ps1 lab` | `make lab` |
+| Fase 3, antes de `lab`: caudal USB del SDR con `benchmark_rate` a 23,04 MS/s TX + RX (veredicto: 0 pérdidas) | `.\manage_lab.ps1 benchmark` | `make benchmark` |
+| Fase 3 en un paso: B200 o bladeRF según `SDR_DEVICE_ARGS` (USB 3 en Linux o usbipd en Windows + UHD), Core + gNB SDR, NG Setup y alta de la SIM | `.\manage_lab.ps1 lab` | `make lab` |
 | Fase 3: ping UPF → teléfono y métricas del gNB mientras el teléfono corre iperf3 | `.\manage_lab.ps1 telefono --atenuacion 60` | `make telefono ARGS="--atenuacion 60"` |
 | Fase 3: solo levantar el Core con el gNB SDR (B200 o bladeRF; sin gNB/UE ZMQ) | `.\manage_lab.ps1 up-sdr` | `make up-sdr` |
 | Presupuesto de enlace para la Fase 3 (sin Docker) | `.\manage_lab.ps1 banco enlace --atenuacion 60,70,80` | `python -m banco enlace` |

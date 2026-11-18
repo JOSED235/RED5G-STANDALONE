@@ -45,6 +45,8 @@ sudo apt-get install -y -q \
 
 paso "Redes y trazas: Wireshark/tshark, tcpdump, iperf3, nmap, SCTP"
 echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections
+# sudo descarta DEBIAN_FRONTEND, así que las preguntas se responden de antemano (iperf3 sin demonio)
+echo "iperf3 iperf3/start_daemon boolean false" | sudo debconf-set-selections
 sudo apt-get install -y -q wireshark tshark tcpdump iperf3 nmap ethtool lksctp-tools
 sudo usermod -aG wireshark "$USER"
 
@@ -139,6 +141,46 @@ if [ ! -d "$REPO_DIR/.git" ]; then
   git clone "$REPO_URL" "$REPO_DIR" || aviso "No se pudo clonar (¿repo privado? use: gh auth login)"
 fi
 
+paso "Imágenes Docker y .env: se buscan en la USB, en /media y en las particiones NTFS (D: de Windows)"
+buscar_en=(/cdrom /media/"$USER"/* /mnt/*)
+montados=()
+# Las NTFS sin montar (p. ej. D: del i5, donde quedó red5g_imagenes.tar) se montan solo lectura.
+while read -r dev fs mp; do
+  { [ "$fs" = ntfs ] && [ -z "$mp" ]; } || continue
+  dir=$(mktemp -d /tmp/red5g-ntfs.XXXX)
+  if sudo mount -t ntfs3 -o ro "$dev" "$dir" 2>/dev/null || sudo mount -t ntfs-3g -o ro "$dev" "$dir" 2>/dev/null; then
+    montados+=("$dir"); buscar_en+=("$dir")
+  else
+    rmdir "$dir"
+  fi
+done < <(lsblk -rno PATH,FSTYPE,MOUNTPOINT)
+
+tar_img=""; env_origen=""
+for d in "${buscar_en[@]}"; do
+  [ -z "$tar_img" ] && [ -f "$d/red5g_imagenes.tar" ] && tar_img="$d/red5g_imagenes.tar"
+  # Solo un .env de este proyecto (tiene GNB_CONFIG); lleva K y OPc, por eso queda con permisos 600
+  [ -z "$env_origen" ] && [ -f "$d/.env" ] && grep -q '^GNB_CONFIG=' "$d/.env" && env_origen="$d/.env"
+done
+
+if sudo docker image inspect red5g-gnb >/dev/null 2>&1; then
+  echo "Imágenes red5g ya cargadas"
+elif [ -n "$tar_img" ]; then
+  echo "Cargando $tar_img ..."
+  sudo docker load -i "$tar_img"
+else
+  aviso "No se encontró red5g_imagenes.tar: cópielo a /media o a la USB y repita, o use 'make build' (lento)"
+fi
+
+if [ -d "$REPO_DIR" ] && [ ! -f "$REPO_DIR/.env" ]; then
+  if [ -n "$env_origen" ]; then
+    install -m 600 "$env_origen" "$REPO_DIR/.env" && echo ".env copiado desde $env_origen"
+  else
+    aviso "No se encontró el .env del proyecto: cópielo a $REPO_DIR/.env (lleva K y OPc)"
+  fi
+fi
+
+for d in "${montados[@]}"; do sudo umount "$d" && rmdir "$d"; done
+
 paso "Listo"
 cat <<EOF
 Instalado: base de desarrollo, Python, Wireshark/tshark, iperf3, UHD + FPGA b2xx, bladeRF/SoapySDR,
@@ -146,7 +188,7 @@ pcscd + pySim, Docker Engine + Compose, Node.js LTS, VS Code, gh y Claude Code.
 
 Siguientes pasos:
   1. Cierre sesión y vuelva a entrar (grupos docker, wireshark, usrp).
-  2. Copie el .env del proyecto a $REPO_DIR/.env (no se versiona; lleva K y OPc).
-  3. cd $REPO_DIR && python3 -m banco verificar
-  4. docker load -i /cdrom/red5g_imagenes.tar  (o make build, lento)  y luego  make lab
+  2. cd $REPO_DIR && python3 -m banco verificar   (si falta el .env o las imágenes, ver avisos arriba)
+  3. Con el SDR en un puerto USB 3:  make benchmark   (0 pérdidas a 23,04 MS/s)
+  4. make lab
 EOF

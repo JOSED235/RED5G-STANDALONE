@@ -179,6 +179,31 @@ class PruebasParsers(unittest.TestCase):
         self.assertEqual(parsers.parse_seguridad_as("sin registro"), {"cifrado_as": None, "integridad_as": None})
 
 
+class TestBenchmarkRate(unittest.TestCase):
+    TEXTO = """[INFO] [UHD] linux; GNU C++ version 13.2.0
+Benchmark rate summary:
+  Num received samples:     691199872
+  Num dropped samples:      0
+  Num overruns detected:    3
+  Num transmitted samples:  690802528
+  Num sequence errors (Tx): 0
+  Num underruns detected:   0
+  Num timeouts (Rx):        0
+
+Done!
+"""
+
+    def test_resumen(self):
+        r = parsers.parse_benchmark_rate(self.TEXTO)
+        self.assertEqual(r["received samples"], 691199872)
+        self.assertEqual(r["overruns detected"], 3)
+        self.assertEqual(r["sequence errors (tx)"], 0)
+        self.assertEqual(len(r), 7)
+
+    def test_sin_resumen(self):
+        self.assertEqual(parsers.parse_benchmark_rate("No UHD Devices Found"), {})
+
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -1,6 +1,6 @@
 .PHONY: verificar up build down restart restart-ran logs logs-gnb logs-ue logs-core ps status \
         test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro analisis test-banco clean \
-        up-sdr registro lab telefono
+        up-sdr registro lab telefono benchmark
 
 # Intérprete del banco de pruebas y opciones extra, p. ej.: make p7 ARGS="--tasas 2,5,10"
 PYTHON ?= python3
@@ -40,6 +40,10 @@ up-sdr: verificar
 # Fase 3 en un paso: B200 visible para UHD, Core + gNB SDR, NG Setup y alta de la SIM de .env
 lab: verificar
 	$(BANCO) lab
+
+# Fase 3, antes de 'lab': caudal USB del SDR a 23,04 MS/s TX + RX (debe dar 0 pérdidas)
+benchmark: .env
+	$(BANCO) benchmark $(ARGS)
 
 # Fase 3: ping UPF->teléfono y métricas del gNB mientras el teléfono corre iperf3
 telefono:
