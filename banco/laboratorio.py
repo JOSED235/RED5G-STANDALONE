@@ -159,7 +159,7 @@ def preparar(compose: Compose) -> int:
             print(f"  [PISTA] La {nombre} quedó en USB 2 ({usb_linux(vid_pid)} Mbit/s): reasiente el Micro-B USB 3 en el"
                   " único puerto USB 3 del i5 y repita 'make lab' (guía, sección 5)")
         return 1
-    print("  [OK]    NG Setup con el AMF completado: la celda está al aire (conducida)")
+    print("  [OK]    NG Setup con el AMF completado: la celda está al aire")
 
     print("\n>>> 5/5 Alta de la SIM en el Core")
     if errores_sim:
@@ -172,7 +172,7 @@ def preparar(compose: Compose) -> int:
     cmd = ".\\manage_lab.ps1" if win else "make"  # fuera del f-string: Python < 3.12 no admite \ en él
     print(">>> Listo. Siguiente:")
     print(f"    1. {cmd} pcap-registro   y quite el modo avión del teléfono (F3-3/F3-4)")
-    print("    2. " + (".\\manage_lab.ps1 telefono --atenuacion 60" if win else 'make telefono ARGS="--atenuacion 60"')
+    print("    2. " + (".\\manage_lab.ps1 telefono --distancia 0.5" if win else 'make telefono ARGS="--distancia 0.5"')
           + "   mientras el teléfono corre iperf3 (F3-6/F3-7)")
     print("    Métricas en vivo: docker compose logs -f gnb-sdr | WebUI: http://localhost:9999 (admin / 1423)")
     return 0
@@ -237,12 +237,17 @@ def prueba_telefono(ctx, args) -> None:
     servicio = servicio_gnb(compose)
     imsi, ip = ip_telefono(compose, leer_env().get("SIM_IMSI", ""))
     ctx.servidor_iperf()
-    atenuacion = "" if args.atenuacion is None else args.atenuacion
+    # Al aire (autorizado por el profesor el 2026-11-11) se barre la distancia; conducido, la atenuación
+    if args.distancia is not None:
+        parametro, valor, texto = "distancia_m", args.distancia, f"distancia {args.distancia} m"
+    else:
+        valor = "" if args.atenuacion is None else args.atenuacion
+        parametro, texto = "atenuacion_db", f"atenuación {valor or '?'} dB"
     for corrida in range(1, args.corridas + 1):
-        print(f">>> [F3] Teléfono IMSI {imsi} en {ip} | gNB '{servicio}' | atenuación {atenuacion or '?'} dB"
+        print(f">>> [F3] Teléfono IMSI {imsi} en {ip} | gNB '{servicio}' | {texto} | TX {leer_env().get('SDR_TX_GAIN', '?')} dB"
               f" | {args.duracion} s, corrida {corrida}/{args.corridas}")
         print(f"    Ahora, en el teléfono: iperf3 -c {IP_UPF} -t {args.duracion} (añada -R para DL)")
-        with ctx.metricas_gnb("F3_telefono", corrida, "atenuacion_db", atenuacion, servicio=servicio) as gnb:
+        with ctx.metricas_gnb("F3_telefono", corrida, parametro, valor, servicio=servicio) as gnb:
             res = compose.exec("open5gs", "ping", "-D", "-c", str(args.duracion), "-i", "1", ip,
                                verificar=False, timeout=args.duracion + 60)
         ctx.sesion.guardar_crudo(f"ping_telefono_c{corrida}.txt", res.stdout)
@@ -252,7 +257,7 @@ def prueba_telefono(ctx, args) -> None:
             ping = {}
             print("    ! Sin respuesta al ping (algunos teléfonos descartan ICMP); se guardan solo las métricas del gNB")
         ctx.sesion.registrar_dict("F3_telefono", corrida, {**ping, **gnb}, {**UNIDADES_PING, **UNIDADES_GNB},
-                                  "atenuacion_db", atenuacion)
+                                  parametro, valor)
         print(f"    RTT UPF->teléfono media {fmt(ping.get('rtt_media_ms'))} ms, pérdida {fmt(ping.get('perdida_pct'), 1)} %"
               f" | DL MCS {fmt(gnb.get('dl_mcs_media'), 1)} CQI {fmt(gnb.get('dl_cqi_media'), 1)}"
               f" {fmt(mbps(gnb.get('dl_brate_media_bps')))} Mbit/s BLER {fmt(gnb.get('dl_bler_pct'), 1)} %"

@@ -151,6 +151,7 @@ def construir_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("telefono", help="Fase 3: ping UPF->teléfono y métricas del gNB mientras el teléfono corre iperf3")
     p.add_argument("--atenuacion", type=float, help="dB de atenuación conducida (se guarda como parámetro)")
+    p.add_argument("--distancia", type=float, help="metros gNB-teléfono al aire (se guarda como parámetro en vez de la atenuación)")
     p.add_argument("--duracion", type=int, default=60, help="segundos de medición")
     _comunes(p)
     return parser

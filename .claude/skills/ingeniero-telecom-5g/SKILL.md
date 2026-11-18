@@ -134,9 +134,13 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
   23,04 MS/s TX+RX pierde 0,006 %.
 - **SIM del kit (Gialer LTE USIM):** pySim `-t gialersim`, sin `-a` (clave fija); EHPLMN se reescribe en
   `pySim-shell` con `verify_chv --pin-nr 12 84796153`. Pasos en la guía del laboratorio, 2.2.
-- **Generador R&S SMBV100A:** referencia de 10 MHz (REF OUT → entrada de reloj U.FL de la bladeRF)
-  y portadora CW para calibrar offset de frecuencia y ganancia de RX (siempre ≥ 30 dB de
-  atenuación; la RX del AD9361 admite ≈ +2,5 dBm). No genera NR (eso es del SMBV100B).
+- **Generador R&S SMBV100A: no necesario** (indicación del profesor, 2026-11-17). Daría 10 MHz y
+  portadora CW para calibrar offset y ganancia de RX, pero sale del plan: el offset del TCXO se
+  valida por el registro del teléfono (si no ve la celda, probar n3) y la Ptx absoluta no se calibra.
+- **OTA autorizada (2026-11-11):** el profesor permitió transmitir al aire en el laboratorio con las
+  antenas de la B200 a potencia mínima (`SDR_TX_GAIN=30`, subir de 10 en 10 dB solo si no hay celda,
+  teléfono a 30–50 cm, `make down` al terminar). Sin atenuadores ni caja: F3-7 barre distancia
+  (`banco telefono --distancia`) y se compara con `banco enlace --atenuacion 0 --distancia`.
 - **Banda:** confirma qué bandas SA soporta el terminal. Muchos teléfonos solo hacen SA en n78
   (TDD, 3,3–3,8 GHz), que exige patrón TDD y otra configuración de celda (SCS 30 kHz). Prepara
   configuraciones n3 y n78.

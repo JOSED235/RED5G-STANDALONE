@@ -3,13 +3,21 @@
 Plan para pasar de la radio virtual ZMQ (Fase 2) a radiofrecuencia real con una USRP B210 y un
 teléfono comercial 5G SA con SIM programable. Todo lo que se puede preparar **sin hardware** ya
 está en el repositorio (sección 6); este documento dice qué falta comprobar al tenerlo y cómo.
-La guía operativa del día de laboratorio (comandos en Windows + WSL2, montaje y lista para
-empacar) está en [`fase3_guia_laboratorio.md`](fase3_guia_laboratorio.md).
+La guía operativa del día de laboratorio (Ubuntu nativo en el i5, montaje y lista para empacar)
+está en [`fase3_guia_laboratorio.md`](fase3_guia_laboratorio.md).
 
-> **Seguridad radioeléctrica primero.** Las pruebas son **conducidas** (cable coaxial con
-> atenuadores o caja de apantallamiento) hasta tener el permiso temporal de MinTIC (Res. 467 de
-> 2020 y 2328 de 2022) para cualquier emisión al aire. La red usa siempre el PLMN de pruebas
-> **001/01**, nunca el MCC 732. Las bandas n3 y n78 están asignadas a operadores en Colombia: una
+> **Cambios de plan (2026-11-17).** Equipo real: **USRP B200** (no B210) desde Ubuntu nativo.
+> El profesor **autorizó transmitir al aire** dentro del laboratorio a potencia mínima (2026-11-11)
+> e indicó que **el generador R&S SMBV100A no es necesario**. Por eso: H6–H8 (atenuadores, caja,
+> cables) pasan a opcionales, la calibración CW se elimina, F3-7 barre **distancia** en vez de
+> atenuación y la exactitud del reloj (H2) se valida por el registro del teléfono.
+
+> **Seguridad radioeléctrica primero.** Fuera del laboratorio cualquier emisión al aire exige el
+> permiso temporal de MinTIC (Res. 467 de 2020 y 2328 de 2022). Dentro, la prueba se hace al aire
+> **solo con la autorización del profesor**, con las antenas de la B200, `SDR_TX_GAIN=30` como
+> punto de partida (subir de 10 en 10 dB solo si el teléfono no ve la celda), el teléfono a
+> 30–50 cm y el gNB apagado entre pruebas. La red usa siempre el PLMN de pruebas **001/01**,
+> nunca el MCC 732. Las bandas n3 y n78 están asignadas a operadores en Colombia: una
 > emisión no autorizada interfiere redes comerciales.
 
 ---
@@ -19,13 +27,13 @@ empacar) está en [`fase3_guia_laboratorio.md`](fase3_guia_laboratorio.md).
 | # | Elemento | Requisito | Cómo verificarlo |
 | :- | :--- | :--- | :--- |
 | H1 | SDR | USRP B210 (AD9361, 70 MHz–6 GHz, 2×2, USB 3.0); una B200 también sirve (1×1) | `uhd_find_devices` y `uhd_usrp_probe` dentro de la imagen (sección 3, paso 2) |
-| H2 | Referencia de reloj | El TCXO interno de la B210 tiene una exactitud del orden de ±2 ppm (**verificar en la hoja de datos de Ettus**): a 3,5 GHz eso son unos ±7 kHz, una fracción apreciable de la SCS de 30 kHz. Para un teléfono comercial se recomienda referencia externa de 10 MHz + PPS (GPSDO) | Con GPSDO: `SDR_CLOCK=gpsdo` / `SDR_SYNC=gpsdo` (o `external`). Vigilar en el log del gNB el *frequency offset* y si el teléfono pierde la celda |
+| H2 | Referencia de reloj | El TCXO interno de la B210 tiene una exactitud del orden de ±2 ppm (**verificar en la hoja de datos de Ettus**): a 3,5 GHz eso son unos ±7 kHz, una fracción apreciable de la SCS de 30 kHz. Para un teléfono comercial se recomienda referencia externa de 10 MHz + PPS (GPSDO) | Sin generador ni GPSDO (el profesor indicó que no son necesarios): se usa el TCXO interno y la validación es indirecta, que el teléfono vea la celda y se registre (F3-3/F3-4). Si no la ve ni con TX alta, probar n3 (la mitad de offset en Hz). Con GPSDO: `SDR_CLOCK=gpsdo` / `SDR_SYNC=gpsdo` |
 | H3 | Computador | USB 3.0 directo (sin hub), CPU con AVX2, **Linux nativo recomendado** (Ubuntu 22.04). En Windows hay que pasar el USB a WSL2 con `usbipd-win` y el muestreo continuo es menos estable | `lsusb` muestra `2500:0020 Ettus Research LLC USRP B200`; sin `U`/`O`/`L` (underflow/overflow/late) persistentes en el log del gNB |
 | H4 | Teléfono | 5G **SA** (no solo NSA) en la banda elegida: n78 es la más común; n3 en SA es menos frecuente | Hoja de especificaciones del modelo y menú de pruebas del fabricante; algunos exigen activar "5G SA" en ajustes de desarrollador |
 | H5 | SIM | Programable con ADM1 (p. ej. sysmoISIM-SJA5), Milenage, IMSI `00101xxxxxxxxxx`, K y OPc conocidos | Lector PC/SC + pySim (`pySim-read.py`) |
-| H6 | Atenuación | Para la prueba conducida con la B210: atenuadores fijos SMA de 30 + 30 dB (60 dB) y 10 + 10 dB para ajustar, con potencia admisible mayor que la de salida del SDR | Calcular niveles con `python -m banco enlace` (sección 2) |
-| H7 | Acoplamiento al teléfono | Un teléfono comercial **no tiene conector de antena accesible**: la prueba "conducida" se hace en una **caja de apantallamiento** (*shield box*) con una antena acopladora conectada a la B210 por los atenuadores | Con la caja cerrada, un teléfono de otra red no debe ver la celda 001/01 desde fuera |
-| H8 | Cables | Coaxiales SMA de baja pérdida, cortos; anotar su pérdida a la frecuencia de trabajo | Hoja de datos del cable (dB/m) y medición si hay analizador |
+| H6 | Atenuación (**opcional**: OTA autorizada) | Solo si se vuelve a exigir la prueba conducida con la B210: atenuadores fijos SMA de 30 + 30 dB (60 dB) y 10 + 10 dB para ajustar, con potencia admisible mayor que la de salida del SDR | Calcular niveles con `python -m banco enlace` (sección 2) |
+| H7 | Acoplamiento al teléfono (**opcional**: OTA autorizada) | Al aire basta con las dos antenas de la B200 a 30–50 cm. Conducido: un teléfono comercial **no tiene conector de antena accesible**: la prueba "conducida" se hace en una **caja de apantallamiento** (*shield box*) con una antena acopladora conectada a la B210 por los atenuadores | Con la caja cerrada, un teléfono de otra red no debe ver la celda 001/01 desde fuera |
+| H8 | Cables (**opcional**) | Solo para el montaje conducido: coaxiales SMA de baja pérdida, cortos; anotar su pérdida a la frecuencia de trabajo | Hoja de datos del cable (dB/m) y medición si hay analizador |
 
 ## 2. Niveles de potencia antes de encender (sin hardware)
 
@@ -88,20 +96,22 @@ la hoja de datos y empiece con **más** atenuación y ganancia de TX baja (`SDR_
 | F3-4 | Registro y seguridad | `pcap-registro` + `banco protocolos` | Registration Accept; SUCI con el MSIN de la SIM; Security Mode Command con NEA2 + NIA2; sesión PDU con IP 10.45.0.x. La seguridad AS no se ve en la traza del Core ni hay log del teléfono: verla en el gNB con `sec_level: debug` temporal (su log solo se completa al detenerlo) |
 | F3-5 | Plano de usuario | Navegación y ping desde el teléfono a 10.45.0.1 y a Internet | RTT estable, sin pérdidas sostenidas |
 | F3-6 | Caudal | App iperf3 en el teléfono contra un servidor iperf3 en el Core (10.45.0.1) | Comparar con la tabla de la sección 2 y con la Fase 2 (n3). Las plantillas B210 usan DCI 1_1 (sin `ss2_type: common`), así que el PDSCH debería ocupar los 106 PRB y no los 96 de la Fase 2: confirmarlo una vez con `mac_level: info` (`rb=[0..106)` en las líneas `[SCHED]`) |
-| F3-7 | MCS/CQI frente a atenuación | Repetir F3-6 con 60, 70 y 80 dB; tabla de métricas del gNB (`docker compose logs gnb-sdr`) | El MCS baja al aumentar la atenuación, de forma coherente con la calculadora |
+| F3-7 | MCS/CQI frente a distancia | Repetir F3-6 a 0,5, 1, 2 y 4 m con la misma `SDR_TX_GAIN` (`make telefono ARGS="--distancia <m>"`), hasta que el teléfono pierda el servicio; opcional: a distancia fija, TX 30/40/50 dB | El MCS y el CQI bajan al alejar el teléfono, con la tendencia de `banco enlace --atenuacion 0 --distancia <m>` (la Ptx absoluta no se calibra sin generador; al aire hay multitrayecto) |
 | F3-8 | Estabilidad | 30 min de tráfico moderado | Sin liberaciones del UE ni reinicios del gNB |
 
-**Pendiente de adaptar en el banco:** P5–P10 miden desde el contenedor `ue` (srsUE). Con el
-teléfono, el ping y el iperf3 se ejecutan en el propio teléfono (apps); el banco puede seguir
-recogiendo la tabla de métricas del gNB, que es lo que da MCS, CQI, SNR y BLER.
+**Banco con el teléfono (hecho, 2026-11-08 y 2026-11-17):** P5–P10 miden desde el contenedor `ue`
+(srsUE). Con el teléfono, el iperf3 corre en el propio teléfono y `banco telefono` hace el ping
+UPF → teléfono y recoge la tabla de métricas del gNB (MCS, CQI, SNR, BLER), guardando la
+`--distancia` (al aire) o la `--atenuacion` (conducido) como parámetro de cada fila.
 
 ## 5. Riesgos y mitigaciones
 
 | Riesgo | Mitigación |
 | :--- | :--- |
-| Emisión fuera de la caja / interferencia a operadores | Pruebas conducidas o en caja de apantallamiento; ganancia de TX mínima; PLMN 001/01; permiso de MinTIC para OTA |
-| Saturar o dañar el receptor del teléfono o del SDR | Calcular la Prx antes (sección 2); empezar con más atenuación; nunca conectar TX a RX sin atenuadores |
-| Error de frecuencia del TCXO | GPSDO o referencia externa; observar el *frequency offset* |
+| Interferencia a operadores al transmitir al aire | Solo dentro del laboratorio y con la autorización del profesor; ganancia de TX mínima que permita el registro; teléfono cerca; PLMN 001/01; `make down` al terminar cada prueba |
+| Saturar o dañar el receptor del teléfono o del SDR | Al aire, con TX baja y 30 cm no hay riesgo práctico; nunca conectar TX a RX por cable sin atenuadores |
+| Error de frecuencia del TCXO (sin generador ni GPSDO) | Validación indirecta por el registro del teléfono; si no ve la celda, probar n3; GPSDO solo si llega a hacer falta |
+| La B200 enumera en USB 2 (pasó el 2026-11-11) | Antenas antes que el USB; único puerto USB 3 del i5; `make benchmark` y `make lab` lo detectan y se detienen |
 | Muestreo inestable (underflows) en Windows/WSL2 | Linux nativo, USB 3.0 directo, CPU en modo de rendimiento |
 | El teléfono no soporta SA en la banda | Verificar H4 antes de comprar o reservar el equipo; tener las dos plantillas (n3 y n78) |
 | Fuga de las claves de la SIM | Solo en `.env` local (no versionado); `metadata.json` las oculta; no compartir capturas sin revisar |
@@ -114,5 +124,5 @@ recogiendo la tabla de métricas del gNB, que es lo que da MCS, CQI, SNR y BLER.
 | Imagen `red5g-gnb` con ZMQ y UHD (servicio `gnb-sdr`, perfil `sdr`, `up-sdr`) | Acceso USB desde el contenedor (en particular con Docker Desktop + usbipd) |
 | Cifrado NAS NEA2 + NIA2 verificado con el srsUE 26.10 | Comportamiento con el terminal comercial |
 | Alta de la SIM (`banco suscriptor`), sin exponer K/OPc | La SIM real programada |
-| Calculadora de enlace con fracción TDD | Calibración con las hojas de datos (Ptx, NF, Prx máxima) |
+| Calculadora de enlace con fracción TDD y FSPL (`--distancia`) | Ptx de la B200 con `SDR_TX_GAIN` (sin generador: hoja de datos y tendencia frente a la distancia) |
 | Análisis automático de la traza de registro (`banco protocolos`) | Registro del teléfono |

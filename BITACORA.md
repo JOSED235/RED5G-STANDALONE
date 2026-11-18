@@ -46,7 +46,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Con el terminal comercial, verificar en la traza el cifrado NAS NEA2 (ya es el valor por defecto) y la seguridad AS.
 - [x] Alta de la SIM física: `python -m banco suscriptor` (SIM_* en `.env`, claves fuera de la línea de comandos) (2026-11-02).
 - [x] Calculadora de presupuesto de enlace: `python -m banco enlace` (2026-11-02).
-- [ ] Calibrar la calculadora con el hardware real: Ptx, NF y potencia máxima de entrada del SDR y del teléfono según sus hojas de datos.
+- [ ] Calculadora con el hardware real: NF y potencia máxima de entrada según las hojas de datos de la B200 y del OnePlus Nord CE 2 Lite; la Ptx con `SDR_TX_GAIN=30` queda supuesta (≈ −50 dBm) al no haber generador.
 - [x] Plan de pruebas de la Fase 3 y lista de verificación de hardware: `docs/fase3_plan_pruebas.md` (2026-11-02).
 - [x] Guía del día de laboratorio: `docs/fase3_guia_laboratorio.md` (2026-11-05).
 - [x] Portátil i5-8250U: `usbipd-win` 5.3.0, `.env` (n78, TX 30 dB) y pySim + `pcscd` en Ubuntu-22.04 (2026-11-05).
@@ -65,7 +65,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Automatizar el `benchmark_rate` del SDR: `make benchmark` / `banco benchmark` (USB 3 + veredicto) (2026-11-17).
 - [ ] En Ubuntu nativo: `make benchmark` (23,04 MS/s TX + RX) con la bladeRF (con la B200 ya se midió a mano el 2026-11-11); si el puente SoapySDR pierde muestras, evaluar el gNB de OpenAirInterface (driver bladeRF propio).
 - [ ] En Ubuntu nativo: `lab` con la bladeRF (NG Setup del `gnb-sdr`), ajuste de `SDR_TX_GAIN`/`SDR_RX_GAIN` en la escala de SoapySDR y registro del teléfono.
-- [ ] Calibración con el R&S SMBV100A: portadora CW → atenuador ≥ 30 dB → RX de la B200 o la bladeRF (offset en ppm sin y con referencia de 10 MHz, ganancia real de RX) para la calculadora de enlace.
+- [x] ~~Calibración con el R&S SMBV100A~~ — descartada el 2026-11-17: el profesor indicó que el generador no es necesario. El offset del TCXO se valida por el registro del teléfono y la calculadora se usa como tendencia frente a la distancia.
 - [x] Memoria USB de Ubuntu 24.04 para el plan B (Linux nativo): ISO verificado, Rufus y `docker/host/preparar_ubuntu.sh` (2026-11-10).
 - [x] USB de Ubuntu: Partes A y B de `docs/ubuntu_usb_paso_a_paso.md` (Rufus con persistencia, script y `.env` en la raíz), hechas y verificadas en el portátil i7 (2026-11-10).
 - [x] USB de Ubuntu: Parte C, `red5g_imagenes.tar` del i5 en la raíz de la USB (2026-11-10).
@@ -73,6 +73,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): Fases 1–6 hechas (2026-11-11: Ubuntu 24.04.5 nativo, imágenes cargadas, `red5g-ue` compilada, prueba de humo ZMQ OK, `make lab` hasta 3/5 sin la B200).
 - [x] Limpiar la USB tras la Fase 6: `.env` (K y OPc), `preparar_ubuntu.sh`, `_prueba_vel.bin` y `red5g_imagenes.tar` borrados; queda el instalador de Ubuntu como USB de rescate (2026-11-11).
 - [x] En el i5 (Ubuntu): SIM física programada con pySim (Gialer, IMSI 001010000000001, EHPLMN 001/01) y `SIM_*` llenos en `.env` (2026-11-11).
+- [ ] F3-7 al aire: `make telefono ARGS="--distancia <m>"` a 0,5, 1, 2 y 4 m con la misma `SDR_TX_GAIN` y comparar con `banco enlace --atenuacion 0 --distancia <m>`.
 - [ ] Registrar el teléfono **OnePlus Nord CE 2 Lite 5G** (n78/n3) en la celda n78: el profesor autorizó transmitir al aire con las antenas de la B200 a potencia mínima (`SDR_TX_GAIN=30`, subir de 10 en 10 hasta 80 si no ve la celda). En el teléfono ya hay SIM, modo 5G, roaming de datos y APN `internet` (2026-11-11).
 - [ ] Opcional: reescribir también EF.OPLMNwAcT / EF.PLMNwAcT de la SIM (siguen con PLMN 732 de Movistar); si el teléfono la toma como red visitante, roaming de datos activado.
 - [ ] En el i5 (Ubuntu): cerrar sesión y volver a entrar para usar `docker` sin `sg docker` (grupos `docker` y `wireshark`); opcional: borrar `~/red5g_imagenes.tar` (copia idéntica en la USB, ya cargada).
@@ -1471,3 +1472,31 @@ Incluye también la entrada local del 2026-11-10 (Fases 3–5 y respuesta previa
 
 **Pendiente:** con la B200, reasentar el cable y repetir `make lab` (ahora avisa si queda en USB 2);
 luego el registro del teléfono y F3-5 a F3-8 (ver "Pendientes vigentes").
+
+---
+
+## 2026-11-17 — Plan de la Fase 3 sin el generador SMBV100A y con la prueba al aire
+
+**Qué se hizo:** el profesor indicó que el generador R&S SMBV100A no es necesario; además, el
+2026-11-11 había autorizado transmitir al aire en el laboratorio a potencia mínima, pero la guía y
+el plan seguían armados sobre atenuadores, caja de apantallamiento, Windows y `usbipd`. Cambios:
+- `docs/fase3_guia_laboratorio.md`: estado y nota de seguridad para la prueba al aire autorizada;
+  ruta rápida reescrita para Ubuntu en el i5 (`make benchmark`, `make lab`, `make telefono
+  ARGS="--distancia 0.5"`, `make down`); lista para empacar sin atenuadores, caja ni generador;
+  montaje RF con las dos antenas (antenas antes que el USB); F3-6/F3-7 por distancia; sección 1.7
+  con el cálculo al aire (`--atenuacion 0 --distancia`) y la Ptx supuesta; sección 4.1 sin la
+  calibración con el SMBV100A (validación indirecta del offset por el registro y n3 como salida).
+- `docs/fase3_plan_pruebas.md`: recuadro de cambios de plan, seguridad para OTA autorizada, H2 sin
+  generador ni GPSDO, H6–H8 opcionales, F3-7 por distancia, riesgos (OTA, TCXO, USB 2) y sección 6.
+- `banco telefono --distancia <m>`: guarda la distancia como parámetro de la fila (en vez de
+  `atenuacion_db`) e imprime `SDR_TX_GAIN`; el cierre de `lab` sugiere `--distancia 0.5`.
+- `README.md` (hito de la Fase 3, bloque del laboratorio con `make` y tabla de comandos),
+  `docker/README.md`, skill `ingeniero-telecom-5g`, pendientes de esta bitácora.
+
+**Verificación:** 54 pruebas unitarias OK; `python -m banco telefono --help` muestra `--distancia`;
+`banco enlace --ptx -50 --gtx 3 --nf 9 --frecuencia 3489.42 --prb 51 --scs 30 --fraccion 0.657
+--atenuacion 0 --distancia 0.5` da FSPL 37,3 dB, Prx −85,3 dBm, SNR 7,1 dB, MCS 11; a 4 m, SNR −11 dB
+(sin servicio). **No verificado:** la Ptx real de la B200 con TX 30 (−50 dBm es una suposición, por
+eso a 4 m quizá haga falta más ganancia), `telefono --distancia` con el teléfono.
+
+**Pendiente:** con la B200, `make lab` 4/5 y 5/5, registro del teléfono y F3-6 a F3-8 al aire.

@@ -2,45 +2,47 @@
 
 Guía operativa para llevar la red al laboratorio con una USRP B200, una SIM programable y un
 teléfono comercial 5G SA. Sirve para **cualquiera de los dos portátiles** del proyecto (sección 0).
-**Desde el 2026-11-09 el SDR disponible es una bladeRF 2.0 micro xA9 (sección 4.1) y la celda de
-20 MHz exige Linux nativo desde una memoria USB (sección 4).**
+**Estado (2026-11-17):** se trabaja con la **USRP B200** desde **Ubuntu nativo en el i5** (dual boot,
+sección 4); la bladeRF 2.0 micro xA9 queda como alternativa (sección 4.1). **El profesor autorizó
+transmitir al aire** con las antenas de la B200 a potencia mínima (2026-11-11) e indicó que **el
+generador R&S SMBV100A no es necesario** (2026-11-17): no hacen falta atenuadores, caja ni calibración CW.
 Complementa (no reemplaza) el plan de pruebas [`fase3_plan_pruebas.md`](fase3_plan_pruebas.md), que
 define los criterios F3-1 a F3-8 y los riesgos.
 
-> **Seguridad radioeléctrica.** Ninguna emisión al aire: n3 y n78 están asignadas a operadores en
-> Colombia y la OTA exige permiso temporal de MinTIC (Res. 467/2020 y 2328/2022). Siempre PLMN de
-> pruebas **001/01**, nunca MCC 732. Nunca conectar TX a RX ni al teléfono sin atenuadores; empezar
-> con mucha atenuación y ganancia de TX baja.
+> **Seguridad radioeléctrica.** n3 y n78 están asignadas a operadores en Colombia; fuera del
+> laboratorio la OTA exige permiso temporal de MinTIC (Res. 467/2020 y 2328/2022). Aquí se transmite
+> al aire **solo con la autorización del profesor**, dentro del laboratorio, con las antenas de la
+> B200 y **la mínima potencia que permita el registro**: `SDR_TX_GAIN=30`, teléfono a 30–50 cm, y
+> subir de 10 en 10 dB (máx. 80) solo si el teléfono no ve la celda. Siempre PLMN de pruebas
+> **001/01**, nunca MCC 732. Apagar el gNB (`make down`) al terminar. Nunca conectar TX a RX por
+> cable sin atenuadores.
 
-Todos los comandos se escriben en **PowerShell, en la carpeta del repositorio** del equipo que
-lleve (tabla 0), salvo donde diga Ubuntu/WSL. En Linux nativo, cambie `.\manage_lab.ps1 <acción>`
-por `make <acción>` (las opciones van en `ARGS="..."`).
+El día de laboratorio se trabaja en **Ubuntu (i5), en `~/RED5G-STANDALONE`**, con `make <acción>`
+(las opciones van en `ARGS="..."`). Las secciones 1 y 2 conservan los comandos de PowerShell
+(`.\manage_lab.ps1 <acción>`) con los que se preparó todo en Windows; equivalen a los de `make`.
 
 ---
 
 ## Ruta rápida (el día del laboratorio)
 
-Con la sección 1 hecha en casa, en el laboratorio solo hace falta esto:
+Con el i5 ya preparado (Ubuntu, imágenes, `.env` con la SIM), en el laboratorio solo hace falta esto:
 
-1. Portátil **enchufado**, Docker Desktop abierto, `powercfg /setactive SCHEME_MIN`.
-2. Montaje RF con todo apagado: B200 TX/RX y RX2 → atenuadores (≥ 60 dB) → caja con el teléfono en
-   modo avión (sección 2.1). B200 al puerto **USB 3.0**.
-3. SIM programada y sus valores en `.env` (`SIM_IMSI`, `SIM_K`, `SIM_OPC`) (sección 2.2).
-4. Un solo comando:
-   ```powershell
-   .\manage_lab.ps1 lab
+1. Portátil **enchufado**; arrancar **Ubuntu** en el menú GRUB y
+   `cd ~/RED5G-STANDALONE && git pull`.
+2. Enroscar las **dos antenas** de la B200 (TX/RX y RX2) y después conectar el cable **USB 3** en el
+   único puerto USB 3 del i5 (Micro-B hasta el fondo; el lector de SIM va en un puerto USB 2).
+   Teléfono en modo avión a 30–50 cm (sección 2.1). En `.env`: `SDR_TX_GAIN=30`.
+3. Caudal USB: `make benchmark` → debe dar 0 pérdidas a 23,04 MS/s.
+4. Un solo comando: `make lab`. Comprueba `.env` y la SIM, que la B200 esté en USB 3 (antes y después
+   de cargar el firmware), que UHD la ve, levanta Core + gNB SDR, espera el NG Setup y da de alta la
+   SIM. Si algo falla, dice qué hacer y se detiene.
+5. Registro con traza: `make pcap-registro` y quitar el modo avión del teléfono (F3-3, F3-4). Si no ve
+   la celda en 2 min: subir `SDR_TX_GAIN` 10 dB en `.env` y repetir `make lab`.
+6. Medición por distancia (F3-6, F3-7), con el teléfono corriendo iperf3 hacia `10.45.0.1`:
+   ```bash
+   make telefono ARGS="--distancia 0.5 --duracion 60"
    ```
-   Verifica el equipo y `.env`, pasa la B200 a WSL2 con `usbipd` (abre una ventana con
-   `--auto-attach` que debe quedar abierta), confirma que UHD la ve, levanta Core + gNB SDR, espera
-   el NG Setup y da de alta la SIM. Si algo falla, dice qué hacer y se detiene.
-   La primera vez en cada equipo pide antes, **como administrador**: `usbipd bind --busid <BUSID>`
-   (el `lab` le dice el BUSID).
-5. Registro con traza: `.\manage_lab.ps1 pcap-registro` y quitar el modo avión del teléfono (F3-3, F3-4).
-6. Medición por nivel de atenuación (F3-6, F3-7), con el teléfono corriendo iperf3 hacia `10.45.0.1`:
-   ```powershell
-   .\manage_lab.ps1 telefono --atenuacion 60 --duracion 60
-   ```
-7. Al terminar: `.\manage_lab.ps1 down` y copiar `resultados\` y `capturas\` a la memoria USB.
+7. Al terminar: `make down` (deja de transmitir) y copiar `resultados/` y `capturas/` a la memoria USB.
 
 ---
 
@@ -74,7 +76,7 @@ compila con `-march=native`). El repositorio es el mismo.
 | pySim + `pcscd` (solo si no usa grsimwrite) | hecho | **falta** | 1.8 |
 | `pcsc_scan` con el lector | **falta** | **falta** | 1.8 |
 | `docker save` para el plan B | **falta** | opcional | 4 |
-| Hardware: B200, SIM con ADM1, lector, atenuadores, caja, teléfono SA n78 | — | — | 1.10 |
+| Hardware: B200 con sus dos antenas, SIM programada, lector, teléfono SA n78 (atenuadores y caja ya no: OTA autorizada) | — | — | 1.10 |
 
 ---
 
@@ -208,6 +210,21 @@ Sin la B200 debe responder `No UHD Devices Found`: UHD y la imagen están bien.
 Guarde la tabla (en el portátil A está en `D:\enlace_n78.txt`): en el laboratorio se compara con el
 MCS y el CQI medidos. Si consigue la potencia máxima de entrada del teléfono, añada `--prx-max <dBm>`.
 
+**Al aire (OTA autorizada, 2026-11-11):** sin atenuadores (`--atenuacion 0`) y con la distancia, que
+añade la pérdida de espacio libre (FSPL). La potencia de la B200 con `SDR_TX_GAIN=30` no está en la
+hoja de datos y, sin el generador, no se mide: `--ptx -50` es una **suposición** (≈ +10 dBm de máximo
+a 3,5 GHz menos ≈ 60 dB que faltan para la ganancia máxima de 89,75 dB). Úsela para la tendencia
+frente a la distancia, no como valor absoluto:
+
+```bash
+for d in 0.5 1 2 4; do
+  python3 -m banco enlace --ptx -50 --gtx 3 --nf 9 --frecuencia 3489.42 --prb 51 --scs 30 \
+    --fraccion 0.657 --atenuacion 0 --distancia $d | tail -2 | head -1
+done
+```
+
+A 0,5 m da FSPL 37,3 dB, Prx ≈ −85 dBm, SNR ≈ 7 dB y MCS 11 (con esa suposición).
+
 ### 1.8 Programación de la SIM
 
 Dos opciones; elija según la SIM que le entreguen.
@@ -251,10 +268,10 @@ wsl -d Ubuntu-22.04 -- openssl rand -hex 16   # OPc
 - [ ] Teléfono 5G SA (n78) cargado, con la app de iperf3.
 - [ ] SIM programable + **clave ADM1** (sin ella no se programa).
 - [ ] Lector PC/SC.
-- [ ] Atenuadores SMA fijos: 2 × 30 dB y 2 × 10 dB por puerto (TX/RX y RX2).
-- [ ] Cables SMA cortos, antenas acopladoras y caja de apantallamiento.
-- [ ] (Opcional) GPSDO o referencia de 10 MHz + PPS.
-- [ ] Memoria USB para copiar resultados y capturas; libreta para ganancias, atenuación y pérdidas.
+- [ ] Las dos antenas de la B200 (TX/RX y RX2) y una cinta métrica para la distancia al teléfono.
+- [ ] (Ya no hace falta: OTA autorizada) atenuadores SMA, antenas acopladoras y caja de apantallamiento.
+- [ ] (No necesario según el profesor) generador R&S SMBV100A, GPSDO o referencia de 10 MHz.
+- [ ] Memoria USB para copiar resultados y capturas; libreta para ganancias de TX/RX y distancias.
 
 ---
 
@@ -263,15 +280,18 @@ wsl -d Ubuntu-22.04 -- openssl rand -hex 16   # OPc
 ### 2.1 Montaje RF (con todo apagado)
 
 UHD transmite por **TX/RX** y recibe por **RX2** (antena por defecto; las plantillas no la fijan).
-Lleve **los dos puertos** a la caja, cada uno con su atenuación:
+Desde el 2026-11-11 el profesor autorizó la prueba **al aire**, así que cada puerto lleva su antena:
 
 ```
-B200 TX/RX ── 60 dB ── antena acopladora 1 ─┐
-                                            ├─ caja de apantallamiento ── teléfono (modo avión)
-B200 RX2   ── 60 dB ── antena acopladora 2 ─┘
+B200 TX/RX ── antena 1 ─┐
+                        ├─ 30–50 cm ── teléfono (modo avión hasta el pcap-registro)
+B200 RX2   ── antena 2 ─┘
 ```
 
 Si solo conecta TX/RX, el teléfono verá la celda pero el gNB no recibirá el PRACH (no hay registro).
+Enrosque las antenas **antes** de conectar el USB: el 2026-11-11 el cable se movió al hacerlo y la
+B200 quedó en USB 2. Montaje conducido, solo si se vuelve a exigir: cada puerto → atenuadores
+≥ 60 dB → antena acopladora dentro de una caja de apantallamiento con el teléfono.
 
 > **USRP B200 y plantillas `gnb_b210_*`.** Conservan el nombre B210, pero sirven para la B200 sin
 > cambios: `SDR_DEVICE_ARGS` usa `type=b200` (cubre B200 y B210), la imagen descarga las FPGA de
@@ -362,8 +382,8 @@ desconecta de WSL. Equivale a hacer a mano 2.3 de versiones anteriores (`usbipd 
 | **F3-3** Visibilidad | Teléfono con la SIM, solo 5G/SA, búsqueda manual de redes | Aparece `001 01` o "Test PLMN 1-1" |
 | **F3-4** Registro y seguridad | `.\manage_lab.ps1 pcap-registro` y quitar el modo avión mientras corre | `banco protocolos`: Registration Accept, SUCI con el MSIN de la SIM, NEA2 + NIA2, sesión PDU 10.45.0.x |
 | **F3-5** Plano de usuario | App de ping del teléfono a `10.45.0.1` y `8.8.8.8`; navegar | Respuestas sin pérdida |
-| **F3-6** Caudal | `.\manage_lab.ps1 telefono --atenuacion 60 --duracion 60` y en el teléfono `iperf3 -c 10.45.0.1 -t 60` (con `-R` para DL) | `resultados\<fecha>_telefono\resumen.csv`: RTT, MCS, CQI, SNR, BLER y caudal del gNB |
-| **F3-7** MCS/CQI frente a atenuación | Repetir F3-6 con 60, 70 y 80 dB (cambiar `--atenuacion` en cada paso) | El MCS baja al subir la atenuación; comparar con la tabla de 1.7 |
+| **F3-6** Caudal | `make telefono ARGS="--distancia 0.5 --duracion 60"` y en el teléfono `iperf3 -c 10.45.0.1 -t 60` (con `-R` para DL) | `resultados/<fecha>_telefono/resumen.csv`: RTT, MCS, CQI, SNR, BLER y caudal del gNB (la carpeta guarda también `SDR_TX_GAIN`) |
+| **F3-7** MCS/CQI frente a distancia | Repetir F3-6 a 0,5, 1, 2 y 4 m (cambiar `--distancia`) con la misma `SDR_TX_GAIN`; opcional: a distancia fija, TX 30, 40 y 50 dB (`make lab` tras cambiar `.env`) | El MCS y el CQI bajan al alejar el teléfono; comparar con `banco enlace --distancia` (sección 1.7). Al aire hay multitrayecto: se espera la tendencia, no una curva exacta |
 | **F3-8** Estabilidad | `.\manage_lab.ps1 telefono --duracion 1800` con iperf3 a pocos Mbit/s (`-b 2M`) | Sin liberaciones del UE ni reinicios del gNB |
 
 Notas:
@@ -396,8 +416,7 @@ revisarlas** (llevan el IMSI).
 de libbladeRF solo alcanza ≈ 4,6 MS/s (≈ 18 MB/s, con `Hit stall` y `vhci_hcd: urb->status -104`),
 y `benchmark_rate` a 23,04 MS/s TX + RX perdió el 4,4 % de las muestras (18 093 *overruns*). La
 celda de 20 MHz necesita ≈ 184 MB/s, así que **con cualquier SDR USB el gNB debe correr en Linux
-nativo**; Windows + WSL2 queda para la red ZMQ, las pruebas de baja tasa (calibración con el
-generador) y la preparación. La B200 tendría el mismo límite.
+nativo**; Windows + WSL2 queda para la red ZMQ y la preparación. La B200 tendría el mismo límite.
 
 **Decisión (2026-11-09, hecha el 2026-11-10):** memoria USB con Ubuntu 24.04 *live* con
 persistencia para arrancar el portátil directamente en Linux y trabajar desde ahí.
@@ -475,12 +494,13 @@ uhd_find_devices                                     # type: soapy, driver: blad
 - **USB 3 obligatorio:** con un cable o puerto que no sea USB 3 la bladeRF enumera en *full-speed*
   (`not running at top speed`) y libbladeRF responde `A bladeRF running incompatible firmware` y
   `No devices are available`. Use el cable Micro-B USB 3 (conector ancho) directo al portátil.
-- **Referencia de 10 MHz:** la bladeRF 2.0 acepta una referencia externa por su entrada de reloj
-  U.FL (`bladeRF-cli -e "set clock_ref enable"`); el generador del laboratorio (R&S SMBV100A) da
-  10 MHz por REF OUT y sirve para quitar el offset de frecuencia del VCTCXO.
-- **Calibración con el SMBV100A** (portadora CW, siempre con ≥ 30 dB de atenuación hacia RX1;
-  la RX del AD9361 admite como máximo ≈ +2,5 dBm): offset de frecuencia en ppm y ganancia real de
-  RX a baja tasa, que sí funciona por `usbipd`. Pendiente de hacer.
+- **Referencia de 10 MHz (opcional):** la bladeRF 2.0 acepta una referencia externa por su entrada
+  de reloj U.FL (`bladeRF-cli -e "set clock_ref enable"`).
+- **Generador R&S SMBV100A: no necesario** (indicación del profesor, 2026-11-17). La calibración CW
+  (offset en ppm y ganancia real de RX) sale del plan. El offset del oscilador se comprueba de forma
+  indirecta: si el teléfono ve la celda y se registra, el error de frecuencia es tolerable (TCXO de
+  ±2 ppm ≈ ±7 kHz a 3,5 GHz, que el teléfono compensa al sincronizar con el SSB). Si no la ve ni con
+  TX alta, probar la celda n3 (`gnb_b210_n3.yaml`, 1,8 GHz: la mitad de offset en Hz).
 
 ---
 
