@@ -105,6 +105,7 @@ Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_
 | `Pool overlaps` al hacer `up` | Otra red Docker usa la subred | `python -m banco verificar` sugiere una libre |
 | UDP con pérdida > 100 % | iperf3 3.9 con `-O` en UDP | El banco no usa `-O` en UDP |
 | Caudal bajo y logs enormes | Logs PHY/MAC en `info` | Mantener `warning` (RRC/NGAP/NAS en `info`) |
+| El teléfono se registra y no pide datos; gNB: `UE did not request a PDU session after 3000ms` | Plazo de srsRAN (3 s) y Android en itinerancia sin roaming de datos | `GNB_REQUEST_PDU_SESSION_TIMEOUT=30`, roaming de datos en el teléfono (README F3-3/F3-4) |
 | `ue.log` / `gnb.log` de 4096 B o 0 B con la red en marcha; falta la línea buscada | srslog escribe en bloques de 4 KiB y solo vacía al terminar el proceso | Leerlos tras `down` (no tras `restart-ran`: el contenedor nuevo sobrescribe el log) |
 
 Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` dentro del Core,
@@ -132,6 +133,16 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
   `2500:0020`). El Acer A315-53G tiene un solo puerto USB 3 (`usb1-port1` ↔ `usb2-port1`); en USB 2 el gNB
   aborta con `USRP operating over USB version 2, USB 3 is required`. En USB 3, `benchmark_rate` a
   23,04 MS/s TX+RX pierde 0,006 %.
+  Sin firmware enumera a 480 (bootloader FX3) y pasa a 5000 al cargarlo: mide la velocidad **después**.
+  Si el `gnb-sdr` da `LIBUSB_TRANSFER_ERROR`, `bad vrt header`/`timed out transmissions` o `NO_DEVICE`:
+  parar, `usbreset 2500:0020`, levantar (2026-11-18). Tiempo real del i5: gobernador `performance`,
+  avahi enmascarado y *polling* DRM en `N`, o habrá underflows y colapso (`DL task queue is full`).
+- **Teléfono OnePlus Nord CE 2 Lite (2026-11-18):** necesita **NR only** (app "Administrador de redes 5G";
+  `*#*#4636#*#*` no abre y cambiar el tipo de red en Ajustes lo pisa). La SIM Gialer declara MNC de 3
+  dígitos (EF.AD): SUCI `suci-0-001-010-…`; con la red en 001/01 el SCP busca un SEPP (`No SEPP`,
+  *reject* 95). Con `MNC=010` se registra; se cree itinerante (EHPLMN 001/01), así que exige **roaming de
+  datos**. srsRAN libera al UE sin sesión PDU a los 3 s: `GNB_REQUEST_PDU_SESSION_TIMEOUT=30`
+  (`cu_cp.request_pdu_session_timeout`). Para leer el NAS del teléfono: NEA0 temporal en el AMF.
 - **SIM del kit (Gialer LTE USIM):** pySim `-t gialersim`, sin `-a` (clave fija); EHPLMN se reescribe en
   `pySim-shell` con `verify_chv --pin-nr 12 84796153`. Pasos en la guía del laboratorio, 2.2.
 - **Generador R&S SMBV100A: no necesario** (indicación del profesor, 2026-11-17). Daría 10 MHz y

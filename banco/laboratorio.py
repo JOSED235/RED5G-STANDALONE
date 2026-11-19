@@ -72,11 +72,16 @@ def usb_linux(vid_pid: str, raiz: str = "/sys/bus/usb/devices") -> int | None:
     return None
 
 
-def _usb_linux_ok(vid_pid: str, nombre: str) -> bool:
+def _usb_linux_ok(vid_pid: str, nombre: str, antes_del_firmware: bool = False) -> bool:
     velocidad = usb_linux(vid_pid)
     if velocidad is None:
         print(f"  [ERROR] La {nombre} ({vid_pid}) no aparece en el USB (lsusb): conéctela a un puerto USB 3.0 (azul)")
         return False
+    if velocidad < 5000 and antes_del_firmware and vid_pid.startswith("2500:"):
+        # Sin firmware, el bootloader del FX3 de la B200 enumera a 480 Mbit/s; al cargarlo UHD se reenumera
+        # a 5000 (medido el 2026-11-18 en el i5). La comprobación que cuenta es la de después de la carga.
+        print(f"  [..]    {nombre} a {velocidad} Mbit/s sin firmware (normal): se comprueba de nuevo al cargarlo")
+        return True
     if velocidad < 5000:
         print(f"  [ERROR] La {nombre} enumeró a {velocidad} Mbit/s (no USB 3): cambie el cable o el puerto (azul)")
         return False
@@ -129,7 +134,7 @@ def preparar(compose: Compose) -> int:
         if error:
             print(f"  [ERROR] {error}")
             return 1
-    elif not _usb_linux_ok(vid_pid, nombre):
+    elif not _usb_linux_ok(vid_pid, nombre, antes_del_firmware=True):
         return 1
 
     print("\n>>> 3/5 UHD dentro de la imagen (uhd_find_devices)")
@@ -185,7 +190,7 @@ def benchmark(compose: Compose, duracion: int) -> int:
     print(f">>> Caudal USB de la {nombre}: benchmark_rate {SRATE_MSPS} MS/s TX + RX durante {duracion} s")
     if sys.platform == "win32":
         print("  [AVISO] En Windows pasa por usbipd (~18 MB/s): se esperan pérdidas. Mida en Linux nativo.")
-    elif not _usb_linux_ok(vid_pid, nombre):
+    elif not _usb_linux_ok(vid_pid, nombre, antes_del_firmware=True):
         return 1
     tasa = f"{SRATE_MSPS}e6"
     compose.ejecutar("stop", "gnb-sdr", verificar=False, timeout=60)  # el SDR solo admite un proceso
@@ -193,6 +198,9 @@ def benchmark(compose: Compose, duracion: int) -> int:
                            "/usr/lib/uhd/examples/benchmark_rate", "gnb-sdr",
                            "--args", env.get("SDR_DEVICE_ARGS", ""), "--rx_rate", tasa, "--tx_rate", tasa,
                            "--duration", str(duracion), verificar=False, timeout=duracion + 120)
+    if "over USB 2" in res.stdout + res.stderr or "USB version 2" in res.stdout + res.stderr:
+        print(f"  [ERROR] Con el firmware cargado la {nombre} sigue en USB 2: cambie el cable o el puerto (azul)")
+        return 1
     resumen = parsers.parse_benchmark_rate(res.stdout + res.stderr)
     if not resumen:
         cola = "\n".join((res.stdout + res.stderr).strip().splitlines()[-15:])

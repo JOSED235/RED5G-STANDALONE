@@ -58,7 +58,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Portátil i5-8250U: `git pull` para traer `lab`/`telefono` y la guía nueva (2026-11-10).
 - [ ] Portátil i7-13620H: instalar `usbipd-win` (`winget install --exact dorssel.usbipd-win`), prueba con memoria USB (guía 1.2) y K/OPc en `.env` (los mismos en ambos equipos).
 - [x] Con la B200 real desde Ubuntu nativo en el i5: `uhd_find_devices` (serie 307B57F) y `benchmark_rate` a 23,04 MS/s TX+RX en USB 3 (0,006 % de muestras perdidas, 1 U y 1 O al arrancar) (2026-11-11).
-- [ ] `make lab` pasos 4/5 y 5/5 con la B200: el 2026-11-11 el `gnb-sdr` abrió la B200 en **USB 2** (`USRP operating over USB version 2, USB 3 is required`) y no hubo NG Setup. Primero reasentar el cable Micro-B USB 3 en el único puerto USB 3 del i5 y comprobar la velocidad (`/sys/bus/usb/devices/1-1/speed` o `lsusb -t`) **después** de que el contenedor (UHD 4.1) cargue el firmware; si sigue en 480, investigar el firmware de UHD 4.1 de la imagen frente a UHD 4.6 del anfitrión. Desde el 2026-11-17 `make lab` vuelve a medir la velocidad tras el 3/5 (firmware cargado) y se detiene con una pista si quedó en USB 2.
+- [x] `make lab` 5/5 con la B200 (2026-11-18): NG Setup y celda n78 al aire (3489,42 MHz). El "USB 2" del 11/11 era la lectura **antes** de cargar el firmware (el FX3 sin firmware enumera a 480); `lab`/`benchmark` ya no la rechazan.
 - [x] SDR de reemplazo: **bladeRF 2.0 micro xA9** detectada en USB 3 y vista por UHD vía SoapySDR (`type=soapy,driver=bladerf`); imagen del gNB, plantillas (`SDR_OTW_FORMAT`) y `lab` adaptados (2026-11-09).
 - [x] Linux nativo porque `usbipd` (WSL2) solo da ≈ 18 MB/s y la celda de 20 MHz necesita ≈ 184 MB/s (guía, sección 4): memoria USB con Ubuntu 24.04 *live* con persistencia (2026-11-10, líneas siguientes).
 - [x] Antes de pasar a Ubuntu: `docker save red5g-gnb red5g-open5gs red5g-webui mongo:6.0 -o D:\red5g_imagenes.tar` en el i5 (2026-11-09: 0,46 GB, las cuatro imágenes).
@@ -73,11 +73,17 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] **Dual boot en el i5** (`docs/ubuntu_dual_boot_i5.md`): Fases 1–6 hechas (2026-11-11: Ubuntu 24.04.5 nativo, imágenes cargadas, `red5g-ue` compilada, prueba de humo ZMQ OK, `make lab` hasta 3/5 sin la B200).
 - [x] Limpiar la USB tras la Fase 6: `.env` (K y OPc), `preparar_ubuntu.sh`, `_prueba_vel.bin` y `red5g_imagenes.tar` borrados; queda el instalador de Ubuntu como USB de rescate (2026-11-11).
 - [x] En el i5 (Ubuntu): SIM física programada con pySim (Gialer, IMSI 001010000000001, EHPLMN 001/01) y `SIM_*` llenos en `.env` (2026-11-11).
+- [x] `AMF_CIPHERING_ORDER` de vuelta en `NEA2, NEA1, NEA0` en el `.env` del i5 y red apagada con `make down` (2026-11-18, al cerrar).
+- [ ] Decidir el PLMN de la Fase 3: hoy `MNC=010` en el `.env` del i5 (F3-2); `.env.example` y la Fase 2 siguen en 001/01. Lo limpio es corregir la SIM (EF.AD con MNC de 2 dígitos, EHPLMN 001/01) y volver a 001/01.
+- [ ] En el i5, cuando no se use el gNB: `sudo systemctl unmask avahi-daemon.socket avahi-daemon.service && sudo systemctl start avahi-daemon` (quedó enmascarado). El gobernador `performance` y el *polling* DRM se revierten solos al reiniciar; hay que repetirlos en cada sesión de laboratorio.
+- [ ] `make build` en el i5 con tiempo (recompila srsRAN, > 1 h: las imágenes cargadas con `docker load` no traen caché) para hornear `request_pdu_session_timeout` en la imagen; hoy se montó la plantilla con un override temporal.
+- [ ] Estabilidad de la B200 en el i5: tres fallas de USB el 2026-11-18 (`LIBUSB_TRANSFER_ERROR` al recrear, desconexión al conectar otro USB, `bad vrt header` → `timed out transmissions`); probar la fuente externa de 6 V. Recuperación: parar `gnb-sdr`, `usbreset 2500:0020`, `up`.
+- [ ] Tiempo real del i5 con 20 MHz n78: underflows 7–60/min y un colapso (`DL task queue is full`, `PRACH buffer pool depleted`); con gobernador `performance`, sin avahi ni *polling* DRM bajó a ~7–9/min. Si estorba, celda de 10 MHz.
 - [ ] F3-7 al aire: `make telefono ARGS="--distancia <m>"` a 0,5, 1, 2 y 4 m con la misma `SDR_TX_GAIN` y comparar con `banco enlace --atenuacion 0 --distancia <m>`.
-- [ ] Registrar el teléfono **OnePlus Nord CE 2 Lite 5G** (n78/n3) en la celda n78: el profesor autorizó transmitir al aire con las antenas de la B200 a potencia mínima (`SDR_TX_GAIN=30`, subir de 10 en 10 hasta 80 si no ve la celda). En el teléfono ya hay SIM, modo 5G, roaming de datos y APN `internet` (2026-11-11).
+- [ ] Teléfono **OnePlus Nord CE 2 Lite 5G**: **registrado en la celda n78** el 2026-11-18 (5G-AKA, Registration complete, IMSI 001010000000001) con PLMN **001/010** y `NR only`, pero **no pide la sesión PDU** (FOR=0, sin PDU Session Establishment). El teléfono se cree en itinerancia (EHPLMN 001/01 frente a 001/010) y pidió activar el roaming de datos, que ya quedó activado. Siguiente sesión: `make lab`, reiniciar el teléfono (NR only en la app, datos y roaming activados) y comprobar la sesión PDU (IP 10.45.0.x); si no, corregir la SIM (F3-2).
 - [ ] Opcional: reescribir también EF.OPLMNwAcT / EF.PLMNwAcT de la SIM (siguen con PLMN 732 de Movistar); si el teléfono la toma como red visitante, roaming de datos activado.
 - [ ] En el i5 (Ubuntu): cerrar sesión y volver a entrar para usar `docker` sin `sg docker` (grupos `docker` y `wireshark`); opcional: borrar `~/red5g_imagenes.tar` (copia idéntica en la USB, ya cargada).
-- [ ] Revalidar con el srsUE `a5ed6e78f` el cifrado NEA2 en traza (`pcap-registro` + `banco protocolos`): la prueba de humo del 2026-11-11 solo comprobó registro, sesión PDU y ping.
+- [x] Revalidado con el srsUE `a5ed6e78f`: NAS NEA2 + NIA2 (7 mensajes cifrados) y AS 128-NEA2/128-NIA2 (2026-11-18, `capturas/fase2_traza_20261118_161341_analisis.md`).
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
 
 ### Calidad
@@ -1500,3 +1506,54 @@ el plan seguían armados sobre atenuadores, caja de apantallamiento, Windows y `
 eso a 4 m quizá haga falta más ganancia), `telefono --distancia` con el teléfono.
 
 **Pendiente:** con la B200, `make lab` 4/5 y 5/5, registro del teléfono y F3-6 a F3-8 al aire.
+
+---
+
+## 2026-11-18 — Laboratorio con la B200: celda n78 al aire y teléfono registrado
+
+**Qué se hizo y por qué** (en el i5, Ubuntu nativo, B200 en el puerto USB 3):
+- `banco/laboratorio.py`: el chequeo de USB 3 previo al firmware rechazaba la B200, que sin
+  firmware enumera a 480 Mbit/s (bootloader FX3) y pasa a 5000 al cargarlo. Ahora, antes del
+  firmware, 480 en la B200 es un aviso; la comprobación estricta sigue tras el paso 3/5 de `lab`, y
+  `benchmark` falla si UHD dice `over USB 2`. Esto explica el "USB 2" del 2026-11-11.
+- `banco/pruebas.py`: `pcap --registro` recreaba la RAN de ZMQ aunque estuviera el `gnb-sdr`, y la
+  traza registraba al srsUE (IMSI …780). Con `gnb-sdr` al aire ahora solo pide el ciclo de modo avión.
+- Nuevo `GNB_REQUEST_PDU_SESSION_TIMEOUT` (`.env.example`, `docker-compose.yml`, las tres plantillas
+  del gNB → `cu_cp.request_pdu_session_timeout`, 30 s): srsRAN libera al UE si no pide la sesión PDU
+  en 3 s ("UE did not request a PDU session after 3000ms") y Android tarda más.
+- `.env` local del i5 (no versionado): `SDR_TX_GAIN=40`, `MNC=010`, `AMF_CIPHERING_ORDER=NEA0, NEA2, NEA1` (temporal).
+- Guía (tabla de fallas) y README actualizados con el estado.
+
+**Hallazgos:**
+- `make benchmark`: 30 s a 23,04 MS/s TX + RX, 0 pérdidas. `make lab` 5/5 (NG Setup, SIM dada de alta).
+- Anfitrión: gobernador `powersave`, `avahi-daemon` al 83 % de un núcleo (reactivado por *socket*;
+  hubo que enmascararlo) y *polling* DRM KMS. Con los tres corregidos, los underflows bajaron de
+  30–60/min a ~7–9/min. A las 21:42 UTC el gNB colapsó (`DL task queue is full`, `PRACH buffer pool
+  depleted`) y hubo que recrearlo. Logs guardados: `capturas/gnb_sdr_20261118_*.log`.
+- B200: tres fallas de USB (ver pendientes); se recupera con `usbreset 2500:0020` sin desenchufar.
+- **Teléfono:** con `NR only` (app "Administrador de redes 5G"; el código `*#*#4636#*#*` no abre) hace
+  PRACH → RRC Setup → Registration Request. Con la red en 001/01 el AMF lo rechazaba (*reject* 95):
+  el SUCI era `suci-0-001-010-…`, porque **la SIM declara un MNC de 3 dígitos en EF.AD**, y el SCP
+  buscaba un SEPP (`No SEPP`, `NF-Discover failed [504]`). Con `MNC=010` se registra (5G-AKA con un
+  *Synch failure* inicial que el AMF resincroniza solo; Registration complete 21:55:51, 22:23, 22:31,
+  23:18 y 23:33 UTC). La traza con NEA0 (`capturas/fase2_traza_20261118_181822.pcap`) muestra un
+  Registration Request con FOR=0, Requested NSSAI SST 1 y uso *voice centric*, y un Accept con
+  Allowed NSSAI SST 1 e IMS VoPS. **El teléfono nunca envía PDU Session Establishment.**
+- Cambiar el tipo de red en los Ajustes de Android pisa el `NR only` de la app y el teléfono deja de
+  buscar la celda SA; tras un reinicio tarda varios minutos en encontrarla.
+
+**Verificación:** 54 pruebas unitarias OK; benchmark y `lab` como arriba; `request_pdu_session_timeout: 30`
+comprobado en la configuración generada dentro del `gnb-sdr` (a las 23:33 el gNB ya no liberó al UE).
+**No verificado:** la sesión PDU y el tráfico del teléfono (F3-5 a F3-8); que la imagen reconstruida
+lleve el parámetro (el build se canceló porque recompilaba srsRAN).
+
+**Cierre del día:** a las 23:39 UTC el teléfono mostró "SIM1 está en roaming, activar roaming de datos
+para acceder a internet" y se activó, lo que confirma la causa de F3-4. Después no volvió a registrarse:
+ni en 13 min con NR only, ni con NR/LTE, ni tras recrear el gNB a las 23:59 (gNB sano, sin errores de
+USB, sin `rrcSetupRequest`). Tras una baja el teléfono tarda en volver a buscar la celda SA; las veces
+que funcionó fue tras reiniciarlo o justo al levantar el gNB. Se apagó la red (`make down`) y se
+devolvió el `.env` a NEA2. Fallas documentadas como F3-1 a F3-6 en el README.
+
+**Pendiente:** sesión PDU del teléfono con el roaming de datos activado, PLMN definitivo (corregir la SIM),
+`make build`, fuente de 6 V de la B200 y las mediciones F3-5 a F3-8 (ver "Pendientes vigentes").
+

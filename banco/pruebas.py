@@ -552,7 +552,11 @@ def captura(compose: Compose, segundos: int, registro: bool) -> Path:
     compose.ejecutar("exec", "-T", "-d", "open5gs", "timeout", str(segundos), "tcpdump", "-i", "any", "-U",
                      "-w", f"/capturas/{archivo}", *filtro.split())
     time.sleep(2)
-    if registro:
+    if registro and compose.contenedores().get("gnb-sdr", {}).get("estado") == "running":
+        # Fase 3: el registro lo hace el teléfono por la celda SDR. Recrear la RAN de ZMQ metería al
+        # srsUE en la traza (pasó el 2026-11-18), así que solo se pide el ciclo de modo avión.
+        print(">>> gNB SDR al aire: ponga el teléfono en modo avión, espere 5 s y quítelo AHORA")
+    elif registro:
         print(">>> Reiniciando gNB y UE juntos para registrar NG Setup, Registration y PDU Session...")
         compose.reiniciar_ran()
     print(f">>> Capturando... espere {segundos} s")
