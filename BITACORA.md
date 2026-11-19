@@ -77,23 +77,34 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] Decidir el PLMN de la Fase 3: hoy `MNC=010` en el `.env` del i5 (F3-2); `.env.example` y la Fase 2 siguen en 001/01. Lo limpio es corregir la SIM (EF.AD con MNC de 2 dígitos, EHPLMN 001/01) y volver a 001/01.
 - [ ] En el i5, cuando no se use el gNB: `make revertir-lab` (desenmascara avahi; el resto se revierte también al reiniciar). En cada sesión de laboratorio: `make preparar-lab` en una terminal propia (2026-11-19).
 - [x] ~~`make build` en el i5 para hornear `request_pdu_session_timeout`~~ — ya no es necesario para trabajar: `COMPOSE_FILE=…:docker/compose.montajes.yml` en el `.env` del i5 monta las plantillas y el entrypoint del repositorio (2026-11-19). El `build` queda opcional, para que la imagen sola sea autosuficiente.
-- [x] Estabilidad de la B200 en el i5 (2026-11-19): la fuente de 6 V **no se puede usar**; en su lugar celda de 10 MHz (`GNB_BW_MHZ=10`), `preparar-lab` (C-states incluidos) y recuperación automática con `make vigilar`.
+- [x] Estabilidad de la B200 en el i5 (2026-11-19): la fuente de 6 V **no se puede usar**; en su lugar `preparar-lab` (C-states incluidos) y recuperación automática con `make vigilar`. Se probó la celda de 10 MHz (`GNB_BW_MHZ=10`, más estable), pero el teléfono no la ve: con el teléfono se usa 20 MHz.
 - [x] Primera medición de estabilidad a 20 MHz con el anfitrión preparado (2026-11-19, `resultados/20261119_124514_vigilar_20mhz_tx50_rx20_preparado`): 18 min, 1 falla (`bad vrt header`), recuperada sola en 16,5 s.
 - [ ] Repetir `make vigilar ARGS="--minutos 30"` (o más) para un MTBF con más de una muestra; una sola falla en 18 min no basta para el informe.
 - [ ] Tras una caída de la B200 el teléfono no vuelve solo a la celda (ni con modo avión): hay que reiniciarlo. Documentarlo como limitación y medir cuánto tarda.
-- [ ] Mediciones F3-6/F3-7 con el teléfono: `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m.
+- [ ] Mediciones F3-6/F3-7 con el teléfono: `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m con la misma `SDR_TX_GAIN`, comparando con `banco enlace --atenuacion 0 --distancia <m>`.
 - [ ] Analizar con `banco protocolos` la traza `capturas/fase3_ngap_20261119_121710.pcap` (tiene el registro, PDUSessionResourceSetup y GTP-U del teléfono) para el análisis de protocolos de la Fase 3.
 - [x] Sesión PDU del teléfono y **navegación** confirmada por el usuario (2026-11-19, 17:57:30 UTC, 20 MHz, TX 50 / RX 20): IP 10.45.0.2, ping UPF → teléfono 0 % de pérdida y RTT 30,9 ms. Faltaban el APN `internet` y la itinerancia de datos (se había desactivado).
 - [ ] El teléfono **no ve la celda de 10 MHz** (ni PRACH en 6 min con el anfitrión preparado y tras reiniciarlo): se volvió a 20 MHz. Pendiente decidir si se insiste (otro ARFCN/SSB) o se documenta como limitación del terminal.
-- [ ] Recalcular con `banco enlace --prb 24` los límites teóricos de la celda de 10 MHz para F3-6/F3-7 (las cifras de 51 PRB son de 20 MHz).
+- [ ] Solo si se retoma la celda de 10 MHz: recalcular con `banco enlace --prb 24` los límites teóricos de la celda de 10 MHz para F3-6/F3-7 (las cifras de 51 PRB son de 20 MHz).
 - [ ] `shellcheck` de `docker/host/preparar_lab.sh` (no está instalado en el i5; lo hará la CI al subir).
-- [ ] Tiempo real del i5 con 20 MHz n78: underflows 7–60/min y un colapso (`DL task queue is full`, `PRACH buffer pool depleted`); con gobernador `performance`, sin avahi ni *polling* DRM bajó a ~7–9/min. Si estorba, celda de 10 MHz.
-- [ ] F3-7 al aire: `make telefono ARGS="--distancia <m>"` a 0,5, 1, 2 y 4 m con la misma `SDR_TX_GAIN` y comparar con `banco enlace --atenuacion 0 --distancia <m>`.
-- [ ] Teléfono **OnePlus Nord CE 2 Lite 5G**: **registrado en la celda n78** el 2026-11-18 (5G-AKA, Registration complete, IMSI 001010000000001) con PLMN **001/010** y `NR only`, pero **no pide la sesión PDU** (FOR=0, sin PDU Session Establishment). El teléfono se cree en itinerancia (EHPLMN 001/01 frente a 001/010) y pidió activar el roaming de datos, que ya quedó activado. Siguiente sesión: `make lab`, reiniciar el teléfono (NR only en la app, datos y roaming activados) y comprobar la sesión PDU (IP 10.45.0.x); si no, corregir la SIM (F3-2).
+- [ ] Tiempo real del i5 con 20 MHz n78: underflows 7–60/min y un colapso (`DL task queue is full`, `PRACH buffer pool depleted`); con gobernador `performance`, sin avahi ni *polling* DRM bajó a ~7–9/min. La celda de 10 MHz no sirve con el teléfono (no la ve).
+- [x] Teléfono **OnePlus Nord CE 2 Lite 5G**: **registrado en la celda n78** el 2026-11-18 (5G-AKA, Registration complete, IMSI 001010000000001) con PLMN **001/010** y `NR only`, pero **no pide la sesión PDU** (FOR=0, sin PDU Session Establishment). El teléfono se cree en itinerancia (EHPLMN 001/01 frente a 001/010) y pidió activar el roaming de datos, que ya quedó activado. Resuelto el 2026-11-19 con el APN `internet` y el roaming de datos: sesión PDU 10.45.0.2 (F3-4).
 - [ ] Opcional: reescribir también EF.OPLMNwAcT / EF.PLMNwAcT de la SIM (siguen con PLMN 732 de Movistar); si el teléfono la toma como red visitante, roaming de datos activado.
 - [ ] En el i5 (Ubuntu): cerrar sesión y volver a entrar para usar `docker` sin `sg docker` (grupos `docker` y `wireshark`); opcional: borrar `~/red5g_imagenes.tar` (copia idéntica en la USB, ya cargada).
 - [x] Revalidado con el srsUE `a5ed6e78f`: NAS NEA2 + NIA2 (7 mensajes cifrados) y AS 128-NEA2/128-NIA2 (2026-11-18, `capturas/fase2_traza_20261118_161341_analisis.md`).
 - [ ] Con el terminal comercial, confirmar que el PDSCH ocupa los 106 PRB: las plantillas B210 ya usan DCI 1_1 (no llevan `ss2_type: common` ni `dci_format_0_1_and_1_1: false`); verlo con `mac_level: info` (prueba F3-6 de `docs/fase3_plan_pruebas.md`). Las constantes `P8_N_PRB` / `P8_N_RE_PRB` de `banco/estadistica.py` solo valen para la celda ZMQ.
+
+### Entrega final (informe de la Fase 3, presentación y video)
+- [x] Informe de la Fase 3 redactado con los datos existentes: `docs/informe_fase3.tex` (2026-11-19).
+- [x] Presentación final: `docs/presentacion_final.tex` (Beamer, 14 diapositivas) (2026-11-19).
+- [x] Guion del video y lista de la última sesión: `docs/fase3_guion_video.md` (2026-11-19).
+- [ ] Última sesión de laboratorio: barrido por distancia con nPerf + `make telefono`, `vigilar` de 30–60 min, traza de la sesión PDU y grabación del video (`docs/fase3_guion_video.md`).
+- [ ] `banco protocolos` sobre la traza de la sesión PDU (la del 19/11 está solo en el i5, en `capturas/`).
+- [x] `make datos-fase3` (`analisis/fase3.py`): resultados de `telefono`/`vigilar` → `docs/fase3_datos.tex`, que el informe y la presentación cargan solos (2026-11-19).
+- [x] `make informe` compila ambos PDF con `texlive/texlive:latest-full`; borradores compilados y revisados página por página (informe 5 págs., presentación 14) (2026-11-19).
+- [ ] Tras la sesión: `make datos-fase3`, llenar el bloque "VALORES A LLENAR" (`\enlacevideo`, `\nperfdl`, `\nperful`, `\nperfping`) y las 4 frases en rojo, `make informe` y comprobar que no queda rojo.
+- [ ] Subir el video (YouTube no listado o Drive) y entregar el PDF del informe, el de la presentación y el enlace.
+- [ ] Confirmar si el repositorio de GitHub es público (la última diapositiva lo cita).
 
 ### Calidad
 - [x] CI en GitHub Actions (`.github/workflows/ci.yml`), simulada en local (2026-11-02).
@@ -1676,3 +1687,91 @@ aún:** mediciones `telefono`, traza de la sesión PDU.
 - La app del usuario para medir es nPerf (contra servidores de Internet); `make telefono` registra en paralelo
   las métricas del gNB y el RTT UPF → teléfono.
 
+
+## 2026-11-19 — Revisión del último commit: contradicciones en la documentación
+
+**Qué se hizo:** revisión de `0270493`. No había conflictos de git (árbol limpio, `main` igual a
+`origin/main`, sin marcadores de conflicto). Sí había contradicciones de contenido tras volver de 10 a
+20 MHz, corregidas:
+- `README.md`: el estado de la Fase 3 decía "se pasó a 10 MHz" y F3-5 proponía 10 MHz como solución; ahora
+  dicen que se probó 10 MHz, que el teléfono no ve esa celda y que con el teléfono se usa 20 MHz +
+  `make preparar-lab`.
+- `BITACORA.md` (Pendientes vigentes): la entrada de estabilidad de la B200 y la de tiempo real del i5
+  presentaban 10 MHz como solución (corregido); el pendiente del OnePlus "no pide la sesión PDU" seguía
+  abierto aunque se resolvió (marcado `[x]`, F3-4); el pendiente F3-7 por distancia estaba duplicado
+  (fusionado con el de mediciones F3-6/F3-7); el recálculo con `--prb 24` queda condicionado a retomar
+  10 MHz.
+
+**Verificación:** 61 pruebas unitarias OK (`py -X utf8 -m unittest discover -s banco/tests -t .`),
+`docker compose config -q` OK con y sin `docker/compose.montajes.yml`. No se pudo consultar la CI en
+GitHub (conexión rechazada), así que el `shellcheck` de `preparar_lab.sh` sigue sin confirmar.
+
+**Pendiente:** lo mismo que en "Pendientes vigentes"; confirmar la CI del último push.
+
+---
+
+## 2026-11-19 — Informe de la Fase 3, presentación final y guion del video
+
+**Qué se hizo y por qué:** el usuario pidió adelantar todo lo de la entrega final (documento,
+presentación y enlace al video) que no exige estar en el laboratorio, con los datos ya obtenidos. El
+informe es solo de la Fase 3; el README queda como descripción del proyecto completo.
+- `docs/informe_fase3.tex` (IEEEtran, mismo preámbulo que la Fase 2): montaje y configuración del SDR
+  (por qué Linux nativo, celda n78, calibración de TX/RX con la saturación del RX, reloj validado por
+  el registro, ancho de banda y tiempo real, `vigilar`), SIM y conexión del teléfono paso a paso,
+  análisis de protocolos (traza NEA0 del 18/11, causa NGAP 21, sesión PDU del 19/11), KPIs (cota
+  TS 38.306 de 53,8 Mbit/s en DL, presupuesto de enlace con `banco enlace` a TX 50 frente a lo medido,
+  tabla con la Fase 2, estabilidad), tabla F3-1 a F3-8, normativa/exposición/privacidad y conclusiones.
+  Lo que falta medir va en rojo con `\pendiente{...}`; el enlace del video, en `\enlacevideo`.
+- `docs/presentacion_final.tex` (Beamer 16:9, 14 diapositivas): mismo contenido y mismas marcas.
+- `docs/fase3_guion_video.md`: pasos de la última sesión, escenas del video, barrido por distancia y
+  tabla que relaciona cada `\pendiente` con su fuente.
+- `README.md`: sección "Entrega final (Fase 3)" en la sección 8, documentos en la sección 9 y estado.
+
+**Supuestos del informe (dichos en el texto):** Ptx de la B200 con TX 50 = −30 dBm, extrapolada de los
+−50 dBm supuestos con TX 30 (sin generador no se calibró). `banco enlace --ptx -30 --gtx 3 --nf 9
+--frecuencia 3489.42 --prb 51 --scs 30 --fraccion 0.657 --atenuacion 0 --distancia d` da MCS 27/22/18/12
+y 51,6/37,8/26,4/16,4 Mbit/s a 0,5/1/2/4 m. Los 10 Mbit/s de DL del 19/11 se presentan como demanda de
+la navegación, no como capacidad.
+
+**Verificación:** chequeo estático de ambos `.tex` con un script (llaves balanceadas, `begin`/`end`
+emparejados, citas con su `bibitem`, `ref` con su `label`, sin tabuladores). **No verificado:** la
+compilación (no hay LaTeX en este equipo y Docker Desktop estaba apagado); hay que compilar en Overleaf
+o con `texlive/texlive:latest-full` y revisar la maquetación (tabla F3 a dos columnas, figuras TikZ).
+No se cambió código: no aplica `unittest`.
+
+**Pendiente:** ver "Entrega final" en "Pendientes vigentes".
+
+### Continuación: datos automáticos y compilación de los entregables
+
+**Qué se hizo:** dejar el informe y la presentación listos para que, tras el laboratorio, solo haya que
+ejecutar un comando y llenar unos pocos valores.
+- `analisis/fase3.py` (`make datos-fase3`, `.\manage_lab.ps1 datos-fase3`; solo biblioteca estándar): lee los
+  `resumen.csv` de `F3_telefono` (por `distancia_m`) y `F3_vigilar` y escribe `docs/fase3_datos.tex` con
+  `\datosfilasdistancia` (nueva Tabla IV: MCS previsto por `banco.enlace`, MCS, CQI, BLER, caudal DL, SNR UL,
+  RTT), `\datosgraficamcs` (puntos medidos con IC 95 % en la Fig. 2) y `\datosvigilar` (vigilancia más
+  larga: fallas, recuperación, MTBF, disponibilidad, eventos del UE). Prueba `banco/tests/test_fase3_datos.py`.
+- Informe y presentación: `\IfFileExists{fase3_datos.tex}` + `\providecommand` con la marca roja por defecto;
+  bloque "VALORES A LLENAR" al inicio de cada `.tex` (`\enlacevideo`, `\nperfdl`, `\nperful`, `\nperfping`);
+  subsección nueva "Barrido por distancia"; ajustes de maquetación (Fig. 1, tablas III–V, diapositiva 3).
+- `make informe` / `.\manage_lab.ps1 informe`: `latexmk -g` en `texlive/texlive:latest-full` (`-g` porque
+  latexmk no recompila cuando aparece `fase3_datos.tex`, que no estaba en sus dependencias: se comprobó).
+- PDF de borrador versionados (`docs/informe_fase3.pdf`, `docs/presentacion_final.pdf`, con las marcas rojas);
+  `.gitignore` con los auxiliares de Beamer/latexmk. README, `docker/README.md`, guion y skill actualizados.
+
+**Fallas corregidas al compilar:** `\%` dentro de `$...$` rompe con babel-spanish (`Incompatible glue units`):
+el `\%` va fuera del modo matemático (también en el generador); dos `Overfull \hbox` (cabecera de la tabla por
+distancia y `\texttt` largo en la tabla de fallas).
+
+**Verificación:** 63 pruebas unitarias OK. Compilación sin datos y con un `fase3_datos.tex` de muestra (4
+distancias, 3 corridas, vigilancia de 60 min): sin errores, sin referencias indefinidas ni `Overfull`;
+páginas renderizadas a PNG y revisadas (tabla, figura y frase se llenan bien). El archivo de muestra se borró.
+`manage_lab.ps1` sin errores de sintaxis (parser de PowerShell), con BOM y CRLF. **No verificado:**
+`make datos-fase3` con resultados reales (están en el i5) ni `make informe` desde Ubuntu (solo se probó el
+mismo `docker run` desde Windows).
+
+### Nota: regla para la sesión de mediciones
+
+A pedido del usuario se añadió en `CLAUDE.md` (sección "Mediciones de la Fase 3") y al inicio de
+`docs/fase3_guion_video.md` la regla de guardar cada medición en cuanto aparece y actualizar de inmediato los
+valores pendientes del informe y la presentación (`make datos-fase3`, macros de nPerf y del video, frases en
+rojo, `make informe`, bitácora y commit local). Solo documentación; no requiere verificación.

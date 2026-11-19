@@ -12,6 +12,11 @@ capturas/*
 *.log
 *.out
 *.synctex.gz
+*.nav
+*.snm
+*.toc
+*.fls
+*.fdb_latexmk
 
 # Resultados del banco de pruebas (python -m banco). Copie a docs/ los que use en el informe.
 resultados/*

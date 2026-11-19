@@ -16,6 +16,25 @@ dar el trabajo por terminado. La entrada sigue la plantilla del propio archivo e
 Además, se actualiza la sección **"Pendientes vigentes"** al inicio de `BITACORA.md`
 (marcar lo terminado, añadir lo nuevo) para que siempre refleje el estado actual.
 
+## Mediciones de la Fase 3: guardar y actualizar los entregables en el acto
+Regla para el usuario y para Claude durante la sesión final de laboratorio (guía:
+[`docs/fase3_guion_video.md`](docs/fase3_guion_video.md)). **Cada vez que aparezca una medición nueva** no se
+espera al final: se guarda y se actualizan de inmediato todos los valores pendientes del informe y la presentación.
+
+| Medición detectada | Acción inmediata |
+| :--- | :--- |
+| Carpeta nueva en `resultados/` de `make telefono` o `make vigilar` | `make datos-fase3` (regenera `docs/fase3_datos.tex`: tabla por distancia, Fig. 2 y estabilidad) |
+| Valores de nPerf (los dicta el usuario o salen de una captura) | Poner `\nperfdl`, `\nperful` y `\nperfping` en el bloque "VALORES A LLENAR" de **ambos** `docs/informe_fase3.tex` y `docs/presentacion_final.tex` |
+| Traza nueva con la sesión PDU (`capturas/*.pcap`) | `python3 -m banco protocolos <traza>` y reemplazar el `\pendiente` de la sección de protocolos con TEID, IP, QoS y tiempos |
+| Enlace del video | `\enlacevideo` en ambos `.tex` (`\url{...}`) |
+| Datos suficientes para una de las frases en rojo | Redactarla y quitar su `\pendiente` (caudal, tendencia con la distancia, conclusión 3, diapositiva del presupuesto de enlace) |
+
+Después de cada acción: `make informe` (que compile sin errores), contar lo que queda con
+`grep -c '\\pendiente{' docs/informe_fase3.tex docs/presentacion_final.tex`, una línea en `BITACORA.md` con el
+dato y su carpeta de origen, y **commit local** (`resultados/` no se versiona: el dato queda a salvo en
+`docs/fase3_datos.tex` y en la bitácora). Push al cerrar la sesión o cuando el usuario lo pida. No se inventan
+ni se redondean datos: si una medición falla o falta, se dice en la bitácora y su marca roja se mantiene.
+
 ## README siempre al día
 El [`README.md`](README.md) raíz debe explicar en todo momento el contexto del proyecto, qué se
 hace y cómo se hace (arquitectura, herramientas, comandos y estado por fase). Cada cambio que añada

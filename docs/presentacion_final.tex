@@ -1,0 +1,317 @@
+% Presentación final - Proyecto 5G SA (srsRAN + Open5GS + SDR), Fase 3
+% Autor: Jose David Rodriguez Pinilla (A00407151) - Sistemas y Comunicaciones 2, Universidad Icesi
+% Compilar con pdfLaTeX (Overleaf o texlive/texlive:latest-full), igual que los informes.
+% Las cifras son las de docs/informe_fase3.tex. Lo pendiente aparece en rojo con \pendiente{...}.
+
+\documentclass[aspectratio=169,10pt]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\pendiente}[1]{\textcolor{red}{\textbf{[#1]}}}
+
+%--- VALORES A LLENAR TRAS EL LABORATORIO (los mismos del informe) ---------------------------------
+\newcommand{\enlacevideo}{\pendiente{enlace al video}}
+\newcommand{\nperfdl}{\pendiente{nPerf DL}}
+\newcommand{\nperful}{\pendiente{nPerf UL}}
+%-------------------------------------------------------------------------------------------------
+
+% Datos automáticos de 'make datos-fase3' (mismo archivo que usa el informe)
+\IfFileExists{fase3_datos.tex}{\input{fase3_datos.tex}}{}
+\providecommand{\datosgraficamcs}{\addplot[red,only marks,mark=square*,error bars/.cd,y dir=both,y explicit]
+  coordinates {(1,25) +- (0,1)};\addlegendentry{Medido 19/11}}
+\providecommand{\datosvigilar}{\pendiente{vigilancia de 30--60 min}}
+
+\title[Red 5G SA con SDR]{Red 5G Standalone con srsRAN, Open5GS y USRP B200}
+\subtitle{Fase 3: integración SDR y terminal comercial}
+\author[J. D. Rodríguez]{Jose David Rodríguez Pinilla}
+\institute[Icesi]{Sistemas y Comunicaciones 2 --- Universidad Icesi\\Docente: Andrés Navarro Cadavid, PhD}
+\date{Noviembre de 2026}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{El proyecto en tres fases}
+\begin{columns}[T]
+\column{0.32\textwidth}
+\textbf{Fase 1: diseño}
+\begin{itemize}\small
+  \item Arquitectura srsRAN--Open5GS (N1, N2, N3, N4, N6)
+  \item Modelo LDPC/Polar y MCS
+  \item Simulación ZMQ y presupuesto de enlace
+\end{itemize}
+\column{0.32\textwidth}
+\textbf{Fase 2: Zero-RF}
+\begin{itemize}\small
+  \item Núcleo y gNB en contenedores
+  \item NEA2/NIA2, trazas campo a campo
+  \item RTT 31,9 ms, TCP DL 48,6 Mbit/s
+\end{itemize}
+\column{0.32\textwidth}
+\textbf{Fase 3: al aire}
+\begin{itemize}\small
+  \item USRP B200, celda n78
+  \item SIM programada con pySim
+  \item \alert{Teléfono comercial navegando}
+\end{itemize}
+\end{columns}
+\vspace{1em}
+\begin{block}{Objetivo de la Fase 3}
+Transmisión al aire y validación con un teléfono comercial real: conectar, autenticar, navegar y medir KPIs.
+\end{block}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Montaje}
+\centering
+\begin{tikzpicture}[font=\small,
+  caja/.style={draw,rounded corners=2pt,align=center,minimum height=1cm,inner sep=4pt},
+  flecha/.style={-{Latex[length=2mm]},thick}]
+\node[caja,fill=blue!8] (core) {Open5GS\\AMF, SMF, UPF, \ldots};
+\node[caja,fill=blue!8,left=1.4cm of core] (gnb) {gNB srsRAN\\(contenedor)};
+\node[caja,fill=gray!10,below=0.4cm of core] (mongo) {MongoDB};
+\begin{scope}[on background layer]
+\node[draw,dashed,rounded corners,fit=(gnb)(core)(mongo),inner sep=6pt,label={above:Portátil i5-8250U, Ubuntu 24.04 nativo, Docker}] {};
+\end{scope}
+\node[caja,fill=orange!15,left=1.6cm of gnb] (b200) {USRP B200\\AD9361};
+\node[caja,fill=green!12,below=1.4cm of b200] (tel) {OnePlus Nord\\CE 2 Lite 5G};
+\node[caja,right=1.2cm of core] (inet) {Internet};
+\draw[flecha,<->] (b200) -- node[above]{USB 3} (gnb);
+\draw[flecha,<->] (gnb) -- node[above]{N2/N3} (core);
+\draw[flecha,<->] (core) -- node[above]{N6} (inet);
+\draw[flecha,<->] (b200) -- node[left,align=center]{n78 TDD\\al aire} (tel);
+\draw[thick] (core) -- (mongo);
+\end{tikzpicture}
+\vspace{0.5em}
+\begin{itemize}\small
+  \item Mismos contenedores de la Fase 2: solo cambia la plantilla del gNB (ZMQ $\rightarrow$ UHD).
+  \item Linux nativo: \texttt{usbipd} (WSL2) daba 18 MB/s; la celda exige $\approx$184 MB/s.
+\end{itemize}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Configuración de la celda}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+\begin{tabular}{ll}
+\toprule
+Banda & n78 TDD \\
+Frecuencia & 3489,42 MHz \\
+Ancho / SCS / PRB & 20 MHz / 30 kHz / 51 \\
+Muestreo & 23,04 MS/s (sc12) \\
+TDD (5 ms) & 6 DL + especial + 3 UL \\
+PLMN & 001/010 (pruebas) \\
+Seguridad & NEA2 + NIA2 \\
+TX / RX & 50 dB / 20 dB \\
+\bottomrule
+\end{tabular}
+\column{0.48\textwidth}
+\begin{block}{¿Por qué n78?}
+\small El teléfono solo hace SA en n78 en la práctica, y es la banda 5G de referencia en Colombia.
+\end{block}
+\begin{block}{Reloj}
+\small Sin GPSDO ni generador: el desvío del TCXO ($\pm$7 kHz a 3,5 GHz) se valida porque el teléfono sincroniza, se registra y sostiene BLER 0--1\,\%.
+\end{block}
+\end{columns}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Calibración de ganancias: la saturación del receptor}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Síntoma (RX 40 dB, teléfono a 1 m)}
+\begin{itemize}\small
+  \item Liberación a los 8--13 s: NGAP \texttt{radio-connection-with-ue-lost}
+  \item RSRP PUSCH = \texttt{ovl} (ADC desbordado)
+  \item PHR $-16$ a $-31$ dB: el teléfono transmite al máximo
+  \item Siguiente PUSCH: 10/10 errores, SNR $-24$ dB
+\end{itemize}
+\column{0.48\textwidth}
+\textbf{Corrección: RX 20 dB}
+\begin{itemize}\small
+  \item PUSCH con SNR 28--29 dB, sin \texttt{ovl}
+  \item A corta distancia el límite es el rango dinámico, no la sensibilidad
+\end{itemize}
+\textbf{TX}
+\begin{itemize}\small
+  \item 30 $\rightarrow$ 40 dB hasta ver la celda; 50 dB con margen
+  \item 60 dB: la B200 cae a los 95 s
+\end{itemize}
+\end{columns}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Tiempo real del anfitrión y estabilidad}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Causas de los \textit{underflows} (20--60/min)}
+\begin{itemize}\small
+  \item Gobernador \texttt{powersave}
+  \item \texttt{avahi-daemon} al 83\,\% de un núcleo
+  \item Sondeo DRM, C-states de hasta 890 \textmu s
+  \item Suspensión automática del USB
+\end{itemize}
+$\Rightarrow$ \texttt{make preparar-lab}: 7--9/min
+\column{0.48\textwidth}
+\textbf{Caídas del USB de la B200} (sin fuente de 6 V)
+\begin{itemize}\small
+  \item \texttt{make vigilar}: detecta, \texttt{usbreset}, recrea y espera NG Setup
+  \item 18 min: 1 caída, recuperada en \alert{16,5 s}
+  \item Disponibilidad $\approx$ 98,5\,\%
+  \item {\scriptsize Última sesión: \datosvigilar}
+\end{itemize}
+\textbf{10 MHz}: 0 \textit{underflows}, pero el teléfono no la ve $\Rightarrow$ 20 MHz
+\end{columns}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Conexión del teléfono: cada reintento, una causa}
+\small
+\begin{tabular}{p{4.2cm}p{5.2cm}p{4.2cm}}
+\toprule
+\textbf{Síntoma} & \textbf{Causa (evidencia)} & \textbf{Solución} \\
+\midrule
+\textit{Registration reject} 95 & SIM con MNC de 3 dígitos: SUCI 001/010 (log del AMF/SCP) & Red en 001/010 \\
+Liberación a los 3 s & Plazo de sesión PDU de srsRAN & 30 s \\
+Liberación a los 8--13 s & RX saturado (NGAP causa 21, \texttt{ovl}) & RX 20 dB \\
+Registrado sin sesión PDU & Android en itinerancia (sin NAS tras el registro) & APN + datos en itinerancia \\
+\bottomrule
+\end{tabular}
+\vspace{1em}
+\begin{alertblock}{Resultado (19/11/2026, 17:57:30 UTC)}
+5G-AKA, sesión PDU con IP 10.45.0.2 (DNN \texttt{internet}) y \textbf{navegación por Internet} desde el teléfono.
+\end{alertblock}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Análisis de protocolos con el terminal real}
+\begin{itemize}
+  \item \textbf{Registro} (traza NEA0 de control): SUCI de esquema nulo, FOR=0, NSSAI SST 1, \textit{voice centric}.
+  \item \textbf{5G-AKA con \textit{Synch failure}}: SQN de la SIM nueva $\neq$ UDM; AUTS y resincronización automática.
+  \item \textbf{Seguridad}: Security Mode Command con NEA2 + NIA2; el NAS siguiente va cifrado.
+  \item \textbf{Diagnóstico}: NGAP no va cifrado: la causa de la liberación (\texttt{radio-connection-with-ue-lost}) separó radio de NAS.
+  \item \textbf{Sesión PDU}: PDUSessionResourceSetup (TEID de N3), PFCP con PDR/FAR/QER y GTP-U del teléfono.
+\end{itemize}
+\pendiente{tiempos y campos de \texttt{banco protocolos} sobre la traza del 19/11}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{KPIs medidos (teléfono a $\approx$1 m)}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{KPI} & \textbf{Fase 3} & \textbf{Referencia} \\
+\midrule
+RTT medio & 30,9 ms & Fase 2: 31,9 ms \\
+RTT mín./máx. & 17 / 36,9 ms & 0\,\% pérdidas \\
+CQI / MCS DL & 13 / 24--26 & Previsto: 22 \\
+BLER DL & 0--1\,\% & --- \\
+SNR PUSCH & 28--29 dB & --- \\
+MCS UL & 28 & srsUE: 5--6 \\
+DL (nPerf) & \nperfdl & Cota 53,8 Mbit/s \\
+UL (nPerf) & \nperful & --- \\
+\bottomrule
+\end{tabular}
+\column{0.43\textwidth}
+\begin{block}{Cota TS 38.306 (n78, TDD)}
+\small $6\cdot\frac{948}{1024}\cdot\frac{12\cdot51}{T_s}\cdot0{,}86 \approx 81{,}9$ Mbit/s\\
+$\times$ 0,657 (DL) $\approx$ \textbf{53,8 Mbit/s}
+\end{block}
+\small El UL llega a MCS 28: el límite de la Fase 2 era el emulador srsUE.
+\end{columns}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Presupuesto de enlace frente a lo medido}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{tikzpicture}
+\begin{axis}[width=\linewidth,height=5.2cm,
+  xlabel={Distancia (m)}, ylabel={MCS DL},
+  xmode=log, log basis x=2, xtick={0.5,1,2,4}, xticklabels={0{,}5,1,2,4},
+  ymin=0, ymax=30, grid=major, legend pos=south west, legend style={font=\scriptsize},
+  tick label style={font=\scriptsize}, label style={font=\scriptsize}]
+\addplot[blue,thick,mark=*] coordinates {(0.5,27) (1,22) (2,18) (4,12)};
+\addlegendentry{Predicción}
+\datosgraficamcs
+\end{axis}
+\end{tikzpicture}
+\column{0.4\textwidth}
+\small
+\begin{itemize}
+  \item Espacio libre, 3489 MHz, NF 9 dB
+  \item Ptx supuesta $-30$ dBm (sin generador)
+  \item A 1 m, medido 2--4 MCS por encima: Ptx real algo mayor o multitrayecto en interiores
+  \item \pendiente{tendencia con la distancia}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Normativa, exposición y ética}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Espectro}
+\begin{itemize}\small
+  \item MinTIC asigna, ANE planea y vigila (CNABF); n78 asignada a operadores
+  \item Prueba al aire autorizada por el docente, solo en el laboratorio
+  \item Potencia mínima, celda apagada al terminar
+  \item PLMN de pruebas 001, nunca MCC 732
+\end{itemize}
+\column{0.48\textwidth}
+\textbf{Exposición y privacidad}
+\begin{itemize}\small
+  \item B200: miliwatios; muy por debajo de ICNIRP 2020 (un teléfono emite hasta 200 mW)
+  \item K y OPc solo en \texttt{.env} local, fuera de git, trazas y comandos (Ley 1581)
+  \item SUCI nulo solo aceptable con SIM de laboratorio
+\end{itemize}
+\end{columns}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Demostración}
+\centering
+\Large Video de la demostración\\[0.6em]
+\normalsize \enlacevideo\\[1.2em]
+\begin{itemize}
+  \item Celda n78 al aire con la B200 y NG Setup
+  \item Teléfono en 5G SA: registro, sesión PDU e IP 10.45.0.2
+  \item Navegación y prueba de velocidad (nPerf)
+  \item Métricas del gNB y traza en Wireshark
+\end{itemize}
+\end{frame}
+
+%---------------------------------------------------------------------
+\begin{frame}{Conclusiones}
+\begin{enumerate}\small
+  \item \textbf{Viable:} un teléfono comercial sin modificar se autenticó, obtuvo sesión PDU y navegó por una red 5G SA de software libre con un SDR de bajo costo.
+  \item \textbf{Calibración por medición:} RX 40 $\rightarrow$ 20 dB por saturación; TX solo hasta tener servicio con margen.
+  \item \textbf{KPIs coherentes con la teoría:} MCS medido acorde al presupuesto de enlace; RTT igual al de la Fase 2; UL MCS 28.
+  \item \textbf{Los problemas estaban en los bordes:} SIM, Android, rango dinámico del SDR y tiempo real del anfitrión; todos diagnosticados con trazas o métricas.
+  \item \textbf{Propuestas:} fuente de 6 V o B210, anfitrión con más núcleos, GPSDO, corregir EF.AD de la SIM (volver a 001/01).
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\centering
+\Large ¡Gracias!\\[1em]
+\normalsize Repositorio, bitácora y banco de pruebas: \texttt{github.com/JOSED235/RED5G-STANDALONE}\\[0.5em]
+Video: \enlacevideo
+\end{frame}
+
+\end{document}

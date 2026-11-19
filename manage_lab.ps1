@@ -11,6 +11,7 @@
 #                   .\manage_lab.ps1 vigilar     (caídas del SDR: recuperación automática y registro de fallas)
 #                   .\manage_lab.ps1 up-sdr   (solo levanta Core + gNB SDR; ver docs/fase3_guia_laboratorio.md)
 #   Análisis (paso 3, requiere matplotlib):  .\manage_lab.ps1 analisis [resultados\<carpeta>]
+#   Entrega Fase 3: .\manage_lab.ps1 datos-fase3 (resultados -> docs\fase3_datos.tex) | informe (PDF con Docker)
 #   Ejemplos:
 #     .\manage_lab.ps1 p7 --tasas 2,5,10,20 --sentidos dl
 #     .\manage_lab.ps1 campana --pruebas ping,iperf,p7,p10 --corridas 5
@@ -20,7 +21,7 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
                  "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean",
-                 "up-sdr", "registro", "lab", "telefono", "benchmark", "vigilar")]
+                 "up-sdr", "registro", "lab", "telefono", "benchmark", "vigilar", "datos-fase3", "informe")]
     [string]$Action = "up",
     [int]$Seconds = 60,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -144,6 +145,13 @@ switch ($Action) {
     "campana"       { Invoke-Banco (@("campana") + $Opciones) }
     "banco"         { Invoke-Banco $Opciones }
     "analisis"      { Invoke-Banco $Opciones "analisis.graficas" }
+    "datos-fase3"   { Invoke-Banco $Opciones "analisis.fase3" }
+    "informe" {
+        # Igual que 'make informe': TeX Live en Docker compila el informe y la presentación de la Fase 3
+        docker run --rm -v "${PSScriptRoot}\docs:/d" -w /d texlive/texlive:latest-full `
+            sh -c "latexmk -g -pdf -interaction=nonstopmode -halt-on-error informe_fase3.tex presentacion_final.tex && latexmk -c"
+        exit $LASTEXITCODE
+    }
     "pcap"          { Invoke-Banco (@("pcap", "--segundos", "$Seconds") + $Opciones) }
     "pcap-registro" { Invoke-Banco (@("pcap", "--segundos", "$Seconds", "--registro") + $Opciones) }
     "clean" {

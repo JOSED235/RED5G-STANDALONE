@@ -90,6 +90,11 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
 - **Vigilancia del SDR:** `banco vigilar` lee `compose.logs(servicio, desde, hasta)` por ventanas con el reloj
   del motor (`compose.reloj()`), no `logs -f`: este deja de seguir un contenedor recreado. Los clasificadores
   (`clasificar_falla_sdr`, `clasificar_evento_core`) son puros y se prueban con líneas reales.
+- **Datos del laboratorio al informe:** `analisis/fase3.py` (`make datos-fase3`) escribe `docs/fase3_datos.tex`
+  con macros `\def\datos...`; `informe_fase3.tex` y `presentacion_final.tex` lo cargan con `\IfFileExists` y
+  dan un valor por defecto con `\providecommand` (marca roja `\pendiente{...}`), así compilan con o sin datos.
+  Para una gráfica, la macro contiene el `\addplot ... coordinates {...};` completo (pgfplots no expande una
+  macro dentro de `coordinates`). `make informe` compila con `texlive/texlive:latest-full` en Docker.
 - **Revisión del anfitrión:** `revisar_anfitrion(raiz)` lee sysfs con raíz configurable, así se prueba con un
   árbol falso en un directorio temporal (`test_laboratorio.py`). `sudo` desde Claude Code no puede pedir la
   contraseña: los pasos con sudo los corre el usuario en su propia terminal (`make preparar-lab`).

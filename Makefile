@@ -1,6 +1,7 @@
 .PHONY: verificar up build down restart restart-ran logs logs-gnb logs-ue logs-core ps status \
         test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro analisis test-banco clean \
-        up-sdr registro lab telefono benchmark vigilar preparar-lab revertir-lab
+        up-sdr registro lab telefono benchmark vigilar preparar-lab revertir-lab \
+        datos-fase3 informe
 
 # Intérprete del banco de pruebas y opciones extra, p. ej.: make p7 ARGS="--tasas 2,5,10"
 PYTHON ?= python3
@@ -122,6 +123,15 @@ pcap-registro:
 # (requiere: pip install -r analisis/requirements.txt)
 analisis:
 	$(PYTHON) -m analisis.graficas $(ARGS)
+
+# Entrega de la Fase 3: datos del laboratorio -> docs/fase3_datos.tex (lo cargan el informe y la presentación)
+datos-fase3:
+	$(PYTHON) -m analisis.fase3 $(ARGS)
+
+# Compila docs/informe_fase3.tex y docs/presentacion_final.tex a PDF con TeX Live en Docker (sin LaTeX local)
+informe:
+	docker run --rm -v "$(CURDIR)/docs:/d" -w /d texlive/texlive:latest-full \
+		sh -c "latexmk -g -pdf -interaction=nonstopmode -halt-on-error informe_fase3.tex presentacion_final.tex && latexmk -c"
 
 # Pruebas unitarias de los intérpretes de salidas (no requieren Docker)
 test-banco:
