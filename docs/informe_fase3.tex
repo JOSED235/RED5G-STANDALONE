@@ -209,7 +209,32 @@ Las trazas se capturaron en el puente Docker de la red (\texttt{dumpcap}), donde
 
 \textbf{Diagnóstico de las liberaciones.} Aunque el NAS vaya cifrado, NGAP no lo está: el \textit{UEContextReleaseRequest} del gNB con causa \texttt{radioNetwork: radio-connection-with-ue-lost} (21) separó la falla de radio (saturación del RX) de las causas de NAS. En las liberaciones posteriores, con buen radio (CQI 10--13), no aparecía ningún NAS del teléfono tras el \textit{Configuration Update Command}, lo que apuntó a una decisión del propio terminal (la itinerancia de datos).
 
-\textbf{Sesión PDU.} La traza del 19/11 (\texttt{fase3\_ngap\_20261119\_121710.pcap}) contiene el \textit{PDUSessionResourceSetupRequest/Response} con los TEID de N3, la PFCP \textit{Session Establishment} con las reglas PDR/FAR/QER del UPF y el tráfico GTP-U del teléfono. \pendiente{Tabla de campos y tiempos de \texttt{banco protocolos} sobre esta traza: TEID, IP, QoS y duración del registro y de la sesión PDU.}
+\textbf{Sesión PDU.} La traza del 19/11 (\texttt{fase3\_ngap\_20261119\_121710.pcap}, 46~min, N2 y N3; no incluye PFCP) contiene el registro definitivo y la sesión PDU del teléfono (Tabla~\ref{tab:sesionpdu}). El teléfono se registra con su 5G-GUTI (ya no con el SUCI), FOR=0 y capacidades 128-NEA1/2/3 y 128-NIA1/2/3; el NAS va cifrado con NEA2, de modo que el DNN, la IP y la QoS de NAS no son legibles y se toman de NGAP y del GTP-U. Por la FOR=0 el contexto se libera tras el registro y la sesión llega 10,2~s después mediante un \textit{Service Request} (el tiempo que tarda Android en activar los datos). Desde el \textit{PDUSessionResourceSetupResponse} hasta el primer paquete GTP-U pasan 340~ms. Los 174~s siguientes de N3 llevan el tráfico de la navegación (TLS, QUIC y DNS hacia servidores de Google y Cloudflare: 17,6~MB en DL y 2,4~MB en UL, con un pico de 16,2~Mbit/s en DL en un segundo) y el ping UPF$\rightarrow$teléfono (28--37~ms).
+
+\begin{table}[!t]
+\caption{Sesión PDU del teléfono en la traza del 19/11/2026 (12:57:20 hora local; ICS: InitialContextSetup, PDU Setup: PDUSessionResourceSetup)}
+\label{tab:sesionpdu}
+\centering
+\footnotesize
+\begin{tabular}{ll}
+\toprule
+\textbf{Campo / procedimiento} & \textbf{Valor} \\
+\midrule
+Identidad (Registration Req.) & 5G-GUTI, inicial, FOR=0 \\
+IP del teléfono (GTP-U) & 10.45.0.2 (IPv4), PDU ID 1 \\
+TEID del UPF / IP N3 & \texttt{0x0000cc2b} / 10.53.0.3 \\
+TEID del gNB / IP N3 & \texttt{0x00000001} / 10.53.0.7 \\
+QoS del flujo & QFI 1, 5QI 9, ARP 8, SST 1 \\
+Session/UE-AMBR (DL y UL) & 1~Gbit/s \\
+\midrule
+Reg. Request $\rightarrow$ ICS Response & 70~ms \\
+Reg. Request $\rightarrow$ Service Request & 10,2~s \\
+Service Request $\rightarrow$ PDU Setup Req. & 163~ms \\
+PDU Setup Req. $\rightarrow$ Response & 76,5~ms \\
+PDU Setup Resp. $\rightarrow$ 1.\textsuperscript{er} GTP-U & 340~ms \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %=====================================================================
 \section{KPIs de red}

@@ -203,9 +203,10 @@ Registrado sin sesión PDU & Android en itinerancia (sin NAS tras el registro) &
   \item \textbf{5G-AKA con \textit{Synch failure}}: SQN de la SIM nueva $\neq$ UDM; AUTS y resincronización automática.
   \item \textbf{Seguridad}: Security Mode Command con NEA2 + NIA2; el NAS siguiente va cifrado.
   \item \textbf{Diagnóstico}: NGAP no va cifrado: la causa de la liberación (\texttt{radio-connection-with-ue-lost}) separó radio de NAS.
-  \item \textbf{Sesión PDU}: PDUSessionResourceSetup (TEID de N3), PFCP con PDR/FAR/QER y GTP-U del teléfono.
+  \item \textbf{Sesión PDU} (traza del 19/11): 5G-GUTI, IP 10.45.0.2, TEID UPF \texttt{0xcc2b} / gNB \texttt{0x1}, QFI 1 con 5QI 9.
+  \item \textbf{Tiempos}: registro $\rightarrow$ contexto 70~ms; Service Request $\rightarrow$ sesión en N2 240~ms; primer GTP-U a los 340~ms.
+  \item \textbf{Navegación en N3}: 17,6~MB DL / 2,4~MB UL en 174~s (TLS, QUIC, DNS), pico de 16,2~Mbit/s.
 \end{itemize}
-\pendiente{tiempos y campos de \texttt{banco protocolos} sobre la traza del 19/11}
 \end{frame}
 
 %---------------------------------------------------------------------
