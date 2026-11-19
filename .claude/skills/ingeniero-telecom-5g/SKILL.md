@@ -138,6 +138,14 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
   parar, `usbreset 2500:0020`, levantar (2026-11-18); `make vigilar` lo hace solo y cuenta las fallas
   (MTBF). Tiempo real del i5: `make preparar-lab` (un sudo: `performance`, C-states ≤ C1E, avahi, DRM
   *poll* `N`, *autosuspend* USB −1), o habrá underflows y colapso (`DL task queue is full`).
+  `NO_DEVICE` con `USB disconnect` en el kernel (`journalctl -k`) = la B200 se soltó del bus: con
+  alimentación solo por USB apunta a energía o cable antes que a la placa; el profesor autorizó la fuente
+  externa (6 V DC, 3 A, centro positivo; verificar etiqueta) el 2026-11-19. Antes de la caída se ve BLER DL
+  85–99 % y PUSCH con SNR negativa: el teléfono se libera tras registrarse y **no** es (solo) Android.
+  Tras una caída el teléfono queda en "Sin servicio": reiniciarlo. Logs para el docente: `make logs-todo`
+  **antes** de `make down` (los `compose logs` se pierden al recrear un contenedor).
+  Filtrar `docker compose logs --since` con fecha ISO en UTC (`2026-11-19T22:20:00Z`): una hora suelta
+  (`--since 22:20:00`) se interpreta en hora local y no devuelve nada.
 - **Calibración con el teléfono (2026-11-19):** con RX 40 y el teléfono a ~1 m la RSRP del PUSCH sale
   `ovl` (AD9361 saturado); el teléfono reporta PHR muy negativo (−16 a −31 dB), va a potencia máxima y
   a los ~10 s el gNB declara `radio-connection-with-ue-lost` (NGAP UEContextReleaseRequest causa 21).

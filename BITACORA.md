@@ -75,7 +75,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] En el i5 (Ubuntu): SIM física programada con pySim (Gialer, IMSI 001010000000001, EHPLMN 001/01) y `SIM_*` llenos en `.env` (2026-11-11).
 - [x] `AMF_CIPHERING_ORDER` de vuelta en `NEA2, NEA1, NEA0` en el `.env` del i5 y red apagada con `make down` (2026-11-18, al cerrar).
 - [ ] Decidir el PLMN de la Fase 3: hoy `MNC=010` en el `.env` del i5 (F3-2); `.env.example` y la Fase 2 siguen en 001/01. Lo limpio es corregir la SIM (EF.AD con MNC de 2 dígitos, EHPLMN 001/01) y volver a 001/01.
-- [ ] En el i5, cuando no se use el gNB: `make revertir-lab` (desenmascara avahi; el resto se revierte también al reiniciar). En cada sesión de laboratorio: `make preparar-lab` en una terminal propia (2026-11-19).
+- [ ] En el i5, cuando no se use el gNB: `make revertir-lab` (pendiente tras la sesión del 19/11 noche) (desenmascara avahi; el resto se revierte también al reiniciar). En cada sesión de laboratorio: `make preparar-lab` en una terminal propia (2026-11-19).
 - [x] ~~`make build` en el i5 para hornear `request_pdu_session_timeout`~~ — ya no es necesario para trabajar: `COMPOSE_FILE=…:docker/compose.montajes.yml` en el `.env` del i5 monta las plantillas y el entrypoint del repositorio (2026-11-19). El `build` queda opcional, para que la imagen sola sea autosuficiente.
 - [x] Estabilidad de la B200 en el i5 (2026-11-19): la fuente de 6 V **no se puede usar**; en su lugar `preparar-lab` (C-states incluidos) y recuperación automática con `make vigilar`. Se probó la celda de 10 MHz (`GNB_BW_MHZ=10`, más estable), pero el teléfono no la ve: con el teléfono se usa 20 MHz.
 - [x] Primera medición de estabilidad a 20 MHz con el anfitrión preparado (2026-11-19, `resultados/20261119_124514_vigilar_20mhz_tx50_rx20_preparado`): 18 min, 1 falla (`bad vrt header`), recuperada sola en 16,5 s.
@@ -1827,3 +1827,4 @@ paquete; `make informe` sin errores ni `Overfull` (11 `\pendiente{` en el inform
 
 **Pendiente:** fuente externa de la B200 y nueva vigilancia; barrido por distancia con el teléfono; video.
 
+**Cierre del día:** skills (`ingeniero-telecom-5g`, `desarrollador-fullstack`), `docker/README.md` y el guion (paso `make logs-todo` antes de `make down`) actualizados. La red quedó apagada (`make down`); falta `make revertir-lab` en la terminal del usuario si no se usa el gNB hasta la próxima sesión.

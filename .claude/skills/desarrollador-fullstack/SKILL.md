@@ -87,6 +87,9 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   `docker/gnb/` y `entrypoint.sh` en los gNB (con `entrypoint: [bash, ...]` porque en git no tiene +x).
   El banco lo respeta porque Compose lee `COMPOSE_FILE` de `.env`. Un valor derivado (p. ej. `GNB_SRATE` de
   `GNB_BW_MHZ`) se calcula en el entrypoint y en `banco/config.py`, y la CI lo añade al renderizar.
+- **Recolección de logs:** `banco recolectar` (`banco/recoleccion.py`, `make logs-todo`) copia `compose logs
+  --timestamps` de cada servicio, kernel, USB, `capturas/` y `resultados/` recientes; el `.env` pasa por
+  `env_sin_secretos()` (K, OPc, contraseñas → `<omitido>`, con prueba). No incluir secretos en un paquete nuevo.
 - **Vigilancia del SDR:** `banco vigilar` lee `compose.logs(servicio, desde, hasta)` por ventanas con el reloj
   del motor (`compose.reloj()`), no `logs -f`: este deja de seguir un contenedor recreado. Los clasificadores
   (`clasificar_falla_sdr`, `clasificar_evento_core`) son puros y se prueban con líneas reales.

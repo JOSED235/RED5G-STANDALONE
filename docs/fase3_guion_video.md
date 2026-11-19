@@ -56,9 +56,10 @@ make telefono ARGS="--distancia 0.5 --duracion 60"   # mientras corre nPerf en e
 ## 4. Al terminar
 
 1. Detener `vigilar` con Ctrl+C (escribe el resumen con fallas y MTBF).
-2. `make down` (la celda deja de transmitir).
-3. `make revertir-lab` si no se va a volver a usar el gNB ese día.
-4. Copiar a `capturas/` la traza y los logs.
+2. `make logs-todo` (todos los logs en un `.tar.gz`; los de los contenedores se pierden con `down`).
+3. `make down` (la celda deja de transmitir).
+4. `make revertir-lab` si no se va a volver a usar el gNB ese día.
+5. Copiar a `capturas/` la traza y los logs.
 
 ## 5. Llenar el informe y la presentación (en el i5, en la misma terminal)
 
