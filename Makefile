@@ -1,4 +1,4 @@
-.PHONY: verificar up build down restart restart-ran logs logs-gnb logs-ue logs-core ps status \
+.PHONY: verificar up build down restart restart-ran logs logs-todo logs-gnb logs-ue logs-core ps status \
         test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro analisis test-banco clean \
         up-sdr registro lab telefono benchmark vigilar preparar-lab revertir-lab \
         datos-fase3 informe
@@ -53,6 +53,10 @@ revertir-lab:
 # Fase 3, antes de 'lab': caudal USB del SDR a la tasa de GNB_BW_MHZ, TX + RX (debe dar 0 pérdidas)
 benchmark: .env
 	$(BANCO) benchmark $(ARGS)
+
+# Todos los logs (contenedores, kernel/USB, anfitrión, capturas, resultados, .env sin claves) en un .tar.gz
+logs-todo:
+	$(BANCO) recolectar $(ARGS)
 
 # Fase 3, con la celda al aire: recupera el gNB si el SDR cae y registra fallas y eventos del UE
 vigilar:

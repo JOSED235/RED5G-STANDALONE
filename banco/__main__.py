@@ -19,6 +19,7 @@ Uso (desde la raíz del repositorio):
   python -m banco lab                                                               (Fase 3: B200 + Core + gNB SDR + SIM)
   python -m banco telefono [--atenuacion 60] [--duracion 60]                        (Fase 3: RTT y métricas del gNB)
   python -m banco vigilar  [--minutos 0] [--max-recuperaciones 10]                  (Fase 3: caídas del SDR y recuperación)
+  python -m banco recolectar [--horas 12] [--etiqueta x]                             (todos los logs en un .tar.gz)
 
 Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv y crudos/.
 """
@@ -26,7 +27,7 @@ Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv 
 import argparse
 import sys
 
-from . import enlace, estadistica, laboratorio, protocolos, pruebas, suscriptores, verificacion
+from . import enlace, estadistica, laboratorio, protocolos, pruebas, recoleccion, suscriptores, verificacion
 from .compose import Compose, ErrorCompose
 from .config import asegurar_env, leer_env
 from .parsers import ErrorIperf
@@ -162,6 +163,10 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--intervalo", type=float, default=5, help="segundos entre revisiones de los logs")
     p.add_argument("--max-recuperaciones", type=int, default=10, help="tras este número de fallas deja de recuperar")
     _comunes(p)
+
+    p = sub.add_parser("recolectar", help="todos los logs (contenedores, kernel/USB, anfitrión, capturas, resultados, .env sin claves) en un .tar.gz")
+    p.add_argument("--horas", type=float, default=12, help="antigüedad máxima del kernel, capturas/ y resultados/ incluidos")
+    p.add_argument("--etiqueta", default="", help="sufijo para el nombre de la carpeta")
     return parser
 
 
@@ -195,6 +200,8 @@ def main(argv=None) -> int:
             return suscriptores.ejecutar(compose, leer_env(), args.imsi, args.k, args.opc)
         if args.comando == "lab":
             return laboratorio.preparar(compose)
+        if args.comando == "recolectar":
+            return recoleccion.recolectar(compose, args.horas, args.etiqueta)
         if args.comando == "benchmark":
             return laboratorio.benchmark(compose, args.duracion)
         if args.comando == "estado":

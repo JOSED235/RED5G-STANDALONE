@@ -79,13 +79,15 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] ~~`make build` en el i5 para hornear `request_pdu_session_timeout`~~ — ya no es necesario para trabajar: `COMPOSE_FILE=…:docker/compose.montajes.yml` en el `.env` del i5 monta las plantillas y el entrypoint del repositorio (2026-11-19). El `build` queda opcional, para que la imagen sola sea autosuficiente.
 - [x] Estabilidad de la B200 en el i5 (2026-11-19): la fuente de 6 V **no se puede usar**; en su lugar `preparar-lab` (C-states incluidos) y recuperación automática con `make vigilar`. Se probó la celda de 10 MHz (`GNB_BW_MHZ=10`, más estable), pero el teléfono no la ve: con el teléfono se usa 20 MHz.
 - [x] Primera medición de estabilidad a 20 MHz con el anfitrión preparado (2026-11-19, `resultados/20261119_124514_vigilar_20mhz_tx50_rx20_preparado`): 18 min, 1 falla (`bad vrt header`), recuperada sola en 16,5 s.
-- [ ] Repetir `make vigilar ARGS="--minutos 30"` (o más) para un MTBF con más de una muestra; una sola falla en 18 min no basta para el informe.
+- [~] Repetir `make vigilar ARGS="--minutos 30"` (o más) para un MTBF con más de una muestra; una sola falla en 18 min no basta para el informe. Sesión final (19/11): 44,4 min, 1 falla `usb_error` (`LIBUSB_ERROR_NO_DEVICE`), recuperación 6,4 s; sigue siendo una sola muestra por corrida.
+- [ ] **Alimentar la B200 por aparte** (autorizado por el profesor el 19/11): fuente de 6 V DC, 3 A y centro positivo según la etiqueta junto al conector; luego `make vigilar` largo para comparar MTBF con y sin fuente. Si con la fuente la B200 sigue desconectándose del bus, sospechar del cable o de la propia B200.
 - [ ] Tras una caída de la B200 el teléfono no vuelve solo a la celda (ni con modo avión): hay que reiniciarlo. Documentarlo como limitación y medir cuánto tarda.
 - [ ] Mediciones F3-6/F3-7 con el teléfono: `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m con la misma `SDR_TX_GAIN`, comparando con `banco enlace --atenuacion 0 --distancia <m>`.
 - [x] Analizar con `banco protocolos` la traza `capturas/fase3_ngap_20261119_121710.pcap` (tiene el registro, PDUSessionResourceSetup y GTP-U del teléfono) para el análisis de protocolos de la Fase 3.
 - [x] Sesión PDU del teléfono y **navegación** confirmada por el usuario (2026-11-19, 17:57:30 UTC, 20 MHz, TX 50 / RX 20): IP 10.45.0.2, ping UPF → teléfono 0 % de pérdida y RTT 30,9 ms. Faltaban el APN `internet` y la itinerancia de datos (se había desactivado).
 - [ ] El teléfono **no ve la celda de 10 MHz** (ni PRACH en 6 min con el anfitrión preparado y tras reiniciarlo): se volvió a 20 MHz. Pendiente decidir si se insiste (otro ARFCN/SSB) o se documenta como limitación del terminal.
 - [ ] Solo si se retoma la celda de 10 MHz: recalcular con `banco enlace --prb 24` los límites teóricos de la celda de 10 MHz para F3-6/F3-7 (las cifras de 51 PRB son de 20 MHz).
+- [x] `make logs-todo` / `banco recolectar`: todos los logs en un `.tar.gz` (pedido del profesor) (2026-11-19).
 - [ ] `shellcheck` de `docker/host/preparar_lab.sh` (no está instalado en el i5; lo hará la CI al subir).
 - [ ] Tiempo real del i5 con 20 MHz n78: underflows 7–60/min y un colapso (`DL task queue is full`, `PRACH buffer pool depleted`); con gobernador `performance`, sin avahi ni *polling* DRM bajó a ~7–9/min. La celda de 10 MHz no sirve con el teléfono (no la ve).
 - [x] Teléfono **OnePlus Nord CE 2 Lite 5G**: **registrado en la celda n78** el 2026-11-18 (5G-AKA, Registration complete, IMSI 001010000000001) con PLMN **001/010** y `NR only`, pero **no pide la sesión PDU** (FOR=0, sin PDU Session Establishment). El teléfono se cree en itinerancia (EHPLMN 001/01 frente a 001/010) y pidió activar el roaming de datos, que ya quedó activado. Resuelto el 2026-11-19 con el APN `internet` y el roaming de datos: sesión PDU 10.45.0.2 (F3-4).
@@ -1794,4 +1796,34 @@ de 5 a 6 páginas (revisar maquetación). Quedan 11 `\pendiente{` en el informe 
 teléfono: no se cita.
 
 **Pendiente:** el aviso del banco sobre `ue.log` (ver "Pendientes vigentes"); el resto de la última sesión de laboratorio.
+
+### 2026-11-19 (noche) — Sesión de laboratorio: caída de la B200 y recolección de logs
+
+**Qué se hizo:** `make preparar-lab` (usuario) y `make lab` 5/5 (B200 en USB 3, NG Setup, 20 MHz, TX 50 / RX 20).
+`make vigilar ARGS="--minutos 60"`, detenido a los 44,4 min (`resultados/20261119_171630_vigilar_20mhz_tx50_rx20_sesion_final`):
+1 falla `usb_error` a las 22:35:28 UTC (`LIBUSB_ERROR_NO_DEVICE`; el kernel registra `USB disconnect` de la B200 y la
+re-enumera), recuperada en 6,4 s; el teléfono se registró a las 22:16:22, 22:24:42 y 22:33:15 UTC (el banco cuenta 2 registros
+y 2 liberaciones) y **no pidió la sesión PDU**. El log del gNB muestra la causa de las liberaciones: 22:24:53 PUSCH con SNR
+−20,6 dB y 100 % de errores; 22:33:16–17 BLER DL 85 % y 99 % (1017 bloques fallidos en 1 s), dos minutos antes de la caída
+de la B200. Tras la caída el teléfono queda en "Sin servicio" (NR only) y no vuelve ni reiniciándolo en los minutos observados.
+El profesor (por Teams) pidió **sacar logs de todo** y autorizó **alimentar la B200 por aparte**.
+
+Comando nuevo `python -m banco recolectar` (`make logs-todo`, `.\manage_lab.ps1 logs-todo`, `banco/recoleccion.py`):
+logs con marca de tiempo de cada contenedor, kernel (cuenta las `USB disconnect`), `lsusb`, CPU, memoria, avisos de
+`preparar-lab`, `capturas/` y `resultados/` recientes y el `.env` con K, OPc y contraseñas omitidas, en una carpeta y un
+`.tar.gz`. Prueba `banco/tests/test_recoleccion.py`. Primer paquete: `resultados/20261119_180109_logs_sesion_final_b200.tar.gz`
+(19,8 MB). `make datos-fase3` regeneró `docs/fase3_datos.tex` (vigilancia de 44,4 min, MTBF 44,4 min, disponibilidad ≈ 99,8 %).
+
+**Lectura de la falla (¿es la B200?):** todas las fallas del 18 y 19/11 son del enlace USB (`LIBUSB_TRANSFER_ERROR`,
+`bad vrt header`, `LIBUSB_ERROR_NO_DEVICE`), nunca de la cadena de RF ni del AD9364. Una desconexión del bus a nivel de kernel
+con la B200 alimentada solo por el USB apunta primero a la alimentación (con TX a 20 MHz la B200 consume cerca del límite de
+900 mA de un puerto USB 3) y después al cable. No se puede descartar una B200 defectuosa: la prueba que lo separa es la fuente
+externa (si con ella sigue desconectándose, cambiar cable; si persiste, otra B200).
+
+**Verificación:** 65 pruebas unitarias OK; `make logs-todo` ejecutado con la red en marcha (4 contenedores, 2 `USB disconnect`
+en el kernel, de las que la de las 17:15:47 local es la carga normal del firmware) y K/OPc comprobados como `<omitido>` en el
+paquete; `make informe` sin errores ni `Overfull` (11 `\pendiente{` en el informe y 6 en la presentación). **No verificado:**
+`manage_lab.ps1` con el parser de PowerShell (no está instalado en el i5; la CI lo revisa).
+
+**Pendiente:** fuente externa de la B200 y nueva vigilancia; barrido por distancia con el teléfono; video.
 

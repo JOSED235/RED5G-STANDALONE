@@ -9,6 +9,7 @@
 #                   .\manage_lab.ps1 telefono --atenuacion 60   (RTT y métricas del gNB con el teléfono)
 #                   .\manage_lab.ps1 benchmark   (caudal USB del SDR; en Windows/usbipd se esperan pérdidas)
 #                   .\manage_lab.ps1 vigilar     (caídas del SDR: recuperación automática y registro de fallas)
+#                   .\manage_lab.ps1 logs-todo   (todos los logs en un .tar.gz, .env sin claves)
 #                   .\manage_lab.ps1 up-sdr   (solo levanta Core + gNB SDR; ver docs/fase3_guia_laboratorio.md)
 #   Análisis (paso 3, requiere matplotlib):  .\manage_lab.ps1 analisis [resultados\<carpeta>]
 #   Entrega Fase 3: .\manage_lab.ps1 datos-fase3 (resultados -> docs\fase3_datos.tex) | informe (PDF con Docker)
@@ -21,7 +22,7 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "build", "down", "restart", "restart-ran", "logs", "verificar", "status", "test-ping", "test-iperf",
                  "p7", "p8", "p9", "p10", "campana", "banco", "analisis", "pcap", "pcap-registro", "clean",
-                 "up-sdr", "registro", "lab", "telefono", "benchmark", "vigilar", "datos-fase3", "informe")]
+                 "up-sdr", "registro", "lab", "telefono", "benchmark", "vigilar", "logs-todo", "datos-fase3", "informe")]
     [string]$Action = "up",
     [int]$Seconds = 60,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -138,6 +139,7 @@ switch ($Action) {
     "telefono"      { Invoke-Banco (@("telefono") + $Opciones) }
     "benchmark"     { Invoke-Banco (@("benchmark") + $Opciones) }
     "vigilar"       { Invoke-Banco (@("vigilar") + $Opciones) }
+    "logs-todo"     { Invoke-Banco (@("recolectar") + $Opciones) }
     "lab" {
         Invoke-Banco @("verificar") "banco" $false
         Invoke-Banco (@("lab") + $Opciones)
