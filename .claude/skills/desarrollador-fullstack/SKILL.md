@@ -82,6 +82,17 @@ mensajes al usuario, nombres de funciones y variables del dominio (ver `SKILLS.m
   elige `make -j` según la memoria de la VM (1,5 GiB por trabajo, `BUILD_JOBS` lo fuerza) y
   `ccache` (cache mount de BuildKit) acelera las recompilaciones. La VM no ve la memoria libre de
   Windows: con el navegador abierto use `BUILD_JOBS=3`. No midas mientras compilas.
+- **Imágenes de `docker load` sin caché (i5, Ubuntu):** un `build` tras tocar una plantilla o un entrypoint
+  recompila srsRAN (> 1 h). `COMPOSE_FILE=docker-compose.yml:docker/compose.montajes.yml` en `.env` monta
+  `docker/gnb/` y `entrypoint.sh` en los gNB (con `entrypoint: [bash, ...]` porque en git no tiene +x).
+  El banco lo respeta porque Compose lee `COMPOSE_FILE` de `.env`. Un valor derivado (p. ej. `GNB_SRATE` de
+  `GNB_BW_MHZ`) se calcula en el entrypoint y en `banco/config.py`, y la CI lo añade al renderizar.
+- **Vigilancia del SDR:** `banco vigilar` lee `compose.logs(servicio, desde, hasta)` por ventanas con el reloj
+  del motor (`compose.reloj()`), no `logs -f`: este deja de seguir un contenedor recreado. Los clasificadores
+  (`clasificar_falla_sdr`, `clasificar_evento_core`) son puros y se prueban con líneas reales.
+- **Revisión del anfitrión:** `revisar_anfitrion(raiz)` lee sysfs con raíz configurable, así se prueba con un
+  árbol falso en un directorio temporal (`test_laboratorio.py`). `sudo` desde Claude Code no puede pedir la
+  contraseña: los pasos con sudo los corre el usuario en su propia terminal (`make preparar-lab`).
 - **Una imagen para dos radios:** el gNB se compila con ZMQ y UHD; `gnb` y `gnb-sdr` comparten
   `red5g-gnb` y la plantilla elige `device_driver`. El UE compila solo `srsue` y `srsran_rf_zmq`.
 - **Reiniciar la RAN = recrear:** usa `Compose.reiniciar_ran()` (sin esperar) o `recrear_ran()` (espera la

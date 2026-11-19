@@ -18,6 +18,7 @@ Uso (desde la raíz del repositorio):
   python -m banco suscriptor                                                        (alta de la SIM física, Fase 3)
   python -m banco lab                                                               (Fase 3: B200 + Core + gNB SDR + SIM)
   python -m banco telefono [--atenuacion 60] [--duracion 60]                        (Fase 3: RTT y métricas del gNB)
+  python -m banco vigilar  [--minutos 0] [--max-recuperaciones 10]                  (Fase 3: caídas del SDR y recuperación)
 
 Cada medición crea resultados/<fecha>_<prueba>/ con metadata.json, resumen.csv y crudos/.
 """
@@ -40,6 +41,7 @@ PRUEBAS = {
     "p10": pruebas.prueba_p10,
     "registro": pruebas.prueba_registro,
     "telefono": laboratorio.prueba_telefono,
+    "vigilar": laboratorio.prueba_vigilar,
 }
 
 
@@ -146,13 +148,19 @@ def construir_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("lab", help="Fase 3: comprueba el SDR (USB 3 o usbipd + UHD), levanta Core + gNB SDR y da de alta la SIM")
 
-    p = sub.add_parser("benchmark", help="Fase 3: caudal USB del SDR (benchmark_rate a 23,04 MS/s TX + RX, 0 pérdidas)")
+    p = sub.add_parser("benchmark", help="Fase 3: caudal USB del SDR (benchmark_rate a la tasa de GNB_BW_MHZ, 0 pérdidas)")
     p.add_argument("--duracion", type=int, default=30, help="segundos de medición")
 
     p = sub.add_parser("telefono", help="Fase 3: ping UPF->teléfono y métricas del gNB mientras el teléfono corre iperf3")
     p.add_argument("--atenuacion", type=float, help="dB de atenuación conducida (se guarda como parámetro)")
     p.add_argument("--distancia", type=float, help="metros gNB-teléfono al aire (se guarda como parámetro en vez de la atenuación)")
     p.add_argument("--duracion", type=int, default=60, help="segundos de medición")
+    _comunes(p)
+
+    p = sub.add_parser("vigilar", help="Fase 3: detecta caídas del SDR, recupera el gNB (usbreset) y cuenta fallas y eventos del UE")
+    p.add_argument("--minutos", type=float, default=0, help="duración de la vigilancia; 0 = hasta Ctrl+C")
+    p.add_argument("--intervalo", type=float, default=5, help="segundos entre revisiones de los logs")
+    p.add_argument("--max-recuperaciones", type=int, default=10, help="tras este número de fallas deja de recuperar")
     _comunes(p)
     return parser
 

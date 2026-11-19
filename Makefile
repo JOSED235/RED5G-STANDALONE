@@ -1,6 +1,6 @@
 .PHONY: verificar up build down restart restart-ran logs logs-gnb logs-ue logs-core ps status \
         test-ping test-iperf p7 p8 p9 p10 campana pcap pcap-registro analisis test-banco clean \
-        up-sdr registro lab telefono benchmark
+        up-sdr registro lab telefono benchmark vigilar preparar-lab revertir-lab
 
 # Intérprete del banco de pruebas y opciones extra, p. ej.: make p7 ARGS="--tasas 2,5,10"
 PYTHON ?= python3
@@ -41,9 +41,21 @@ up-sdr: verificar
 lab: verificar
 	$(BANCO) lab
 
-# Fase 3, antes de 'lab': caudal USB del SDR a 23,04 MS/s TX + RX (debe dar 0 pérdidas)
+# Fase 3, antes de 'lab' (Linux): gobernador, C-states, avahi, DRM y autosuspend USB, con un solo sudo
+preparar-lab:
+	sudo bash docker/host/preparar_lab.sh
+
+# Deshace preparar-lab (también lo deshace un reinicio, salvo avahi)
+revertir-lab:
+	sudo bash docker/host/preparar_lab.sh --revertir
+
+# Fase 3, antes de 'lab': caudal USB del SDR a la tasa de GNB_BW_MHZ, TX + RX (debe dar 0 pérdidas)
 benchmark: .env
 	$(BANCO) benchmark $(ARGS)
+
+# Fase 3, con la celda al aire: recupera el gNB si el SDR cae y registra fallas y eventos del UE
+vigilar:
+	$(BANCO) vigilar $(ARGS)
 
 # Fase 3: ping UPF->teléfono y métricas del gNB mientras el teléfono corre iperf3
 telefono:

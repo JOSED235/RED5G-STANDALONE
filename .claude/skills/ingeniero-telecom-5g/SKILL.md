@@ -135,8 +135,22 @@ Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` den
   23,04 MS/s TX+RX pierde 0,006 %.
   Sin firmware enumera a 480 (bootloader FX3) y pasa a 5000 al cargarlo: mide la velocidad **después**.
   Si el `gnb-sdr` da `LIBUSB_TRANSFER_ERROR`, `bad vrt header`/`timed out transmissions` o `NO_DEVICE`:
-  parar, `usbreset 2500:0020`, levantar (2026-11-18). Tiempo real del i5: gobernador `performance`,
-  avahi enmascarado y *polling* DRM en `N`, o habrá underflows y colapso (`DL task queue is full`).
+  parar, `usbreset 2500:0020`, levantar (2026-11-18); `make vigilar` lo hace solo y cuenta las fallas
+  (MTBF). Tiempo real del i5: `make preparar-lab` (un sudo: `performance`, C-states ≤ C1E, avahi, DRM
+  *poll* `N`, *autosuspend* USB −1), o habrá underflows y colapso (`DL task queue is full`).
+- **Calibración con el teléfono (2026-11-19):** con RX 40 y el teléfono a ~1 m la RSRP del PUSCH sale
+  `ovl` (AD9361 saturado); el teléfono reporta PHR muy negativo (−16 a −31 dB), va a potencia máxima y
+  a los ~10 s el gNB declara `radio-connection-with-ue-lost` (NGAP UEContextReleaseRequest causa 21).
+  Con **RX 20** el PUSCH llega con SNR ~28 dB. La causa de una liberación se lee en la traza NGAP
+  (`dumpcap` en el puente `br-<id de red5g_net>`; `tshark -Y ngap -V | grep radioNetwork`), aunque el
+  NAS vaya cifrado. Sin fuente de 6 V la B200 cae a 20 MHz en el i5 (`timed out transmissions`, antes
+  con TX alta): **10 MHz** (`GNB_BW_MHZ=10`, 24 PRB). srsRAN exige srate 15,36 (no 11,52) con PRACH B4
+  de SCS 30 kHz. Al cambiar el ancho de banda el SSB cambia de ARFCN (632256 → 632640): reiniciar el
+  teléfono para que lo vuelva a buscar. El OnePlus **no ve la celda n78 de 10 MHz** (0 PRACH): usar 20 MHz.
+- **Sesión PDU del teléfono (lograda el 2026-11-19):** exige APN `internet` (tipo `default,supl`, IPv4) y
+  "Itinerancia de datos" activada (se desactiva sola). Síntoma si falta: registro OK y ningún NAS del UE
+  tras el `Configuration update command`; a los ~10–18 s el gNB lo libera. Para leer el NAS con NEA0:
+  `tshark -o nas-5gs.null_decipher:TRUE`. Open5GS 2.8.0 anuncia IMS VoPS = 1 fijo (no era la causa).
 - **Teléfono OnePlus Nord CE 2 Lite (2026-11-18):** necesita **NR only** (app "Administrador de redes 5G";
   `*#*#4636#*#*` no abre y cambiar el tipo de red en Ajustes lo pisa). La SIM Gialer declara MNC de 3
   dígitos (EF.AD): SUCI `suci-0-001-010-…`; con la red en 001/01 el SCP busca un SEPP (`No SEPP`,

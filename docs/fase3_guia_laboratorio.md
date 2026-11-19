@@ -31,18 +31,33 @@ Con el i5 ya preparado (Ubuntu, imágenes, `.env` con la SIM), en el laboratorio
    `cd ~/RED5G-STANDALONE && git pull`.
 2. Enroscar las **dos antenas** de la B200 (TX/RX y RX2) y después conectar el cable **USB 3** en el
    único puerto USB 3 del i5 (Micro-B hasta el fondo; el lector de SIM va en un puerto USB 2).
-   Teléfono en modo avión a 30–50 cm (sección 2.1). En `.env`: `SDR_TX_GAIN=30`.
-3. Caudal USB: `make benchmark` → debe dar 0 pérdidas a 23,04 MS/s.
-4. Un solo comando: `make lab`. Comprueba `.env` y la SIM, que la B200 esté en USB 3 (antes y después
+   Teléfono en modo avión a 0,5–1 m (sección 2.1). En `.env` (valores del 2026-11-19):
+   `GNB_BW_MHZ=20` (el teléfono no ve la celda de 10 MHz), `SDR_TX_GAIN=50`, `SDR_RX_GAIN=20` y
+   `COMPOSE_FILE=docker-compose.yml:docker/compose.montajes.yml` (plantillas del repositorio sin `build`).
+3. Anfitrión, **en una terminal propia** (pide la contraseña): `make preparar-lab`. Deja el gobernador
+   en `performance`, los C-states en ≤ C1E, avahi y el *polling* DRM apagados y el *autosuspend* USB en
+   −1. Se pierde al reiniciar: hay que repetirlo en cada sesión (`make lab` avisa si falta).
+4. Caudal USB: `make benchmark` → debe dar 0 pérdidas a la tasa de `GNB_BW_MHZ` (23,04 MS/s a 20 MHz).
+5. Un solo comando: `make lab`. Comprueba `.env` y la SIM, que la B200 esté en USB 3 (antes y después
    de cargar el firmware), que UHD la ve, levanta Core + gNB SDR, espera el NG Setup y da de alta la
    SIM. Si algo falla, dice qué hacer y se detiene.
-5. Registro con traza: `make pcap-registro` y quitar el modo avión del teléfono (F3-3, F3-4). Si no ve
-   la celda en 2 min: subir `SDR_TX_GAIN` 10 dB en `.env` y repetir `make lab`.
-6. Medición por distancia (F3-6, F3-7), con el teléfono corriendo iperf3 hacia `10.45.0.1`:
+6. En otra terminal, `make vigilar`: si la B200 cae (`timed out transmissions`, error USB) recupera el
+   gNB sola (stop → `usbreset` → up → NG Setup), anota la falla y muestra los registros y sesiones PDU
+   del teléfono. Al terminar, Ctrl+C deja el resumen (fallas, MTBF, recuperación) en `resultados/`.
+7. En el teléfono, antes de nada (si falta, se registra pero **nunca pide la sesión PDU**, F3-4):
+   NR only (app "Administrador de redes 5G"), datos móviles activados, **"Itinerancia de datos" activada**
+   (se desactiva sola: revísela en cada sesión) y un **APN** `internet` (APN `internet`, tipo
+   `default,supl`, protocolo e itinerancia IPv4) seleccionado. Así se obtuvo la sesión PDU el 2026-11-19.
+   Registro con traza: `make pcap-registro` y quitar el modo avión del teléfono (F3-3, F3-4). Si no ve
+   la celda en 2 min, reinícielo (tras cambiar el ancho de banda el SSB cambia de ARFCN y el teléfono
+   tarda en volver a buscarlo); si sigue sin verla, subir `SDR_TX_GAIN` 10 dB y recrear el `gnb-sdr`.
+   Si en las métricas del gNB la columna `rsrp` del PUSCH dice `ovl`, el RX está saturado: bajar
+   `SDR_RX_GAIN` (F3-7 del README).
+8. Medición por distancia (F3-6, F3-7), con el teléfono corriendo iperf3 hacia `10.45.0.1`:
    ```bash
    make telefono ARGS="--distancia 0.5 --duracion 60"
    ```
-7. Al terminar: `make down` (deja de transmitir) y copiar `resultados/` y `capturas/` a la memoria USB.
+9. Al terminar: `make down` (deja de transmitir) y copiar `resultados/` y `capturas/` a la memoria USB.
 
 ---
 
@@ -361,7 +376,7 @@ Pasos que hace (y qué hacer si se detiene en uno):
 | Paso | Qué comprueba | Si falla |
 | :--- | :--- | :--- |
 | 0 | `verificar`: Docker, recursos, `.env`, subred | Lo que indique el mensaje |
-| 1/5 | `GNB_CONFIG` es una plantilla `gnb_b210_*`; `SIM_*` válidos (si no, solo avisa) | Corregir `.env` |
+| 1/5 | `GNB_CONFIG` es una plantilla `gnb_b210_*`; `GNB_BW_MHZ` es 10 o 20; `SIM_*` válidos (si no, solo avisa); en Linux, el anfitrión (gobernador, C-states, avahi, *autosuspend*, cargador; solo avisa) | Corregir `.env`; `make preparar-lab` |
 | 2/5 | Windows: `usbipd list` muestra la B200 (`2500:0020`); si está `Shared`, abre `usbipd attach --wsl --busid <BUSID> --auto-attach` en otra ventana | `Not shared` → `usbipd bind --busid <BUSID>` como administrador. No aparece → cable/puerto USB 3.0 |
 | 3/5 | `uhd_find_devices` dentro de la imagen encuentra la B200 (3 intentos) | Ventana de `--auto-attach` abierta, `usbipd list` en `Attached`, fuente de la B200 |
 | 4/5 | Detiene gNB/UE de ZMQ, levanta `mongodb open5gs webui gnb-sdr` y espera el NG Setup (180 s) | Muestra las últimas líneas del gNB; ver sección 5 |
@@ -516,8 +531,9 @@ uhd_find_devices                                     # type: soapy, driver: blad
 | *Registration reject [95]* y `No SEPP` en el SCP; SUCI `suci-0-001-010-…` | La SIM declara MNC de 3 dígitos (EF.AD). `MNC=010` en `.env`, o corregir EF.AD con pySim (README, F3-2) |
 | El teléfono se registra pero no pide datos; el gNB dice `UE did not request a PDU session` | `GNB_REQUEST_PDU_SESSION_TIMEOUT=30` y, en el teléfono, **roaming de datos** activado (se cree itinerante por el EHPLMN). README, F3-3 y F3-4 |
 | El teléfono no ve la celda (sin barras) | Tipo de red **NR only** con la app "Administrador de redes 5G" (`*#*#4636#*#*` no abre en este OnePlus); cambiar el tipo de red en Ajustes lo pisa. Tras una baja tarda minutos: reiniciarlo y dejarlo quieto |
-| `LIBUSB_TRANSFER_ERROR`, `bad vrt header`, `timed out transmissions` o `LIBUSB_ERROR_NO_DEVICE` en el `gnb-sdr` | Falla del USB de la B200: parar `gnb-sdr`, `usbreset 2500:0020`, levantarlo. No conectar USB con la celda al aire; probar la fuente de 6 V |
-| Underflows continuos, `DL task queue is full`, `PRACH buffer pool depleted` | En el i5: `sudo cpupower frequency-set -g performance`, `sudo systemctl mask --now avahi-daemon.socket avahi-daemon.service`, `echo N \| sudo tee /sys/module/drm_kms_helper/parameters/poll` |
+| `LIBUSB_TRANSFER_ERROR`, `bad vrt header`, `timed out transmissions` o `LIBUSB_ERROR_NO_DEVICE` en el `gnb-sdr` | Falla del USB de la B200: `make vigilar` lo recupera solo (parar `gnb-sdr`, `usbreset 2500:0020`, levantarlo). No conectar USB con la celda al aire. Sin fuente de 6 V: `make preparar-lab` antes de `lab` (10 MHz es más estable, pero el teléfono no la ve) |
+| Underflows continuos, `DL task queue is full`, `PRACH buffer pool depleted` | En el i5: `make preparar-lab` (gobernador, C-states ≤ C1E, avahi, DRM, *autosuspend*) antes de `make lab` |
+| El teléfono se registra y a los ~10 s el gNB lo libera (`radio-connection-with-ue-lost`); `rsrp` del PUSCH en `ovl` | RX saturado con el teléfono cerca: `SDR_RX_GAIN=20` (o menos) y teléfono a 0,5–1 m |
 | bladeRF: `incompatible firmware` / `No devices are available` | Enumeró en *full-speed*: cable Micro-B USB 3 y puerto USB 3 (sección 4.1) |
 | bladeRF desaparece de `usbipd list` o de WSL tras una prueba | Re-conectar y `usbipd attach --wsl --busid <bus> --auto-attach`; en Linux nativo no ocurre |
 | El teléfono no ve la celda | SA en esa banda, modo solo 5G, subir `SDR_TX_GAIN` de 5 en 5 dB vigilando la Prx (`up-sdr` tras cada cambio), deriva del TCXO (GPSDO) |

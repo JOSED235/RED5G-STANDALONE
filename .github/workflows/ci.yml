@@ -46,8 +46,9 @@ jobs:
           python - <<'EOF'
           import re
           from pathlib import Path
-          from banco.config import ARCHIVO_ENV_EJEMPLO, leer_env
+          from banco.config import ARCHIVO_ENV_EJEMPLO, leer_env, srate_msps
           env = leer_env(ARCHIVO_ENV_EJEMPLO)
+          env["GNB_SRATE"] = str(srate_msps(env))  # la deduce entrypoint.sh del gNB
           destino = Path("/tmp/plantillas")
           destino.mkdir()
           for plantilla in sorted(Path("docker").rglob("*.yaml")):

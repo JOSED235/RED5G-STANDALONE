@@ -1,0 +1,20 @@
+# Montajes de desarrollo: el gNB usa las plantillas y el entrypoint del repositorio en lugar de
+# los copiados en la imagen, así que un cambio en ellos no exige 'build' (solo recrear el gNB).
+#
+# Por qué: en el i5 (Ubuntu) las imágenes se cargaron con 'docker load' y no traen caché; un
+# 'build' tras tocar una plantilla recompila srsRAN (> 1 h). Se activa en el .env local con
+#   COMPOSE_FILE=docker-compose.yml:docker/compose.montajes.yml
+# (Compose lee COMPOSE_FILE de .env; en Windows el separador es ';'). Sin esa línea la red usa
+# lo horneado en la imagen, como siempre. Las rutas son relativas a la raíz del repositorio.
+services:
+  gnb-sdr:
+    # bash explícito: en git entrypoint.sh no tiene permiso de ejecución
+    entrypoint: ["bash", "/entrypoint.sh"]
+    volumes:
+      - ./docker/gnb:/etc/srsran/plantillas:ro
+      - ./docker/gnb/entrypoint.sh:/entrypoint.sh:ro
+  gnb:
+    entrypoint: ["bash", "/entrypoint.sh"]
+    volumes:
+      - ./docker/gnb:/etc/srsran/plantillas:ro
+      - ./docker/gnb/entrypoint.sh:/entrypoint.sh:ro

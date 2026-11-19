@@ -392,3 +392,37 @@ def parse_benchmark_rate(texto: str) -> dict:
     """Resumen de benchmark_rate de UHD ('Num dropped samples: 0', ...) -> {etiqueta en minúsculas: n}."""
     return {m.group(1).lower(): int(m.group(2))
             for m in (_BENCHMARK_FILA.match(l) for l in texto.splitlines()) if m}
+
+
+# --- Vigilancia del gNB con SDR (banco vigilar) ---------------------------------------
+# Texto de la consola del gNB -> causa. Solo fallas que dejan la celda sin transmitir y obligan a
+# recrear el gNB (vistas con la B200 el 2026-11-18 y 2026-11-19). Los 'underflow'/'late' sueltos
+# degradan pero no tumban la celda: no cuentan como falla.
+_FALLAS_SDR = (
+    ("exceeded maximum number of timed out transmissions", "tx_timeout"),
+    ("uhd::usb_error", "usb_error"),
+    ("LIBUSB_ERROR", "usb_error"),
+    ("LIBUSB_TRANSFER_ERROR", "usb_error"),
+    ("bad vrt header", "vrt_header"),
+    ("DL task queue is full", "cola_dl_llena"),
+    ("PRACH buffer pool depleted", "pool_prach_agotado"),
+)
+
+# Log de Open5GS -> evento del UE (AMF/SMF), para contar registros, liberaciones y sesiones PDU
+_EVENTOS_CORE = (
+    (re.compile(r"Registration complete"), "registro"),
+    (re.compile(r"UE Context Release"), "liberacion"),
+    (_SESION_SMF, "sesion_pdu"),
+)
+
+
+def clasificar_falla_sdr(linea: str) -> str | None:
+    """Causa de una falla fatal del gNB con SDR en una línea de su consola, o None."""
+    linea = limpiar(linea)
+    return next((causa for texto, causa in _FALLAS_SDR if texto in linea), None)
+
+
+def clasificar_evento_core(linea: str) -> str | None:
+    """'registro', 'liberacion' o 'sesion_pdu' si la línea del log de Open5GS lo indica."""
+    linea = limpiar(linea)
+    return next((evento for patron, evento in _EVENTOS_CORE if patron.search(linea)), None)

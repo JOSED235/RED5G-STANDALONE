@@ -204,6 +204,32 @@ Done!
         self.assertEqual(parsers.parse_benchmark_rate("No UHD Devices Found"), {})
 
 
+class TestVigilanciaSdr(unittest.TestCase):
+    """Líneas reales de 'docker compose logs' del 2026-11-19 (B200 en el i5)."""
+
+    def test_fallas_sdr(self):
+        casos = {
+            "red5g-gnb-sdr  | Error: exceeded maximum number of timed out transmissions.": "tx_timeout",
+            "red5g-gnb-sdr  | terminate called after throwing an instance of 'uhd::usb_error'": "usb_error",
+            "  what():  RuntimeError: USBError -4: usb tx2 submit failed: LIBUSB_ERROR_NO_DEVICE": "usb_error",
+            "Real-time failure in RF: underflow": None,  # degrada, pero no tumba la celda
+            "   1 4602 |   8 1.0    2   4.3k   12    0   0%      0 |  29.0 -13.1   1   25  25.1k": None,
+        }
+        for linea, causa in casos.items():
+            self.assertEqual(parsers.clasificar_falla_sdr(linea), causa, linea)
+
+    def test_eventos_core(self):
+        casos = {
+            "red5g-open5gs  | \x1b[32m11/19 17:13:56.330\x1b[0m: [\x1b[33mgmm\x1b[0m] \x1b[1;32mINFO\x1b[0m:"
+            " [imsi-001010000000001] Registration complete (../src/amf/gmm-sm.c:3165)": "registro",
+            "red5g-open5gs  | 11/19 17:14:11.102: [amf] INFO: UE Context Release [Action:2]": "liberacion",
+            "[smf] INFO: UE SUPI[imsi-001010000000001] DNN[internet] IPv4[10.45.0.2] IPv6[]": "sesion_pdu",
+            "red5g-open5gs  | 11/19 17:13:55.371: [gmm] INFO: Registration request": None,
+        }
+        for linea, evento in casos.items():
+            self.assertEqual(parsers.clasificar_evento_core(linea), evento, linea)
+
+
 if __name__ == "__main__":
     unittest.main()
 

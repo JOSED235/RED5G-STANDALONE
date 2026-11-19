@@ -75,9 +75,18 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] En el i5 (Ubuntu): SIM física programada con pySim (Gialer, IMSI 001010000000001, EHPLMN 001/01) y `SIM_*` llenos en `.env` (2026-11-11).
 - [x] `AMF_CIPHERING_ORDER` de vuelta en `NEA2, NEA1, NEA0` en el `.env` del i5 y red apagada con `make down` (2026-11-18, al cerrar).
 - [ ] Decidir el PLMN de la Fase 3: hoy `MNC=010` en el `.env` del i5 (F3-2); `.env.example` y la Fase 2 siguen en 001/01. Lo limpio es corregir la SIM (EF.AD con MNC de 2 dígitos, EHPLMN 001/01) y volver a 001/01.
-- [ ] En el i5, cuando no se use el gNB: `sudo systemctl unmask avahi-daemon.socket avahi-daemon.service && sudo systemctl start avahi-daemon` (quedó enmascarado). El gobernador `performance` y el *polling* DRM se revierten solos al reiniciar; hay que repetirlos en cada sesión de laboratorio.
-- [ ] `make build` en el i5 con tiempo (recompila srsRAN, > 1 h: las imágenes cargadas con `docker load` no traen caché) para hornear `request_pdu_session_timeout` en la imagen; hoy se montó la plantilla con un override temporal.
-- [ ] Estabilidad de la B200 en el i5: tres fallas de USB el 2026-11-18 (`LIBUSB_TRANSFER_ERROR` al recrear, desconexión al conectar otro USB, `bad vrt header` → `timed out transmissions`); probar la fuente externa de 6 V. Recuperación: parar `gnb-sdr`, `usbreset 2500:0020`, `up`.
+- [ ] En el i5, cuando no se use el gNB: `make revertir-lab` (desenmascara avahi; el resto se revierte también al reiniciar). En cada sesión de laboratorio: `make preparar-lab` en una terminal propia (2026-11-19).
+- [x] ~~`make build` en el i5 para hornear `request_pdu_session_timeout`~~ — ya no es necesario para trabajar: `COMPOSE_FILE=…:docker/compose.montajes.yml` en el `.env` del i5 monta las plantillas y el entrypoint del repositorio (2026-11-19). El `build` queda opcional, para que la imagen sola sea autosuficiente.
+- [x] Estabilidad de la B200 en el i5 (2026-11-19): la fuente de 6 V **no se puede usar**; en su lugar celda de 10 MHz (`GNB_BW_MHZ=10`), `preparar-lab` (C-states incluidos) y recuperación automática con `make vigilar`.
+- [x] Primera medición de estabilidad a 20 MHz con el anfitrión preparado (2026-11-19, `resultados/20261119_124514_vigilar_20mhz_tx50_rx20_preparado`): 18 min, 1 falla (`bad vrt header`), recuperada sola en 16,5 s.
+- [ ] Repetir `make vigilar ARGS="--minutos 30"` (o más) para un MTBF con más de una muestra; una sola falla en 18 min no basta para el informe.
+- [ ] Tras una caída de la B200 el teléfono no vuelve solo a la celda (ni con modo avión): hay que reiniciarlo. Documentarlo como limitación y medir cuánto tarda.
+- [ ] Mediciones F3-6/F3-7 con el teléfono: `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m.
+- [ ] Analizar con `banco protocolos` la traza `capturas/fase3_ngap_20261119_121710.pcap` (tiene el registro, PDUSessionResourceSetup y GTP-U del teléfono) para el análisis de protocolos de la Fase 3.
+- [x] Sesión PDU del teléfono y **navegación** confirmada por el usuario (2026-11-19, 17:57:30 UTC, 20 MHz, TX 50 / RX 20): IP 10.45.0.2, ping UPF → teléfono 0 % de pérdida y RTT 30,9 ms. Faltaban el APN `internet` y la itinerancia de datos (se había desactivado).
+- [ ] El teléfono **no ve la celda de 10 MHz** (ni PRACH en 6 min con el anfitrión preparado y tras reiniciarlo): se volvió a 20 MHz. Pendiente decidir si se insiste (otro ARFCN/SSB) o se documenta como limitación del terminal.
+- [ ] Recalcular con `banco enlace --prb 24` los límites teóricos de la celda de 10 MHz para F3-6/F3-7 (las cifras de 51 PRB son de 20 MHz).
+- [ ] `shellcheck` de `docker/host/preparar_lab.sh` (no está instalado en el i5; lo hará la CI al subir).
 - [ ] Tiempo real del i5 con 20 MHz n78: underflows 7–60/min y un colapso (`DL task queue is full`, `PRACH buffer pool depleted`); con gobernador `performance`, sin avahi ni *polling* DRM bajó a ~7–9/min. Si estorba, celda de 10 MHz.
 - [ ] F3-7 al aire: `make telefono ARGS="--distancia <m>"` a 0,5, 1, 2 y 4 m con la misma `SDR_TX_GAIN` y comparar con `banco enlace --atenuacion 0 --distancia <m>`.
 - [ ] Teléfono **OnePlus Nord CE 2 Lite 5G**: **registrado en la celda n78** el 2026-11-18 (5G-AKA, Registration complete, IMSI 001010000000001) con PLMN **001/010** y `NR only`, pero **no pide la sesión PDU** (FOR=0, sin PDU Session Establishment). El teléfono se cree en itinerancia (EHPLMN 001/01 frente a 001/010) y pidió activar el roaming de datos, que ya quedó activado. Siguiente sesión: `make lab`, reiniciar el teléfono (NR only en la app, datos y roaming activados) y comprobar la sesión PDU (IP 10.45.0.x); si no, corregir la SIM (F3-2).
@@ -1556,4 +1565,114 @@ devolvió el `.env` a NEA2. Fallas documentadas como F3-1 a F3-6 en el README.
 
 **Pendiente:** sesión PDU del teléfono con el roaming de datos activado, PLMN definitivo (corregir la SIM),
 `make build`, fuente de 6 V de la B200 y las mediciones F3-5 a F3-8 (ver "Pendientes vigentes").
+
+---
+
+## 2026-11-19 — Laboratorio: causa de la liberación del teléfono y mejoras de estabilidad (10 MHz, preparar-lab, vigilar)
+
+**Contexto:** se retomó la sesión PDU del teléfono (pendiente del 2026-11-18). En ~15 min hubo tres
+caídas de la B200 y el teléfono se registraba pero era liberado a los 8–13 s. El usuario pidió reducir
+las fallas con cambios justificables frente a la rúbrica, **sin la fuente externa de 6 V** (no se puede usar).
+
+**Hallazgos (en orden):**
+- `make lab` 5/5 con un override temporal (plantilla con `request_pdu_session_timeout: 30`).
+- 12:13 (hora local): el kernel desconectó y reenumeró la B200 (`LIBUSB_ERROR_NO_DEVICE`); 17:14 y
+  17:21 UTC: `exceeded maximum number of timed out transmissions` sin evento del kernel, la última a los
+  95 s de subir TX a 60 dB. Logs: `capturas/gnb_sdr_20261119_falla_timedout*.log`.
+- Teléfono: Registration complete 17:13:56, 17:16:11, 17:17:30 y 17:18:52 UTC, **sin PDU Session
+  Establishment**. La traza NGAP (`capturas/fase3_ngap_20261119_121710.pcap`, `dumpcap` en el puente de
+  `red5g_net`) muestra *UEContextReleaseRequest* del gNB con causa `radio-connection-with-ue-lost` (21).
+  En las métricas, la RSRP del PUSCH era `ovl` (saturación) con RX 40 y el teléfono a ~1 m, PHR −16 dB, y
+  al siguiente PUSCH 10/10 errores (SNR −24 dB). Con **RX 20** el PUSCH pasó a SNR ~28 dB sin `ovl`, pero
+  el teléfono siguió dejando de transmitir a los ~4 s (CQI 7–8, ~20 underflows/30 s): se sospecha del DL.
+- A 20 MHz la B200 no aguanta en el i5 sin fuente externa; con **10 MHz** (15,36 MS/s) quedó estable en
+  los primeros minutos. srsRAN rechaza 11,52 MS/s: el PRACH B4 de SCS 30 kHz exige 15,36/23,04/…
+- Anfitrión: además de lo de F3-6, los C-states C3–C10 (70–890 µs de latencia) estaban activos y el
+  *autosuspend* USB del kernel en 2 s.
+
+**Decisiones y justificación frente a la rúbrica (Fase 3):**
+- *Configuración SDR: "calibración óptima de ganancias… sin problemas de estabilidad"* → RX 40 → 20 dB
+  por la saturación medida (F3-7); celda de 10 MHz por la caída de la B200 a 20 MHz (F3-8). El enunciado
+  no fija el ancho de banda; los límites teóricos se recalculan con 24 PRB.
+- *Conexión UE: "se conecta, autentica y navega" frente a "requiere múltiples reintentos o es inestable"*
+  → recuperación automática del SDR y anfitrión preparado de forma reproducible.
+- *Conclusiones: "proponiendo soluciones a problemas encontrados"* → cada falla queda registrada con
+  causa, tiempo de recuperación y MTBF (`vigilar`), y cada ajuste con su motivo (README F3-5 a F3-8).
+
+**Qué se hizo** (archivos principales):
+- Ancho de banda parametrizable: `GNB_BW_MHZ` (10 o 20) en `.env.example` y `docker-compose.yml`;
+  `docker/gnb/entrypoint.sh` deduce `GNB_SRATE`; plantillas `gnb_b210_n3/n78.yaml` con `${GNB_SRATE}` y
+  `${GNB_BW_MHZ}`; `banco/config.py` (`SRATE_POR_BW_MHZ`, `srate_msps`); la CI añade `GNB_SRATE` al renderizar.
+  `SDR_RX_GAIN` por defecto 20 (antes 40).
+- `docker/compose.montajes.yml`: monta `docker/gnb/` y el entrypoint del repositorio en los gNB; se activa
+  con `COMPOSE_FILE` en `.env` y evita el `build` de > 1 h en el i5 (imágenes de `docker load`).
+- `docker/host/preparar_lab.sh` (+ `make preparar-lab` / `revertir-lab`): un solo sudo para el gobernador,
+  C-states > 10 µs, avahi, *polling* DRM y *autosuspend* USB; `--revertir` lo deshace.
+- `banco lab` (paso 1/5): muestra ancho de banda y tasa, y avisa si el anfitrión no está preparado
+  (`revisar_anfitrion`, sysfs; avahi por systemctl). `banco benchmark` usa la tasa de `GNB_BW_MHZ`.
+- Nuevo `banco vigilar` (`make vigilar`, `manage_lab.ps1 vigilar`): ante `timed out transmissions`, error
+  USB, `bad vrt header`, cola DL llena, pool PRACH agotado o gNB caído, guarda el log, para el gNB,
+  `usbreset`, lo recrea y espera el NG Setup; registra `fallas_sdr.csv` y en `resumen.csv` fallas, MTBF,
+  recuperación media y registros/liberaciones/sesiones PDU del UE. Clasificadores puros en `parsers.py`.
+- Pruebas: `TestVigilanciaSdr` (líneas reales del día), `TestAnfitrion` (sysfs falso) y `TestSrate`.
+- Documentación: README (inicio rápido, estado, F3-3/F3-5/F3-6, nuevas F3-7 y F3-8, comandos, rúbrica),
+  guía del laboratorio (ruta rápida y diagnóstico), `docker/README.md`, skills `ingeniero-telecom-5g` y
+  `desarrollador-fullstack`.
+- `.env` local del i5 (no versionado): `GNB_BW_MHZ=10`, `SDR_TX_GAIN=50`, `SDR_RX_GAIN=20`,
+  `COMPOSE_FILE=docker-compose.yml:docker/compose.montajes.yml`.
+
+**Verificación:** 60 pruebas unitarias OK (antes 54); `docker compose config` OK con y sin los montajes;
+plantillas renderizadas con `.env.example` + `GNB_SRATE` (simulación del paso de la CI); `banco verificar`
+sin avisos; `gnb-sdr` recreado con los montajes: entrypoint montado (`bash /entrypoint.sh`), "Celda SDR:
+10 MHz, 15.36 MS/s", B200 en USB 3, NG Setup, y en la configuración generada `srate: 15.36`,
+`channel_bandwidth_MHz: 10`, `request_pdu_session_timeout: 30`, `rx_gain: 20`. `revisar_anfitrion()` en
+el i5 detectó C-states profundos y *autosuspend* 2. `banco vigilar` arrancó y creó su carpeta de resultados.
+**No verificado:** `preparar_lab.sh` en el i5 (necesita la contraseña de sudo del usuario); `shellcheck`
+(no instalado); una recuperación real con `vigilar` (no hubo caídas mientras corría); la sesión PDU del
+teléfono a 10 MHz; `manage_lab.ps1 vigilar` en PowerShell.
+
+**Pendiente:** ver "Pendientes vigentes" (estabilidad medida con `vigilar`, sesión PDU con RX 20 y
+10 MHz, límites teóricos con 24 PRB, `shellcheck`).
+
+### Continuación (misma sesión): sesión PDU del teléfono
+
+- `vigilar` aprendió a leer también `capturas/gnb_sdr.log`: a las 17:39:03 el gNB colapsó
+  (`DL task queue is full`) justo cuando se aplicó `preparar_lab.sh` con el gNB en marcha, y ese mensaje
+  solo va al archivo, no a la consola. Nueva prueba `TestLeerNuevo` (61 pruebas OK). Lección: aplicar
+  `preparar-lab` **antes** de `make lab`, no con la celda al aire.
+- 10 MHz: tras recrear el gNB con el anfitrión preparado, **0 underflows**, pero el teléfono no hizo ni un
+  PRACH en 6 min (ni tras reiniciarlo). Se volvió a **20 MHz** (`GNB_BW_MHZ=20` en el `.env` del i5): ~43
+  líneas de underflow/late en 4 min, sin caídas de la B200 hasta ahora.
+- Registros a las 17:46:40, 17:48:45 y 17:52:17 UTC, liberados a los ~11–18 s sin NAS del teléfono tras el
+  `Configuration update command`, ya con buen radio (CQI 10–13, PUSCH SNR ~29 dB). Se descartó el radio.
+  En la traza descifrada del 18/11 (`tshark -o nas-5gs.null_decipher:TRUE`) el teléfono se declara
+  *voice centric* sin modo S1 y Open5GS 2.8.0 anuncia IMS VoPS = 1 (fijo en el código, sin opción en
+  `amf.yaml`); se planteó como hipótesis, pero **no era la causa**.
+- Causa real (F3-4): en el teléfono la **itinerancia de datos estaba desactivada** (se apagó sola tras el
+  18/11) y faltaba un **APN**. Con el APN `internet` (tipo `default,supl`, IPv4) e itinerancia activada:
+  **sesión PDU a las 17:57:30 UTC**, IP 10.45.0.2, DNN `internet`; DL hasta 10 Mbit/s (MCS 24–26, CQI 13,
+  BLER 0–1 %), UL ~1,2 Mbit/s (MCS 28); ping UPF → teléfono 5/5, RTT 17/30,9/36,9 ms (mín./media/máx.).
+  El SMF avisa `Unknown PCO ID: 0x23, 0x24` (opciones de Android sin efecto).
+
+**Verificación:** log del SMF/UPF (sesión e IP), métricas del gNB con tráfico y ping desde el contenedor
+`open5gs`. Como el teléfono no ve 10 MHz, el valor por defecto de `GNB_BW_MHZ` pasó a **20** en
+`.env.example` y `docker-compose.yml`, y la guía, el README (F3-8) y la skill lo reflejan; 61 pruebas OK y
+`docker compose config` OK tras el cambio. **Navegación verificada por el usuario** en el teléfono (páginas web por la red 5G SA). **No verificado
+aún:** mediciones `telefono`, traza de la sesión PDU.
+
+### Cierre del día (2026-11-19)
+
+- `vigilar` a 20 MHz (TX 50, RX 20, anfitrión preparado), detenido con Ctrl+C a los 18,05 min: **1 falla**
+  de la B200 a las 13:00:14 (hora local, `bad vrt header or packet fragment`), **recuperada sola** (`usbreset`
+  ok, NG Setup en **16,5 s**); 4 registros, 6 liberaciones y 1 sesión PDU del teléfono. Tras la caída el
+  teléfono no volvió a la celda ni con el ciclo de modo avión (antes de salir no se alcanzó a reiniciarlo).
+- Evidencias en `capturas/` (no versionadas): `fase3_ngap_20261119_121710.pcap` (NGAP/SBI/PFCP/GTP-U de
+  12:17 a 13:03, con PDUSessionResourceSetup Request/Response y el tráfico del teléfono),
+  `gnb_sdr_20261119_falla_timedout*.log`, `gnb_sdr_20261119_20mhz_sesion_pdu.log` (gNB recreado tras la falla)
+  y `gnb_sdr_ngap_20261119_20mhz.pcap`.
+- Red apagada con `make down` (no transmite). El `.env` del i5 queda con `GNB_BW_MHZ=20`, `SDR_TX_GAIN=50`,
+  `SDR_RX_GAIN=20`, `MNC=010`, NEA2 y `COMPOSE_FILE` con los montajes. El anfitrión sigue preparado hasta
+  reiniciar (`make revertir-lab` para deshacerlo; avahi queda enmascarado hasta entonces).
+- La app del usuario para medir es nPerf (contra servidores de Internet); `make telefono` registra en paralelo
+  las métricas del gNB y el RTT UPF → teléfono.
 

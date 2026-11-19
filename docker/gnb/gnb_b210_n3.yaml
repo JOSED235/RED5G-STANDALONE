@@ -1,4 +1,4 @@
-# Plantilla de la Fase 3: gNB con USRP B210 (UHD), banda n3 FDD, 20 MHz, SCS 15 kHz.
+# Plantilla de la Fase 3: gNB con USRP B210 (UHD), banda n3 FDD, 10 o 20 MHz (GNB_BW_MHZ), SCS 15 kHz.
 # También sirve para la bladeRF 2.0 micro (UHD -> SoapySDR): SDR_DEVICE_ARGS y SDR_OTW_FORMAT en .env.
 # Misma celda que la Fase 2 (gnb_zmq.yaml) para comparar ZMQ y RF con la misma numerología.
 # Basada en configs/gnb_rf_b210_fdd_srsUE.yml del commit 4bf1543936 de srsRAN Project, sin los
@@ -38,7 +38,7 @@ ru_sdr:
   device_args: ${SDR_DEVICE_ARGS}   # B200/B210: type=b200,...; bladeRF: type=soapy,driver=bladerf
   clock: ${SDR_CLOCK}               # default | internal | external | gpsdo
   sync: ${SDR_SYNC}                 # default | internal | external | gpsdo
-  srate: 23.04                      # 20 MHz con SCS 15 kHz (igual que en ZMQ)
+  srate: ${GNB_SRATE}                # deducida de GNB_BW_MHZ en entrypoint.sh (15.36 o 23.04)
   otw_format: ${SDR_OTW_FORMAT}     # sc12 (B200: menos ancho de banda USB) | sc16 (bladeRF vía Soapy)
   tx_gain: ${SDR_TX_GAIN}           # dB; empiece bajo y suba mirando la SNR y la Prx del teléfono
   rx_gain: ${SDR_RX_GAIN}
@@ -46,7 +46,7 @@ ru_sdr:
 cell_cfg:
   dl_arfcn: 368500                  # 1842,5 MHz DL (n3)
   band: 3
-  channel_bandwidth_MHz: 20
+  channel_bandwidth_MHz: ${GNB_BW_MHZ}  # 10 o 20 (.env)
   common_scs: 15
   plmn: "${MCC}${MNC}"
   tac: ${TAC}

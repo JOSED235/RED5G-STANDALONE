@@ -18,6 +18,19 @@ DESTINO_INTERNET = "8.8.8.8"
 SERVICIOS = ("mongodb", "open5gs", "webui", "gnb", "ue", "gnb-sdr")
 IMAGENES = ("red5g-open5gs", "red5g-webui", "red5g-gnb", "red5g-ue")
 
+# Tasa de muestreo (MS/s) de la celda SDR según GNB_BW_MHZ; la misma tabla está en
+# docker/gnb/entrypoint.sh. 11,52 no sirve para 10 MHz por el PRACH B4 de SCS 30 kHz.
+SRATE_POR_BW_MHZ = {10: 15.36, 20: 23.04}
+
+
+def srate_msps(env: dict) -> float:
+    """Tasa de muestreo de la celda SDR que el entrypoint del gNB deducirá de GNB_BW_MHZ."""
+    bw = int(env.get("GNB_BW_MHZ") or 20)
+    if bw not in SRATE_POR_BW_MHZ:
+        raise ValueError(f"GNB_BW_MHZ={bw} no soportado: use 10 o 20 en .env")
+    return SRATE_POR_BW_MHZ[bw]
+
+
 # Nunca se copian a los metadatos de los resultados (Ley 1581 de 2012)
 VARIABLES_SECRETAS = {"UE_K", "UE_OPC", "SIM_K", "SIM_OPC", "SIM_IMSI"}
 
