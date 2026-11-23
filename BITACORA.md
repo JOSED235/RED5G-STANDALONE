@@ -80,9 +80,9 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Estabilidad de la B200 en el i5 (2026-11-19): la fuente de 6 V **no se puede usar**; en su lugar `preparar-lab` (C-states incluidos) y recuperación automática con `make vigilar`. Se probó la celda de 10 MHz (`GNB_BW_MHZ=10`, más estable), pero el teléfono no la ve: con el teléfono se usa 20 MHz.
 - [x] Primera medición de estabilidad a 20 MHz con el anfitrión preparado (2026-11-19, `resultados/20261119_124514_vigilar_20mhz_tx50_rx20_preparado`): 18 min, 1 falla (`bad vrt header`), recuperada sola en 16,5 s.
 - [~] Repetir `make vigilar ARGS="--minutos 30"` (o más) para un MTBF con más de una muestra; una sola falla en 18 min no basta para el informe. Sesión final (19/11): 44,4 min, 1 falla `usb_error` (`LIBUSB_ERROR_NO_DEVICE`), recuperación 6,4 s; sigue siendo una sola muestra por corrida.
-- [ ] **Alimentar la B200 por aparte** (autorizado por el profesor el 19/11): fuente de 6 V DC, 3 A y centro positivo según la etiqueta junto al conector; luego `make vigilar` largo para comparar MTBF con y sin fuente. Si con la fuente la B200 sigue desconectándose del bus, sospechar del cable o de la propia B200.
+- [~] **Alimentar la B200 por aparte** (autorizado por el profesor el 19/11): fuente de 6 V DC, 3 A y centro positivo según la etiqueta junto al conector; luego `make vigilar` largo para comparar MTBF con y sin fuente. Si con la fuente la B200 sigue desconectándose del bus, sospechar del cable o de la propia B200. 2026-11-23: no hubo fuente de 6 V; se usa una de **5 V / 4 A** (fuera de especificación, descartadas una TP-Link de 9 V y una D-Link de 5 V / 2,5 A) y la B200 igual cayó a los 2 min (`bad vrt header`). Falta la de 6 V / 3 A.
 - [ ] Tras una caída de la B200 el teléfono no vuelve solo a la celda (ni con modo avión): hay que reiniciarlo. Documentarlo como limitación y medir cuánto tarda.
-- [ ] Mediciones F3-6/F3-7 con el teléfono: `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m con la misma `SDR_TX_GAIN`, comparando con `banco enlace --atenuacion 0 --distancia <m>`.
+- [~] Mediciones F3-6/F3-7 con el teléfono (2026-11-23: hechas 0,3–0,5 m y 1 m; faltan 2 y 4 m): `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m con la misma `SDR_TX_GAIN`, comparando con `banco enlace --atenuacion 0 --distancia <m>`.
 - [x] Analizar con `banco protocolos` la traza `capturas/fase3_ngap_20261119_121710.pcap` (tiene el registro, PDUSessionResourceSetup y GTP-U del teléfono) para el análisis de protocolos de la Fase 3.
 - [x] Sesión PDU del teléfono y **navegación** confirmada por el usuario (2026-11-19, 17:57:30 UTC, 20 MHz, TX 50 / RX 20): IP 10.45.0.2, ping UPF → teléfono 0 % de pérdida y RTT 30,9 ms. Faltaban el APN `internet` y la itinerancia de datos (se había desactivado).
 - [ ] El teléfono **no ve la celda de 10 MHz** (ni PRACH en 6 min con el anfitrión preparado y tras reiniciarlo): se volvió a 20 MHz. Pendiente decidir si se insiste (otro ARFCN/SSB) o se documenta como limitación del terminal.
@@ -105,7 +105,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [ ] `banco protocolos` atribuye al teléfono la seguridad AS del `capturas/ue.log` del srsUE y no extrae nada con NAS cifrado y registro por 5G-GUTI: avisar en el informe generado o no leer `ue.log` cuando la traza es del `gnb-sdr`.
 - [x] `make datos-fase3` (`analisis/fase3.py`): resultados de `telefono`/`vigilar` → `docs/fase3_datos.tex`, que el informe y la presentación cargan solos (2026-11-19).
 - [x] `make informe` compila ambos PDF con `texlive/texlive:latest-full`; borradores compilados y revisados página por página (informe 5 págs., presentación 14) (2026-11-19).
-- [ ] Tras la sesión: `make datos-fase3`, llenar el bloque "VALORES A LLENAR" (`\enlacevideo`, `\nperfdl`, `\nperful`, `\nperfping`) y las 4 frases en rojo, `make informe` y comprobar que no queda rojo.
+- [~] Tras la sesión: `make datos-fase3`, llenar el bloque "VALORES A LLENAR" (`\enlacevideo`; `\nperfdl`, `\nperful` y `\nperfping` ya puestos el 2026-11-23) y las 4 frases en rojo, `make informe` y comprobar que no queda rojo.
 - [ ] Subir el video (YouTube no listado o Drive) y entregar el PDF del informe, el de la presentación y el enlace.
 - [ ] Confirmar si el repositorio de GitHub es público (la última diapositiva lo cita).
 
@@ -1828,3 +1828,36 @@ paquete; `make informe` sin errores ni `Overfull` (11 `\pendiente{` en el inform
 **Pendiente:** fuente externa de la B200 y nueva vigilancia; barrido por distancia con el teléfono; video.
 
 **Cierre del día:** skills (`ingeniero-telecom-5g`, `desarrollador-fullstack`), `docker/README.md` y el guion (paso `make logs-todo` antes de `make down`) actualizados. La red quedó apagada (`make down`); falta `make revertir-lab` en la terminal del usuario si no se usa el gNB hasta la próxima sesión.
+
+### 2026-11-23 — Última sesión de laboratorio (en curso): sesión PDU y nPerf a 0,3–0,5 m y 1 m
+
+**Qué se hizo:** `make preparar-lab` (usuario) y `make lab` 5/5 (B200 serie 307B57F en USB 3, 20 MHz, TX 50 / RX 20,
+MNC 010). La antena extra que estaba en **GPS ANT** se retiró: `uhd_usrp_probe` dice "No GPSDO found", ese conector no
+lleva a nada; 10 MHz y PPS son entradas de referencia, no de antena. Fuente externa: no hubo de 6 V / 3 A; se conectó una
+de **5 V / 4 A** (fuera de especificación pero sin riesgo: el mismo voltaje del USB).
+
+- Vigilancia 1 (`resultados/20261123_104152_vigilar_20mhz_tx50_rx20_sin_fuente_23nov`, 29,2 min): 2 fallas, `cola_dl_llena`
+  al arrancar (10:42) y `usb_error` a las 10:53 **provocada al manipular los cables**; recuperación media 6,6 s. No sirve para
+  el MTBF.
+- Vigilancia 2 con la fuente de 5 V / 4 A (`resultados/20261123_111115_vigilar_20mhz_tx50_rx20_fuente_5v4a_23nov`, en curso):
+  `bad vrt header` a las 11:13, recuperada en 16,8 s.
+- OnePlus: se registraba (10:54 y 11:07) y se iba sin pedir la sesión PDU (baja pedida por el teléfono; luego RLF
+  "MAC max KOs"). **Causa: el Wi-Fi encendido.** Con el Wi-Fi apagado: Registration complete a las 11:41:00 y
+  **sesión PDU 10.45.0.2** (DNN `internet`, SST 1) a las 11:41:10. El Samsung A54 se probó y no sirve: con la SIM 001/010
+  no busca 5G SA (solo lista Claro, Tigo, Movistar y 732360), por el firmware CSC de Samsung.
+- nPerf (servidor Cali, "5G (SA)"; capturas en `imagenes-nperf/`). "Proveedor: Movistar" es el nombre grabado en la SIM:
+  - **0,3–0,5 m** (`0.3m.png`, distancia por confirmar): DL 38,12 Mbit/s (media 28,45), UL 23,47 (media 18,26),
+    latencia 39 ms (media 49, jitter 19). El gNB vio 34–35 Mbit/s DL con MCS 23–24 / CQI 13 y 18,3–18,9 Mbit/s UL con MCS 28.
+  - **1 m** (`1m.png`, teléfono en la mano): DL 15,38 Mbit/s (media 10,78), UL 7,82 (media 5,73), latencia 37 ms (media 47,
+    jitter 22). `make telefono` (`resultados/20261123_115014_telefono_nperf_1m`): RTT UPF→teléfono 52,3 ms sin pérdidas,
+  DL MCS 11,4 / CQI 9,3 / BLER 0,8 %, UL MCS 16,1 / SNR 13,6 dB.
+- `make datos-fase3` (fila de 1 m en la tabla y la Fig. 2); `\nperfdl`, `\nperful` y `\nperfping` (1 m) en el informe y
+  `\nperfdl`/`\nperful` en la presentación (sin las medias, que desbordaban la diapositiva).
+
+**Verificación:** cifras leídas de las capturas de pantalla y de los logs del gNB/AMF/SMF; `make informe` sin errores ni
+`Overfull`; quedan 4 `\pendiente` reales en el informe (video, frase de caudal, tendencia, conclusión) y 2 en la
+presentación (video, tendencia). **No verificado:** la distancia exacta de la primera prueba (0,3 o 0,5 m).
+La traza `capturas/fase2_traza_20261123_114210.pcap` tiene GTP-U de nPerf pero **no** el registro ni la sesión PDU.
+
+**Pendiente:** 2 y 4 m, traza con la sesión PDU (ciclo de modo avión con Wi-Fi apagado), fin de la vigilancia, video.
+
