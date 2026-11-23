@@ -1,7 +1,7 @@
 % Presentación final - Proyecto 5G SA (srsRAN + Open5GS + SDR), Fase 3
 % Autor: Jose David Rodriguez Pinilla (A00407151) - Sistemas y Comunicaciones 2, Universidad Icesi
 % Compilar con pdfLaTeX (Overleaf o texlive/texlive:latest-full), igual que los informes.
-% Las cifras son las de docs/informe_fase3.tex. Lo pendiente aparece en rojo con \pendiente{...}.
+% Las cifras son las de docs/informe_fase3.tex.
 
 \documentclass[aspectratio=169,10pt]{beamer}
 \usetheme{Madrid}
@@ -18,7 +18,7 @@
 
 \newcommand{\pendiente}[1]{\textcolor{red}{\textbf{[#1]}}}
 
-%--- VALORES A LLENAR TRAS EL LABORATORIO (los mismos del informe) ---------------------------------
+% Enlace al video y nPerf a 1 m (los mismos del informe)
 \newcommand{\enlacevideo}{\pendiente{enlace al video}}
 \newcommand{\nperfdl}{15{,}38~Mbit/s}
 \newcommand{\nperful}{7{,}82~Mbit/s}
@@ -223,8 +223,8 @@ CQI / MCS DL & 13 / 24--26 & Previsto: 22 \\
 BLER DL & 0--1\,\% & --- \\
 SNR PUSCH & 28--29 dB & --- \\
 MCS UL & 28 & srsUE: 5--6 \\
-DL nPerf $<$1 m & 38,12 Mbit/s & Cota: 43,8 \\
-UL nPerf $<$1 m & 23,47 Mbit/s & --- \\
+DL nPerf 0,3 m & 38,12 Mbit/s & Cota: 43,8 \\
+UL nPerf 0,3 m & 23,47 Mbit/s & --- \\
 DL / UL 1 m & 15,38 / 7,82 & Cota: 16,4 \\
 \bottomrule
 \end{tabular}
@@ -258,7 +258,7 @@ $\times$ 0,657 (DL) $\approx$ \textbf{53,8 Mbit/s}
   \item Espacio libre, 3489 MHz, NF 9 dB
   \item Ptx supuesta $-30$ dBm (sin generador)
   \item 19/11 a $\approx$1 m: 2--4 MCS por encima de lo previsto
-  \item 23/11: MCS 11 a 1 m (en la mano), \alert{sin servicio a 2 m} (BLER 66\,\%) y a 0,5 m MCS 23--24 en la mañana pero 6 dos horas después: pesan más la posición y el montaje que la distancia
+  \item 23/11: MCS 11 a 1 m (en la mano), \alert{sin servicio a 2 m} (BLER 66\,\%) a 0,3 m MCS 23--24 y, 40 min después a 0,5 m, MCS 6: pesan más la posición y el montaje que la distancia
 \end{itemize}
 \end{columns}
 \end{frame}

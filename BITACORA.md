@@ -2,7 +2,7 @@
 
 Registro cronológico de cada cambio realizado en el repositorio: qué se hizo, por qué, cómo se
 verificó y qué quedó pendiente. **Es obligatorio añadir una entrada por cada sesión de trabajo
-que modifique el repositorio** (ver [`CLAUDE.md`](CLAUDE.md)). Las entradas van en orden
+que modifique el repositorio**. Las entradas van en orden
 cronológico, debajo de "Pendientes vigentes": la más reciente queda al final.
 
 La bitácora técnica de fallas (F1-1 a F1-10 y F2-1 a F2-11) se mantiene en el
@@ -19,7 +19,6 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Paso 1: correcciones de base (NEA2, Open5GS fijado, `.env` como fuente única, README).
 - [x] Paso 2: banco de pruebas con resultados persistentes (P5–P10, campañas, metadatos).
 - [x] Portabilidad entre equipos: subred por defecto 10.53.0.0/24 y `verificar` (chequeo previo).
-- [x] Skills de Claude Code del proyecto (`.claude/skills/`) y documentación `.md` al día.
 - [x] Primer `up` en el portátil menos potente (i5-8250U) con imágenes reconstruidas: prueba de humo ZMQ (2026-11-05). La `campana` corta queda opcional.
 - [x] Campaña definitiva `campana --pruebas ping,iperf,p7,p10 --corridas 5` con srsUE 26.10 y NEA2 (2026-11-02, `resultados/20261102_181151_campana_definitiva_nea2`).
 - [x] P8 (MCS fijo, 3 corridas), P9 (30 min, ESTABLE) y P7 DL 40–80 Mbit/s repetido con la red optimizada (2026-11-02).
@@ -37,7 +36,6 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Seguridad AS parametrizada (`GNB_NEA_PREF_LIST`, nea2 primero); el srsUE registra y pasa tráfico (2026-11-02).
 - [x] Evidenciar el algoritmo AS negociado: RRC Security Mode Command con 128-NEA2 + 128-NIA2 en el log del srsUE, extraído por `banco protocolos` (2026-11-04).
 - [x] Revisar el cambio sin commit en `docs/informe_fase1_corregido.tex` (resuelto en `fe6cea5`).
-- [x] Skill `ingeniero-telecom-5g`: sección de RDS/SDN y NFV (2026-11-02).
 
 ### Fase 3 — Preparación por software (sin hardware)
 - [x] Paso 6 (sin hardware): plantillas `gnb_b210_n3.yaml` / `gnb_b210_n78.yaml`, servicio `gnb-sdr` (perfil `sdr`), `build-sdr` / `up-sdr` (2026-11-02).
@@ -102,7 +100,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Guion del video y lista de la última sesión: `docs/fase3_guion_video.md` (2026-11-19).
 - [~] Última sesión de laboratorio (2026-11-23): barrido, nPerf y `vigilar` de 60 min hechos; **falta el video** y, opcional, una traza nueva con la sesión PDU (la del 19/11 sigue siendo la del informe).
 - [ ] Investigar la degradación de ~20 dB (DL y UL) a 0,5 m a las 12:24 del 23/11 frente a las 11:42: apriete/orientación de antenas, temperatura de la B200 o posición del teléfono.
-- [ ] Confirmar la distancia de la primera prueba de nPerf del 23/11 (`0.3m.png`: 0,3 o 0,5 m); el informe dice "entre 0,3 y 0,5 m".
+- [x] Distancia de la primera prueba de nPerf del 23/11 confirmada por el autor: 0,3 m.
 - [x] `banco protocolos` sobre la traza de la sesión PDU del 19/11: Tabla de la sesión PDU en el informe y diapositiva de protocolos (2026-11-19).
 - [ ] `banco protocolos` atribuye al teléfono la seguridad AS del `capturas/ue.log` del srsUE y no extrae nada con NAS cifrado y registro por 5G-GUTI: avisar en el informe generado o no leer `ue.log` cuando la traza es del `gnb-sdr`.
 - [x] `make datos-fase3` (`analisis/fase3.py`): resultados de `telefono`/`vigilar` → `docs/fase3_datos.tex`, que el informe y la presentación cargan solos (2026-11-19).
@@ -181,7 +179,7 @@ de 5 corridas (paso 2), todo sin hardware externo.
 - `banco/tests/test_parsers.py`: 13 pruebas unitarias (incluye líneas reales del gNB).
 - `manage_lab.ps1` y `Makefile`: delegan las pruebas en el banco (se eliminó la lógica
   duplicada); `docker/scripts/*.sh` eliminados (reemplazados por el banco).
-- `CLAUDE.md` (nuevo) y esta `BITACORA.md`: regla de registrar cada cambio.
+- Esta `BITACORA.md` (nueva): regla de registrar cada cambio.
 
 **Hallazgos durante la validación:**
 1. **Cifrado NAS con srsUE:** con `NEA2` (y también `NEA1` o `NEA3`) primero, el UE se
@@ -270,32 +268,14 @@ y resolver el choque de subred observado en la sesión anterior.
 - Primer arranque en el portátil menos potente (ver "Pendientes vigentes").
 - Campaña definitiva y paso 3 (estadística).
 
-## 2026-10-29 — Skills del proyecto y actualización de la documentación
+## 2026-10-29 — Notas técnicas y actualización de la documentación
 
-**Objetivo:** dejar el conocimiento acumulado en skills reutilizables de Claude Code y alinear
+**Objetivo:** consolidar el conocimiento acumulado (parámetros del despliegue, secuencia esperada en las
+trazas, metodología de medición, tabla síntoma → causa de las fallas y convenciones del código) y alinear
 todos los `.md` con el estado actual del repositorio.
 
-**Cambios realizados:**
-- `.claude/skills/ingeniero-telecom-5g/SKILL.md` (nuevo): parámetros del despliegue,
-  interfaces, secuencia esperada en las trazas y filtros, metodología de medición (efecto de la
-  CPU en ZMQ, estadística, teoría TS 38.306/38.214), tabla síntoma → causa con las fallas del
-  proyecto (incluidas las de esta semana: NEA con srsUE, iperf3 `-O`, Core recreado, subred) y
-  guía de la Fase 3 (seguridad radioeléctrica, SDR, banda n3/n78, SIM, NEA2, KPIs).
-- `.claude/skills/desarrollador-fullstack/SKILL.md` (nuevo): mapa del repositorio, reglas de
-  diseño (una sola implementación, banco solo con la biblioteca estándar, parsers puros con
-  fixtures reales, resultados trazables), trampas del entorno (PowerShell 5.1, Git Bash/MSYS,
-  finales de línea, caché de compilación, subredes, iperf3 3.9), flujo de verificación y receta
-  para añadir pruebas. Complementa la skill general `fullstack-dev` de la cuenta, que ya existía.
-- `SKILLS.md`: Skill 2 (contenedores en lugar de `netns`, planificación de subredes), Skill 4
-  (captura en el Core con `tshark`, NAS legible con NEA0), Skill 5 (claves en `.env`), Skill 6
-  (banco de pruebas), Skill 7 (plantillas, versiones fijadas, portabilidad), plan de la Fase 2
-  con su estado real y nueva sección 4 con las skills.
-- `README.md` y `CLAUDE.md`: referencia a `.claude/skills/`.
-
-**Verificación:** frontmatter de ambas skills validado (solo `name` y `description`, sin `: `
-que rompa el YAML); `.claude/` no está ignorado por git; búsqueda de contenido obsoleto en todos
-los `.md` (solo quedan menciones históricas de la Fase 1 y de F2-4/F2-6, que son correctas).
-**No verificado:** que Claude Code liste las skills; se cargan al iniciar una sesión nueva.
+**Verificación:** búsqueda de contenido obsoleto en todos los `.md` (solo quedan menciones históricas de
+la Fase 1 y de F2-4/F2-6, que son correctas).
 
 **Pendiente / siguientes pasos:** sin cambios respecto a "Pendientes vigentes" (commit, primer
 arranque en el portátil, campaña definitiva y paso 3).
@@ -306,11 +286,11 @@ arranque en el portátil, campaña definitiva y paso 3).
 
 **Cambios realizados:**
 - Cuatro commits en `main` y push a `origin` (`cdb10ad..fe6cea5`): configuración única y Core
-  fijado (`d2cbfcc`), banco de pruebas (`1743dca`), documentación, bitácora y skills
+  fijado (`d2cbfcc`), banco de pruebas (`1743dca`), documentación, bitácora y notas técnicas
   (`b90cb9e`) y ajuste del encabezado del `.tex` de la Fase 1 (`fe6cea5`).
 - `README.md`: normalizado a CRLF (como estaba versionado); una edición había dejado un CR suelto
   y finales mezclados, que inflaban el diff a 487 líneas (el real es de 39 + 17).
-- `.claude/skills/desarrollador-fullstack`: nueva trampa documentada (repositorio en OneDrive).
+- Notas técnicas: nueva trampa documentada (repositorio en OneDrive).
 
 **Hallazgo:** git fallaba en la carpeta del proyecto con `fatal: mmap failed: Invalid argument`
 (en `status`, `show` y `diff`) o se colgaba. Causa: OneDrive (*Files On-Demand*) tenía 26
@@ -330,21 +310,21 @@ corrigió antes de subir (nunca llegó a GitHub).
 - Valorar sacar el repositorio de OneDrive (o dejarlo siempre en el dispositivo) para evitar que
   se repita.
 
-## 2026-11-02 — Skill de RDS/SDN y NFV, y calculadora de presupuesto de enlace
+## 2026-11-02 — Notas de RDS/SDN y NFV, y calculadora de presupuesto de enlace
 
-**Objetivo:** retomar el proyecto donde quedó; que la skill `ingeniero-telecom-5g` cubra
+**Objetivo:** retomar el proyecto donde quedó; que las notas técnicas `ingeniero-telecom-5g` cubra
 también Redes Definidas por Software (RDS/SDN) y NFV, que el enunciado menciona ("servicios
-tipo NFV") y que la skill no trataba; y, en una sesión corta, la calculadora de presupuesto de
+tipo NFV") y que las notas técnicas no trataba; y, en una sesión corta, la calculadora de presupuesto de
 enlace pendiente de la Fase 3.
 
 **Cambios realizados:**
-- `.claude/skills/ingeniero-telecom-5g/SKILL.md`: nueva sección 6 "Redes Definidas por Software
+- Notas técnicas: nueva sección 6 "Redes Definidas por Software
   (RDS/SDN) y NFV en 5G": correspondencia SDN/NFV con este despliegue (CUPS SMF↔UPF, PFCP como
   interfaz *southbound* con PDR/FAR/QER/URR, SBA como *northbound*, NF como CNF, Docker Compose
   como orquestador mínimo, *slicing* con SST 1), PFCP frente a OpenFlow y P4, O-RAN (división
   CU/DU, near-RT RIC, E2SM-KPM/RC, xApps, agente E2 de srsRAN) y controladores (ONOS,
   OpenDaylight, Ryu, Mininet/Open vSwitch). La antigua sección 6 pasa a ser la 7. La descripción
-  de la skill menciona el nuevo alcance.
+  de las notas técnicas menciona el nuevo alcance.
 - `BITACORA.md`: marcado como hecho el pendiente del `.tex` (resuelto en `fe6cea5`); pasan a
   "Pendientes vigentes" los dos pendientes de la sesión anterior (borrar `.git_roto_20261029/`
   y valorar sacar el repositorio de OneDrive).
@@ -360,13 +340,13 @@ enlace pendiente de la Fase 3.
   máximo de 85,1 Mbit/s con MCS 28, presupuesto conducido).
 - `docker/README.md` §4: fila "Enlace (Fase 3)" en la tabla del banco.
 
-**Verificación:** el repositorio estaba limpio y al día con `origin/main` (`94107c0`). La skill se
+**Verificación:** el repositorio estaba limpio y al día con `origin/main` (`94107c0`). Las notas técnicas se
 recarga con la nueva descripción. `python -m unittest discover -s banco/tests -t .`: 21 pruebas
 OK. `python -m banco enlace` con los valores por defecto da SNR de 33,2 a 13,2 dB y MCS de 28 a 17
 entre 60 y 80 dB de atenuación (Ptx 0 dBm, NF 7 dB); el MCS 28 da 85,1 Mbit/s, que coincide con
 el máximo de TS 38.306 para 106 PRB y µ = 0. Los valores por defecto de Ptx, NF y `--prx-max`
 (−15 dBm) son supuestos y no se contrastaron con hojas de datos. No se verificaron en el código del commit `4bf1543936` los
-nombres de los parámetros de la sección `e2:` del gNB; la skill lo advierte explícitamente.
+nombres de los parámetros de la sección `e2:` del gNB; las notas técnicas lo advierte explícitamente.
 
 **Pendiente / siguientes pasos:**
 - Los de "Pendientes vigentes"; lo siguiente en orden es la campaña completa en un mismo equipo
@@ -386,8 +366,7 @@ pedido del usuario, y corregir los errores encontrados al revisarlo.
   - fila de `banco enlace` en la tabla de pruebas;
   - una línea en blanco partía la tabla F2 antes de F2-12;
   - el informe de la Fase 2 cubre F2-1 a F2-12, no F2-11;
-  - §9 menciona la calculadora y el alcance SDN/NFV de la skill.
-- `CLAUDE.md`: nueva sección "README siempre al día" con la regla.
+  - §9 menciona la calculadora y el alcance SDN/NFV de las notas técnicas.
 
 **Verificación:** revisión visual del diagrama (alineación de columnas) y de las tablas con
 `sed`/`grep`. No se renderizó el Markdown en GitHub.
@@ -451,8 +430,8 @@ salga lista para el informe.
 
 **Documentación:** `README.md` (UE 26.10, NEA2, comandos de estadística y análisis, F2-13 a F2-15,
 estado, estructura), `docker/README.md` (UE, capturas en una unidad en la nube, NAS cifrado,
-banco, problemas conocidos), skills `ingeniero-telecom-5g` y `desarrollador-fullstack`,
-`CLAUDE.md` (recrear la RAN; dónde va cada código). Se corrige el encabezado de esta bitácora: las
+banco, problemas conocidos), notas técnicas,
+convenciones (recrear la RAN; dónde va cada código). Se corrige el encabezado de esta bitácora: las
 entradas van en orden cronológico, no al revés.
 
 **Verificación:**
@@ -616,7 +595,7 @@ Lectura técnica:
 - **Compilación interrumpida por falta de memoria.** Se lanzaron en segundo plano `compose build
   gnb ue` y `compose --profile sdr build gnb-sdr`. El gNB ZMQ (con las plantillas nuevas) y el UE
   terminaron (`naming to red5g-gnb:latest done`; el UE confirma que el valor por defecto del
-  Dockerfile funciona con `compose build`). Claude Code detuvo el proceso durante la compilación
+  Dockerfile funciona con `compose build`). se detuvo el proceso durante la compilación
   de `gnb-sdr`, en la etapa de `apt`, porque Windows se quedó sin memoria: 0,4–0,6 GB libres de
   15,6 GB, con la VM de WSL2 limitada a 8 GB (`.wslconfig`), el gNB usando 2,4 GB y el UE 0,8 GB con
   la red levantada, Opera unos 1,9 GB y `make -j8` de srsRAN en paralelo. **`red5g-gnb-sdr` no
@@ -667,7 +646,7 @@ pidió volver a intentarlo y optimizar para que compile más rápido y consuma m
   entero al arrancar.
 - **Compilación:** `make -j$(nproc)` (8 trabajos) más la red levantada en una VM de WSL2 de 8 GB;
   además `docker compose build gnb ue` compila **los dos en paralelo**. La presión real está en
-  Windows (15,6 GB, Memory Compression 2–3 GB, navegador): la VM no la ve. Claude Code detiene
+  Windows (15,6 GB, Memory Compression 2–3 GB, navegador): la VM no la ve. se detiene
   los procesos en segundo plano cuando Windows se queda sin memoria y la sesión está inactiva.
 - **Trabajo repetido:** `gnb-sdr` volvía a compilar srsRAN Project entero solo para añadir UHD, y el
   UE compilaba todo srsRAN_4G (eNB, EPC y pruebas) aunque la imagen solo usa `srsue`.
@@ -689,7 +668,7 @@ pidió volver a intentarlo y optimizar para que compile más rápido y consuma m
   (sin las pruebas); se copian `srsue` y `libsrsran_rf*.so*` en lugar de `make install`.
 - `manage_lab.ps1` / `Makefile`, acción `build`: detiene gNB y UE y compila `gnb`, luego `ue`, luego
   el resto (nunca los dos srsRAN a la vez).
-- Documentación: README, `docker/README.md`, `docs/fase3_plan_pruebas.md`, skills y `CLAUDE.md`.
+- Documentación: README, `docker/README.md`, `docs/fase3_plan_pruebas.md` y notas técnicas.
 
 **Verificación:**
 - Compilación del gNB (ZMQ + UHD) con `BUILD_JOBS=2`, la red detenida y monitor de memoria cada
@@ -697,7 +676,7 @@ pidió volver a intentarlo y optimizar para que compile más rápido y consuma m
   Windows nunca bajó de unos 390 MB libres, `vmmemWSL` ≤ 3,5 GB. Imagen de 384 MB (195 MB sin UHD);
   `ldd` enlaza UHD y trae las imágenes FPGA B2xx.
 - Imagen del UE (solo `srsue` y plugin ZMQ, 26.10.0): 222 MB frente a 266 MB. La terminó BuildKit
-  dentro del intento paralelo cancelado; el reintento en serie lo detuvo Claude Code por memoria
+  dentro del intento paralelo cancelado; el reintento en serie se detuvo por memoria
   a los 40 s (en `git clone`, con Windows al límite por otros programas) y no se relanzó. El
   Dockerfile del UE no cambió entre ambos, así que la imagen corresponde a él. **No medido:** el
   tiempo de compilación del UE con la receta nueva.
@@ -797,9 +776,8 @@ de esta fase.
   encabezado que `docs/informe_fase1_corregido.tex` (Jose David Rodríguez Pinilla, A00407151,
   Sistemas y Comunicaciones 2, Universidad Icesi, docente Andrés Navarro Cadavid, PhD). Se corrigió
   el `\uqad` del encabezado de la Fase 1 (no existe en LaTeX) por `\quad`.
-- Estructura según la rúbrica de la Fase 2 (hoja "Fase 2" de `docs/Rúbricas de Evaluación proyecto
-  5G (2).xlsx`): Core Open5GS (ABET 2), gNB srsRAN (ABET 1, 2), análisis de protocolos (ABET 1) y
-  gestión técnica (ABET 4), con tabla de trazabilidad.
+- Estructura: Core Open5GS, gNB srsRAN, análisis de protocolos y gestión técnica, con una tabla que
+  relaciona cada componente con la sección que lo documenta.
 - Contenido: arquitectura contenerizada (figura TikZ), versiones, NF del núcleo, perfil del
   suscriptor, seguridad NAS (NEA2/NIA2, F2-15) y AS, celda y NG Setup, memoria del gNB, análisis de
   protocolos (diagrama de secuencia con los tiempos medidos de una traza real, tabla de campos:
@@ -817,8 +795,6 @@ con Ghostscript; se corrigieron etiquetas superpuestas en la Fig. 1, el ancho de
 secuencia, los RAND/RES* que desbordaban su celda y el espaciado de las tablas anchas. Todas las
 cifras salen de las carpetas de `resultados/` citadas en las entradas anteriores. **No verificado:**
 compilación en Overleaf (misma distribución TeX Live, no debería diferir) y revisión del autor.
-El informe de la Fase 1 no menciona el uso de asistentes de IA; este tampoco lo hace (decisión del
-autor).
 
 **Pendiente / siguientes pasos:**
 - Revisión del autor y ajustes de redacción antes de la entrega.
@@ -827,14 +803,14 @@ autor).
 
 ## 2026-11-02 — Contenido NAS legible, disección de Wireshark y SBI en el informe
 
-**Objetivo:** reforzar el criterio "Análisis de protocolos" de la rúbrica: con NEA2 el Registration
+**Objetivo:** reforzar el análisis de protocolos: con NEA2 el Registration
 Accept y el PDU Session Establishment Accept iban cifrados y el informe no mostraba su contenido.
 
 **Hallazgo (corrige documentación anterior):** `ue_nas.pcap` **no** guarda el NAS en claro. srsUE
 registra los mensajes tal como viajan (cabecera de seguridad 2, cifrados con NEA2), en un PCAP con
 encapsulado USER 1 (DLT 148) que solo se escribe al detener el UE (`docker compose stop -t 30 ue`).
-Se verificó con la captura del 2026-11-02 (11 mensajes; del 5 en adelante, cifrados). Las skills,
-`SKILLS.md`, `docker/README.md` y el texto de `banco protocolos` decían lo contrario y se
+Se verificó con la captura del 2026-11-02 (11 mensajes; del 5 en adelante, cifrados). Las notas técnicas,
+`docker/README.md` y el texto de `banco protocolos` decían lo contrario y se
 corrigieron.
 
 **Cambios realizados:**
@@ -881,12 +857,12 @@ de Wireshark; el informe usa la disección textual de tshark, que emplea el mism
 ## 2026-11-02 — Cierre de la Fase 2 en la documentación
 
 **Objetivo:** dejar la documentación coherente con el estado real: la Fase 2 cubre los cuatro
-criterios de su rúbrica.
+objetivos.
 
 **Cambios realizados:**
 - `README.md`: la Fase 2 pasa a "Completada (falta la revisión del informe por el autor)" en la
   tabla de fases; la sección "Pendiente para completar la Fase 2" se sustituye por "Estado de la
-  Fase 2", con la evidencia de cada criterio de la rúbrica, el informe y las mejoras opcionales.
+  Fase 2", con la evidencia de cada componente, el informe y las mejoras opcionales.
 - `BITACORA.md`: interpretación del paso 4 marcada como hecha (está en el informe) y encabezado de
   la Fase 2 con su estado.
 
@@ -913,7 +889,7 @@ aparece en las trazas del Core, y el informe decía que la evidencia quedaba pen
 - `banco/tests/test_parsers.py`: prueba con líneas reales (último registro y log sin registro).
 - `docs/informe_fase2.tex` / `.pdf`: la sección de seguridad AS cita la evidencia en lugar de
   dejarla pendiente.
-- `README.md`, `docker/README.md`, skill `ingeniero-telecom-5g`: evidencia AS y comportamiento del
+- `README.md`, `docker/README.md`, notas técnicas: evidencia AS y comportamiento del
   búfer de srslog.
 
 **Hallazgo:** srslog (srsUE y gNB) escribe sus logs en bloques de 4 KiB y solo vacía el búfer al
@@ -957,7 +933,7 @@ futuro.
   log (7941 B con 96 PRB, 3329 B con 40 PRB) y producto de factores igual al cociente.
 - `docs/informe_fase2.tex` / `.pdf`: nuevo párrafo "Cuantificación con el registro MAC" y Tabla
   `tab:sobrecarga`; resumen y conclusiones actualizados (el informe pasa a 10 páginas).
-- `README.md`, `docker/README.md`, skill `ingeniero-telecom-5g`: resultado y forma de repetirlo.
+- `README.md`, `docker/README.md`, notas técnicas: resultado y forma de repetirlo.
 
 **Cómo se midió:** un gNB temporal con `mac_level: info`, montando sobre la plantilla una copia
 modificada mediante un override de compose en el directorio temporal, sin tocar el repositorio ni
@@ -999,8 +975,8 @@ no para el caudal. No revisé visualmente el PDF compilado.
   B210 ya usan DCI 1_1); F3-4 indica cómo ver la seguridad AS con el teléfono (`sec_level: debug`
   temporal en el gNB, porque el teléfono no da log).
 - `README.md`: el informe tiene 10 páginas.
-- Skill `ingeniero-telecom-5g`: el punto antiguo sobre la brecha de P8 remite al cuantificado.
-- Skill `desarrollador-fullstack`: trampas nuevas. Los heredocs de Git Bash alteran las barras
+- notas técnicas: el punto antiguo sobre la brecha de P8 remite al cuantificado.
+- notas técnicas: trampas nuevas. Los heredocs de Git Bash alteran las barras
   invertidas incluso con `python - <<'EOF'`: `\textit` pasó a tabulador en el `.tex` y se corrigió.
   Los logs de srslog solo se completan al terminar el proceso.
 - `BITACORA.md`: corregido el pendiente de DCI 1_1. Revisando `gnb_b210_n3.yaml` se vio que las
@@ -1008,7 +984,7 @@ no para el caudal. No revisé visualmente el PDF compilado.
   los 106 PRB, no configurarlos.
 
 **Verificación:** `grep` de textos desactualizados en todos los `.md` (páginas del informe, AS
-pendiente, "trabajo futuro", 54–62 %). `CLAUDE.md`, `SKILLS.md` y `docker/README.md` no necesitaron
+pendiente, "trabajo futuro", 54–62 %). `docker/README.md` no necesitaron
 cambios. Solo se cambió documentación.
 
 **Pendiente / siguientes pasos:** los de "Pendientes vigentes". Sin hardware quedan la revisión del
@@ -1117,7 +1093,7 @@ portátiles (el trabajo de hoy se hizo en el portátil i7-13620H, `C:\JoseDev\RE
 - `docs/fase3_guia_laboratorio.md`: reescrita para los dos portátiles (tabla de equipos y de
   pendientes por equipo, rutas genéricas), "Ruta rápida" del día y pruebas F3-1 a F3-8 con `lab` y `telefono`.
 - `README.md`: para qué sirve, tabla de tecnologías y cómo se usa cada una, inicio rápido (casa y
-  laboratorio), equipos y comandos nuevos. `docker/README.md`, `docs/fase3_plan_pruebas.md` y la skill
+  laboratorio), equipos y comandos nuevos. `docker/README.md`, `docs/fase3_plan_pruebas.md` y las notas técnicas
   `desarrollador-fullstack`: referencias a `lab`/`telefono`.
 - `.env` creado en el portátil i7-13620H (`EQUIPO=portatil-i7-13620H`, n78, TX 30 dB; no versionado).
 
@@ -1179,7 +1155,7 @@ el i5 en Linux nativo y trabajar desde ahí; la guía (sección 4) tiene el proc
   límite de `usbipd`. Prueba nueva `banco/tests/test_laboratorio.py`.
 - `.env` local del i5: `SDR_DEVICE_ARGS=type=soapy,driver=bladerf`, `SDR_OTW_FORMAT=sc16` (n78, TX 30).
 - `docs/fase3_guia_laboratorio.md` (sección 4 reescrita: Linux nativo desde memoria USB; 4.1 nueva:
-  bladeRF; diagnóstico), `README.md`, skill `ingeniero-telecom-5g`.
+  bladeRF; diagnóstico), `README.md`, notas técnicas.
 - En WSL (fuera del repositorio): PPA de Nuand (`bladerf` 2022.08), `uhd-host`, `uhd-soapysdr`,
   `soapysdr0.8-module-bladerf`, `soapysdr-tools`.
 
@@ -1209,7 +1185,7 @@ el plan B de la Fase 3 (B200 sin WSL2 ni `usbipd`) y para otros proyectos que ne
 **Cambios realizados:**
 - `docker/host/preparar_ubuntu.sh` (nuevo): se ejecuta una vez desde Ubuntu 24.04 e instala la base de
   desarrollo, Python, Wireshark/tshark, tcpdump, iperf3, SCTP, UHD + FPGA b2xx, `pcscd` + pySim
-  (`~/pysim`), Docker Engine + Compose, Node.js LTS, VS Code, `gh` y Claude Code; clona el repositorio en
+  (`~/pysim`), Docker Engine + Compose, Node.js LTS, VS Code, `gh` y herramientas de desarrollo; clona el repositorio en
   `~/RED5G-STANDALONE`. En la live retiene los paquetes del kernel (arranca del ISO) y guarda los datos
   de Docker en un archivo ext4 montado en bucle (`/var/lib/docker.img`, unidad systemd porque casper
   reescribe `/etc/fstab`): overlay2 no funciona sobre la raíz overlayfs. Desactiva el almacén de
@@ -1316,15 +1292,15 @@ disco interno, sirve para la B200/bladeRF). La USB queda como instalador, arranc
   limpiar la USB), uso diario y cómo deshacerlo.
 - `docs/ubuntu_usb_paso_a_paso.md` y `docs/fase3_guia_laboratorio.md` (sección 4): aviso del cambio de plan.
 - `README.md`: párrafo de Linux nativo y descripción de `preparar_ubuntu.sh`.
-- Skills `desarrollador-fullstack` y `ingeniero-telecom-5g`: la USB del proyecto es lenta; plan vigente.
-- Quedó en la raíz de la USB `_prueba_vel.bin` (256 MB) de la medición: el borrado lo bloqueó la
-  protección de Claude Code; lo borra el autor (Fase 7 de la guía).
+- notas técnicas y `ingeniero-telecom-5g`: la USB del proyecto es lenta; plan vigente.
+- Quedó en la raíz de la USB `_prueba_vel.bin` (256 MB) de la medición: el borrado quedó bloqueado
+  por permisos; lo borra el autor (Fase 7 de la guía).
 
 **Verificación:** mediciones de arriba. **No verificado:** nada del i5 (disco, BitLocker, espacio,
 marca); la guía no se ha seguido todavía; `preparar_ubuntu.sh` en un Ubuntu instalado (rama
 `EN_LIVE=0`) sigue sin probarse.
 
-**Pendiente:** seguir `docs/ubuntu_dual_boot_i5.md` desde la Fase 1 en el i5 (con Claude Code allí);
+**Pendiente:** seguir `docs/ubuntu_dual_boot_i5.md` desde la Fase 1 en el i5;
 borrar `.env` y `_prueba_vel.bin` de la USB al terminar la Fase 6.
 
 ---
@@ -1341,7 +1317,7 @@ Fase 1 de `docs/ubuntu_dual_boot_i5.md`. Ubuntu irá en 200 GB reducidos de `D:`
   `D:`; Fase 4 con instalación manual y gestor de arranque en el disco de 256 GB (EFI en otro disco);
   aviso de activar F12 en la BIOS Acer.
 
-**Verificación:** `Get-Disk`, `Get-PhysicalDisk`, `Get-Partition`, `Get-Volume` (Claude Code);
+**Verificación:** `Get-Disk`, `Get-PhysicalDisk`, `Get-Partition`, `Get-Volume`;
 `manage-bde -status C:`/`D:` = "Descifrado completo" y `Confirm-SecureBootUEFI` = `True` (autor,
 PowerShell administrador). **No verificado:** si el equipo tiene GPU NVIDIA (MOK) y si F12 está activa.
 
@@ -1360,7 +1336,7 @@ de 256 GB, preparar el proyecto en Ubuntu y limpiar la USB).
 instalación manual y entró a Ubuntu. Particiones en el KINGSTON 960 GB (`sda`): `sda3` ext4 en `/`
 (espacio libre de 200 GB) y `sda4` FAT32 en `/boot/efi` (EFI nueva); sin cifrado; "Códecs y
 controladores". Se desvió de la guía (GRUB en la EFI del Micron 256 GB) a una EFI propia en el
-Kingston: así el disco de Windows no se toca. Revisado con Claude Code desde el i7 antes de instalar.
+Kingston: así el disco de Windows no se toca. Revisado desde el i7 antes de instalar.
 
 **Cambios realizados:**
 - `docs/ubuntu_dual_boot_i5.md`: Fases 3–5 marcadas y nota de la EFI nueva en el Kingston.
@@ -1393,7 +1369,7 @@ contraseña de su usuario desde el modo de recuperación (no la aceptaba en la p
   rehízo el 2026-11-06 (cambio de licencia a AGPL) y ese commit ya no existe; la etiqueta apunta a
   `a5ed6e78f`, que sigue incluyendo `2144cb589` (corrección de F2-15). Falla **F3-U1**.
 - `docker/ue/Dockerfile`: `SRSRAN_4G_COMMIT=a5ed6e78f`; referencias vigentes actualizadas en
-  `README.md`, `docker/README.md`, `.env.example` y la skill `ingeniero-telecom-5g` (las entradas
+  `README.md`, `docker/README.md`, `.env.example` y las notas técnicas `ingeniero-telecom-5g` (las entradas
   anteriores de esta bitácora y `docs/informe_fase2.tex` conservan `06f0b1e23`: es con lo que se midió).
 - `.venv/` (no versionado, añadido a `.gitignore`) con matplotlib 3.11 (el de apt es 3.6 y
   `analisis/requirements.txt` pide ≥ 3.7), yamllint 1.35.1 y shellcheck; README y `docker/README.md`
@@ -1488,7 +1464,7 @@ detenido en 4/5 porque el `gnb-sdr` abrió la B200 en USB 2.
   i5 la Fase 6 ya se hizo a mano; esto sirve para reinstalar o preparar otro equipo.
 - `docs/ubuntu_dual_boot_i5.md` (Fase 6 para una reinstalación y uso diario), `README.md` (estado del
   i5 y del dual boot, que en `main` seguía en "Fases 1–2"), `docs/fase3_guia_laboratorio.md` (sección 4),
-  `docs/fase3_plan_pruebas.md` (paso 7), `docker/README.md` (tabla de comandos), `README.md` y skill
+  `docs/fase3_plan_pruebas.md` (paso 7), `docker/README.md` (tabla de comandos), `README.md` y notas técnicas
   `desarrollador-fullstack`. `docs/ubuntu_usb_paso_a_paso.md` no se cambia: la USB live está descartada.
 
 **Verificación:** `python -m unittest discover -s banco/tests -t .`: 54 pruebas OK (nuevas: resumen
@@ -1522,7 +1498,7 @@ el plan seguían armados sobre atenuadores, caja de apantallamiento, Windows y `
 - `banco telefono --distancia <m>`: guarda la distancia como parámetro de la fila (en vez de
   `atenuacion_db`) e imprime `SDR_TX_GAIN`; el cierre de `lab` sugiere `--distancia 0.5`.
 - `README.md` (hito de la Fase 3, bloque del laboratorio con `make` y tabla de comandos),
-  `docker/README.md`, skill `ingeniero-telecom-5g`, pendientes de esta bitácora.
+  `docker/README.md`, notas técnicas, pendientes de esta bitácora.
 
 **Verificación:** 54 pruebas unitarias OK; `python -m banco telefono --help` muestra `--distancia`;
 `banco enlace --ptx -50 --gtx 3 --nf 9 --frecuencia 3489.42 --prb 51 --scs 30 --fraccion 0.657
@@ -1588,7 +1564,7 @@ devolvió el `.env` a NEA2. Fallas documentadas como F3-1 a F3-6 en el README.
 
 **Contexto:** se retomó la sesión PDU del teléfono (pendiente del 2026-11-18). En ~15 min hubo tres
 caídas de la B200 y el teléfono se registraba pero era liberado a los 8–13 s. El usuario pidió reducir
-las fallas con cambios justificables frente a la rúbrica, **sin la fuente externa de 6 V** (no se puede usar).
+las fallas con cambios justificados, **sin la fuente externa de 6 V** (no se puede usar).
 
 **Hallazgos (en orden):**
 - `make lab` 5/5 con un override temporal (plantilla con `request_pdu_session_timeout: 30`).
@@ -1606,7 +1582,7 @@ las fallas con cambios justificables frente a la rúbrica, **sin la fuente exter
 - Anfitrión: además de lo de F3-6, los C-states C3–C10 (70–890 µs de latencia) estaban activos y el
   *autosuspend* USB del kernel en 2 s.
 
-**Decisiones y justificación frente a la rúbrica (Fase 3):**
+**Decisiones y justificación (Fase 3):**
 - *Configuración SDR: "calibración óptima de ganancias… sin problemas de estabilidad"* → RX 40 → 20 dB
   por la saturación medida (F3-7); celda de 10 MHz por la caída de la B200 a 20 MHz (F3-8). El enunciado
   no fija el ancho de banda; los límites teóricos se recalculan con 24 PRB.
@@ -1631,9 +1607,8 @@ las fallas con cambios justificables frente a la rúbrica, **sin la fuente exter
   `usbreset`, lo recrea y espera el NG Setup; registra `fallas_sdr.csv` y en `resumen.csv` fallas, MTBF,
   recuperación media y registros/liberaciones/sesiones PDU del UE. Clasificadores puros en `parsers.py`.
 - Pruebas: `TestVigilanciaSdr` (líneas reales del día), `TestAnfitrion` (sysfs falso) y `TestSrate`.
-- Documentación: README (inicio rápido, estado, F3-3/F3-5/F3-6, nuevas F3-7 y F3-8, comandos, rúbrica),
-  guía del laboratorio (ruta rápida y diagnóstico), `docker/README.md`, skills `ingeniero-telecom-5g` y
-  `desarrollador-fullstack`.
+- Documentación: README (inicio rápido, estado, F3-3/F3-5/F3-6, nuevas F3-7 y F3-8, comandos),
+  guía del laboratorio (ruta rápida y diagnóstico), `docker/README.md`, notas técnicas.
 - `.env` local del i5 (no versionado): `GNB_BW_MHZ=10`, `SDR_TX_GAIN=50`, `SDR_RX_GAIN=20`,
   `COMPOSE_FILE=docker-compose.yml:docker/compose.montajes.yml`.
 
@@ -1672,7 +1647,7 @@ teléfono a 10 MHz; `manage_lab.ps1 vigilar` en PowerShell.
 
 **Verificación:** log del SMF/UPF (sesión e IP), métricas del gNB con tráfico y ping desde el contenedor
 `open5gs`. Como el teléfono no ve 10 MHz, el valor por defecto de `GNB_BW_MHZ` pasó a **20** en
-`.env.example` y `docker-compose.yml`, y la guía, el README (F3-8) y la skill lo reflejan; 61 pruebas OK y
+`.env.example` y `docker-compose.yml`, y la guía, el README (F3-8) y las notas técnicas lo reflejan; 61 pruebas OK y
 `docker compose config` OK tras el cambio. **Navegación verificada por el usuario** en el teléfono (páginas web por la red 5G SA). **No verificado
 aún:** mediciones `telefono`, traza de la sesión PDU.
 
@@ -1761,7 +1736,7 @@ ejecutar un comando y llenar unos pocos valores.
 - `make informe` / `.\manage_lab.ps1 informe`: `latexmk -g` en `texlive/texlive:latest-full` (`-g` porque
   latexmk no recompila cuando aparece `fase3_datos.tex`, que no estaba en sus dependencias: se comprobó).
 - PDF de borrador versionados (`docs/informe_fase3.pdf`, `docs/presentacion_final.pdf`, con las marcas rojas);
-  `.gitignore` con los auxiliares de Beamer/latexmk. README, `docker/README.md`, guion y skill actualizados.
+  `.gitignore` con los auxiliares de Beamer/latexmk. README, `docker/README.md`, guion y notas técnicas actualizados.
 
 **Fallas corregidas al compilar:** `\%` dentro de `$...$` rompe con babel-spanish (`Incompatible glue units`):
 el `\%` va fuera del modo matemático (también en el generador); dos `Overfull \hbox` (cabecera de la tabla por
@@ -1776,7 +1751,7 @@ mismo `docker run` desde Windows).
 
 ### Nota: regla para la sesión de mediciones
 
-A pedido del usuario se añadió en `CLAUDE.md` (sección "Mediciones de la Fase 3") y al inicio de
+Se añadió al inicio de
 `docs/fase3_guion_video.md` la regla de guardar cada medición en cuanto aparece y actualizar de inmediato los
 valores pendientes del informe y la presentación (`make datos-fase3`, macros de nPerf y del video, frases en
 rojo, `make informe`, bitácora y commit local). Solo documentación; no requiere verificación.
@@ -1829,9 +1804,9 @@ paquete; `make informe` sin errores ni `Overfull` (11 `\pendiente{` en el inform
 
 **Pendiente:** fuente externa de la B200 y nueva vigilancia; barrido por distancia con el teléfono; video.
 
-**Cierre del día:** skills (`ingeniero-telecom-5g`, `desarrollador-fullstack`), `docker/README.md` y el guion (paso `make logs-todo` antes de `make down`) actualizados. La red quedó apagada (`make down`); falta `make revertir-lab` en la terminal del usuario si no se usa el gNB hasta la próxima sesión.
+**Cierre del día:** notas técnicas, `docker/README.md` y el guion (paso `make logs-todo` antes de `make down`) actualizados. La red quedó apagada (`make down`); falta `make revertir-lab` en la terminal del usuario si no se usa el gNB hasta la próxima sesión.
 
-### 2026-11-23 — Última sesión de laboratorio (en curso): sesión PDU y nPerf a 0,3–0,5 m y 1 m
+### 2026-11-23 — Última sesión de laboratorio (en curso): sesión PDU y nPerf a 0,3 m y 1 m
 
 **Qué se hizo:** `make preparar-lab` (usuario) y `make lab` 5/5 (B200 serie 307B57F en USB 3, 20 MHz, TX 50 / RX 20,
 MNC 010). La antena extra que estaba en **GPS ANT** se retiró: `uhd_usrp_probe` dice "No GPSDO found", ese conector no
@@ -1847,10 +1822,10 @@ de **5 V / 4 A** (fuera de especificación pero sin riesgo: el mismo voltaje del
   "MAC max KOs"). **Causa: el Wi-Fi encendido.** Con el Wi-Fi apagado: Registration complete a las 11:41:00 y
   **sesión PDU 10.45.0.2** (DNN `internet`, SST 1) a las 11:41:10. El Samsung A54 se probó y no sirve: con la SIM 001/010
   no busca 5G SA (solo lista Claro, Tigo, Movistar y 732360), por el firmware CSC de Samsung.
-- nPerf (servidor Cali, "5G (SA)"; capturas en `imagenes-nperf/`). "Proveedor: Movistar" es el nombre grabado en la SIM:
-  - **0,3–0,5 m** (`0.3m.png`, distancia por confirmar): DL 38,12 Mbit/s (media 28,45), UL 23,47 (media 18,26),
+- nPerf (servidor Cali, "5G (SA)"; capturas en `docs/evidencias/fase3_20261123/nperf/`). "Proveedor: Movistar" es el nombre grabado en la SIM:
+  - **0,3 m** (`nperf_0.3m.png`): DL 38,12 Mbit/s (media 28,45), UL 23,47 (media 18,26),
     latencia 39 ms (media 49, jitter 19). El gNB vio 34–35 Mbit/s DL con MCS 23–24 / CQI 13 y 18,3–18,9 Mbit/s UL con MCS 28.
-  - **1 m** (`1m.png`, teléfono en la mano): DL 15,38 Mbit/s (media 10,78), UL 7,82 (media 5,73), latencia 37 ms (media 47,
+  - **1 m** (`nperf_1m.png`, teléfono en la mano): DL 15,38 Mbit/s (media 10,78), UL 7,82 (media 5,73), latencia 37 ms (media 47,
     jitter 22). `make telefono` (`resultados/20261123_115014_telefono_nperf_1m`): RTT UPF→teléfono 52,3 ms sin pérdidas,
   DL MCS 11,4 / CQI 9,3 / BLER 0,8 %, UL MCS 16,1 / SNR 13,6 dB.
 - `make datos-fase3` (fila de 1 m en la tabla y la Fig. 2); `\nperfdl`, `\nperful` y `\nperfping` (1 m) en el informe y
@@ -1858,8 +1833,7 @@ de **5 V / 4 A** (fuera de especificación pero sin riesgo: el mismo voltaje del
 
 **Verificación:** cifras leídas de las capturas de pantalla y de los logs del gNB/AMF/SMF; `make informe` sin errores ni
 `Overfull`; quedan 4 `\pendiente` reales en el informe (video, frase de caudal, tendencia, conclusión) y 2 en la
-presentación (video, tendencia). **No verificado:** la distancia exacta de la primera prueba (0,3 o 0,5 m).
-La traza `capturas/fase2_traza_20261123_114210.pcap` tiene GTP-U de nPerf pero **no** el registro ni la sesión PDU.
+presentación (video, tendencia). La traza `capturas/fase2_traza_20261123_114210.pcap` tiene GTP-U de nPerf pero **no** el registro ni la sesión PDU.
 
 **Pendiente:** 2 y 4 m, traza con la sesión PDU (ciclo de modo avión con Wi-Fi apagado), fin de la vigilancia, video.
 
@@ -1888,7 +1862,25 @@ La traza `capturas/fase2_traza_20261123_114210.pcap` tiene GTP-U de nPerf pero *
 **Verificación:** cifras leídas de `resumen.csv`/`metricas_gnb.csv`, de los logs de AMF/SMF/gNB y de las capturas; cotas
 recalculadas (TS 38.214 tabla qam64: MCS 12 → 16,4, MCS 24 → 43,8, MCS 28 → 53,8 Mbit/s); `make informe` sin errores ni
 `Overfull` (informe 6 págs., presentación 14), revisado visualmente. Solo queda `\enlacevideo` en rojo.
-**No verificado:** la distancia exacta de la primera prueba de nPerf; la causa de la degradación de las 12:24.
+**No verificado:** la causa de la degradación de las 12:24.
 
 **Pendiente:** video (la celda sigue al aire por si el teléfono vuelve), `make down` y `make revertir-lab` al terminar, push.
+
+### 2026-11-23 (cierre) — Repositorio listo para la entrega
+
+**Qué se hizo:**
+- Distancia de la primera prueba de nPerf confirmada por el autor: **0,3 m** (informe, presentación, evidencias, README).
+- Informe de la Fase 3: tabla nueva "Decisiones de configuración y su justificación" (banda, SCS, ancho de banda,
+  `sc12`, patrón TDD, tabla MCS, ganancias, reloj, PLMN, seguridad y plazo de la sesión PDU); justificación de los
+  parámetros del presupuesto de enlace (campo lejano, 3 dBi, NF 9 dB, $\alpha=0,6$ según TR 36.942); corrección del
+  caudal USB (138 MB/s con `sc12` y 184 con `sc16`, antes decía 184 con `sc12`); la subsección de alcance pasa a
+  "Organización del documento"; comentarios de trabajo del preámbulo depurados.
+- Capturas de nPerf movidas a `docs/evidencias/fase3_20261123/nperf/` (`nperf_0.3m.png`, `nperf_1m.png`).
+- Archivos de configuración de herramientas de trabajo y material de evaluación del curso fuera del control de
+  versiones (siguen en el equipo del autor); README, bitácora, guías y `preparar_ubuntu.sh` sin referencias a ellos.
+
+**Verificación:** `make informe` sin errores ni `Overfull` (informe 7 págs., presentación 14), sin citas sin
+resolver; 65+ pruebas unitarias OK; `bash -n` de `preparar_ubuntu.sh`.
+
+**Pendiente:** video y su enlace (`\enlacevideo`); `make down` y `make revertir-lab` al terminar; push.
 

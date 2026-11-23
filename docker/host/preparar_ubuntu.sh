@@ -130,9 +130,6 @@ fi
 sudo apt-get update -q
 sudo apt-get install -y -q code gh
 
-paso "Claude Code"
-command -v claude >/dev/null || curl -fsSL https://claude.ai/install.sh | bash || aviso "Claude Code no se instaló"
-
 # Windows guarda la hora local en el reloj del equipo; sin esto, Windows queda desfasado al volver.
 sudo timedatectl set-local-rtc 1 --adjust-system-clock || true
 
@@ -184,7 +181,7 @@ for d in "${montados[@]}"; do sudo umount "$d" && rmdir "$d"; done
 paso "Listo"
 cat <<EOF
 Instalado: base de desarrollo, Python, Wireshark/tshark, iperf3, UHD + FPGA b2xx, bladeRF/SoapySDR,
-pcscd + pySim, Docker Engine + Compose, Node.js LTS, VS Code, gh y Claude Code.
+pcscd + pySim, Docker Engine + Compose, Node.js LTS, VS Code y gh.
 
 Siguientes pasos:
   1. Cierre sesión y vuelva a entrar (grupos docker, wireshark, usrp).

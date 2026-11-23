@@ -15,4 +15,4 @@ comprimidos (`.gz`). Detalle y lectura de cada dato: entrada del 23/11 en [`BITA
 | `20261123_122354_telefono_nperf_0p5m_mesa` | 0,5 m sobre la mesa tras reiniciar B200 y teléfono: CQI 8→4, MCS 6,2, BLER 22,4 %, RTT 206 ms y RLF al final | Tabla por distancia, Fig. 2 |
 | `20261123_121759_logs.tar.gz` | `make logs-todo`: logs de los 4 contenedores, kernel, lsusb, CPU y `.env` sin claves | Respaldo |
 
-Capturas de pantalla de nPerf: [`imagenes-nperf/`](../../../imagenes-nperf/) (`0.3m.png`, `1m.png`).
+Capturas de pantalla de nPerf: [`nperf/`](nperf/) (`nperf_0.3m.png` a 0,3 m y `nperf_1m.png` a 1 m).

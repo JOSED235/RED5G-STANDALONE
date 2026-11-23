@@ -14,7 +14,7 @@ sí sirve como instalador si se arranca sin persistencia** (Fase 2): así casi n
 
 ## Estado
 
-_Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa con Claude Code en el i5, empezar aquí._
+_Marcar al avanzar (y anotar en `BITACORA.md`). Si se continúa en el i5, empezar aquí._
 
 - [x] Fase 1 — Revisión del disco, BitLocker y espacio (Windows) — 2026-11-10, ver "Datos del i5"
 - [x] Fase 2 — Preparar Windows: desactivar inicio rápido, BitLocker, encoger la partición — 2026-11-10 (`D:` reducida 204800 MB; 200 GB sin asignar en el disco 0)
@@ -129,7 +129,7 @@ Es preferible a instalar GRUB en la EFI del Micron, que era lo previsto.
      - "Dispositivo para el gestor de arranque": en el i5 el **disco de 256 GB (Micron)**; en general, el **disco** donde está Windows (el que tiene la
        partición EFI de ~100–300 MB, FAT32). No formatee la partición EFI ni toque ninguna NTFS.
      - No hace falta partición *swap*: Ubuntu 24.04 crea un `/swap.img`.
-   - ⚠️ **Nunca** elija "Borrar disco e instalar Ubuntu": borra Windows.
+   - **Atención: nunca** elija "Borrar disco e instalar Ubuntu": borra Windows.
 5. Usuario: su nombre, nombre del equipo **`i5-red5g`**, contraseña (la pedirá `sudo`). Zona horaria
    **Bogotá**.
 6. Revise el resumen (debe decir que **solo** se crea/formatea la partición nueva) → **Instalar**.

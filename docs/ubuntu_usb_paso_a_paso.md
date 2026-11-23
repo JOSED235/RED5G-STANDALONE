@@ -68,7 +68,7 @@ Si la URL del ISO da 404 (salió una versión más nueva), busque el nombre actu
    - Aviso de borrado de datos: **Aceptar**.
 5. Espere a que la barra diga **PREPARADO** y cierre Rufus.
 
-> ⚠️ Si Windows muestra **"Debe formatear el disco en la unidad X:"**, pulse **Cancelar**. Siempre.
+> **Atención:** Si Windows muestra **"Debe formatear el disco en la unidad X:"**, pulse **Cancelar**. Siempre.
 > Esa partición es la persistencia de Ubuntu (ext4) y Windows no sabe leerla. Si la formatea, se
 > pierde todo lo instalado.
 
@@ -128,7 +128,7 @@ Inicio avanzado → Reiniciar ahora → Usar un dispositivo →** la USB.
 1. En el asistente de bienvenida elija idioma Español y teclado "Spanish (Latin American)".
 2. Elija **Probar Ubuntu** y cierre el asistente.
 
-> ⚠️ **No pulse nunca "Instalar Ubuntu".** Eso tocaría el disco del portátil, donde está Windows.
+> **Atención: no pulse nunca "Instalar Ubuntu".** Eso tocaría el disco del portátil, donde está Windows.
 
 3. Conéctese al Wi-Fi desde la esquina superior derecha.
 
@@ -160,7 +160,7 @@ Inicio avanzado → Reiniciar ahora → Usar un dispositivo →** la USB.
 cp /cdrom/.env ~/RED5G-STANDALONE/.env
 docker run --rm hello-world          # sin sudo: debe decir "Hello from Docker!"
 uhd_find_devices                     # sin la B200: "No UHD Devices Found" (normal)
-node -v && code --version && claude --version
+node -v && code --version
 cd ~/RED5G-STANDALONE && python3 -m banco verificar
 ```
 
@@ -196,7 +196,7 @@ De vuelta en Windows, borre el `.env` de la raíz de la USB. Ubuntu ya tiene su 
 | Día de laboratorio | B200 en un puerto **USB 3.0 azul** distinto del de la USB de Ubuntu → `uhd_find_devices` → `make lab` |
 | Usar la bladeRF en vez de la B200 | En `.env`: `SDR_DEVICE_ARGS=type=soapy,driver=bladerf` y `SDR_OTW_FORMAT=sc16` (guía, 4.1) |
 | Programar la SIM | `cd ~/pysim && . .venv/bin/activate && ./pySim-read.py -p 0` (guía, 2.2) |
-| Programar en otros proyectos | `code .` en la carpeta del proyecto: ya hay Node, Python, Docker, git, gh y Claude Code |
+| Programar en otros proyectos | `code .` en la carpeta del proyecto: ya hay Node, Python, Docker, git y gh |
 
 **Dónde está cada cosa dentro de Ubuntu:**
 - Repositorio: `~/RED5G-STANDALONE`

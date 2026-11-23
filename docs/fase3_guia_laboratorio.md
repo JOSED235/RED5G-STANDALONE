@@ -459,8 +459,8 @@ persistencia para arrancar el portátil directamente en Linux y trabajar desde a
    - Arranque el portátil desde la USB (HP Victus: `F9` al encender; en otros, `F12`/`Esc`) y elija
      "Try Ubuntu". Una sola vez, con Internet: `bash /cdrom/preparar_ubuntu.sh`. Instala Docker
      Engine (datos en un archivo ext4 de la persistencia, porque overlay2 no funciona sobre la raíz
-     overlayfs de la live), UHD + FPGA b2xx, bladeRF + SoapySDR, `pcscd` + pySim, tshark, iperf3, Python, Node.js, VS Code,
-     `gh` y Claude Code, y clona el repositorio en `~/RED5G-STANDALONE`. Cierre sesión y entre de nuevo.
+     overlayfs de la live), UHD + FPGA b2xx, bladeRF + SoapySDR, `pcscd` + pySim, tshark, iperf3, Python, Node.js, VS Code
+     y `gh`, y clona el repositorio en `~/RED5G-STANDALONE`. Cierre sesión y entre de nuevo.
    - El disco `C:` del portátil i7 tiene BitLocker: Ubuntu no lo lee sin la clave de recuperación.
      Por eso el repositorio se clona de GitHub y el `.env` y el `.tar` se llevan en otra memoria (o se
      escriben a mano: el `.env` lleva K y OPc, no lo deje en la memoria de Ubuntu sin necesidad).

@@ -5,7 +5,7 @@ Una sola sesión en el i5 (Ubuntu nativo, B200) para medir lo que falta en
 Duración estimada: 2–3 h. Mismos valores del 19/11/2026: `GNB_BW_MHZ=20`, `SDR_TX_GAIN=50`,
 `SDR_RX_GAIN=20`, `MNC=010`.
 
-> **Regla de la sesión (para el usuario y para Claude, ver `CLAUDE.md`):** cada medición se guarda y se
+> **Regla de la sesión:** cada medición se guarda y se
 > lleva al informe y a la presentación **en cuanto aparece**, sin esperar al final. Al terminar cada
 > `make telefono` o `make vigilar`: `make datos-fase3`; al tener los valores de nPerf, el enlace del video
 > o una traza nueva: llenarlos en el bloque "VALORES A LLENAR" de ambos `.tex` (o en la sección de
