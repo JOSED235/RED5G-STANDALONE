@@ -1,0 +1,5 @@
+PING 10.45.0.3 (10.45.0.3) 56(84) bytes of data.
+
+--- 10.45.0.3 ping statistics ---
+60 packets transmitted, 0 received, 100% packet loss, time 60421ms
+

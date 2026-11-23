@@ -4,7 +4,7 @@
 % Docente: Andres Navarro Cadavid, PhD
 % Plantilla: IEEEtran (conference), mismo formato que los informes de las Fases 1 y 2.
 % Compilar con pdfLaTeX (Overleaf o el contenedor texlive/texlive:latest-full).
-% Las cifras provienen de las sesiones de laboratorio del 11, 18 y 19 de noviembre de 2026
+% Las cifras provienen de las sesiones de laboratorio del 11, 18, 19 y 23 de noviembre de 2026
 % (portatil i5-8250U con Ubuntu 24.04 nativo y USRP B200); las evidencias se citan en
 % BITACORA.md. Lo que aun no se ha medido aparece en rojo con \pendiente{...}: buscar
 % "\pendiente" antes de entregar y reemplazar cada uno por el dato real.
@@ -65,7 +65,7 @@ Curso: Sistemas y Comunicaciones 2 --- Docente: Andrés Navarro Cadavid, PhD}
 \maketitle
 
 \begin{abstract}
-Este informe documenta la Fase 3 (Integración SDR y Terminal Comercial) del proyecto de curso que despliega una red 5G Standalone (SA) con \textit{srsRAN Project} como red de acceso y \textit{Open5GS} como núcleo. Se reemplazó la radio emulada (ZMQ) de la Fase 2 por una USRP B200 conectada por USB~3 a un portátil con Ubuntu nativo y se levantó una celda n78 TDD de 20~MHz (3489{,}42~MHz, SCS 30~kHz, 51~PRB) al aire, con autorización del docente y a potencia mínima. Se programó una SIM física con pySim y un teléfono comercial OnePlus Nord CE~2 Lite 5G se autenticó con 5G-AKA, estableció la sesión PDU (IP 10.45.0.2) y navegó por Internet a través de la red. El camino exigió resolver ocho fallas, entre ellas la saturación del receptor del SDR por el propio teléfono (ganancia de RX de 40 a 20~dB), el MNC de tres dígitos declarado por la SIM, el plazo de srsRAN para la sesión PDU y la itinerancia de datos de Android, además de preparar el tiempo real del anfitrión y automatizar la recuperación de las caídas del USB de la B200. Con el teléfono a cerca de 1~m se midió un RTT UPF--teléfono de 30{,}9~ms en promedio (17--36{,}9~ms, 0\,\% de pérdidas), CQI 13 y MCS 24--26 en descendente con BLER de 0--1\,\%, y SNR de 28--29~dB en el PUSCH, coherentes con el presupuesto de enlace. En 18~min de vigilancia continua la B200 cayó una vez y la red se recuperó sola en 16{,}5~s. Se analizan la normativa de espectro y exposición y se proponen soluciones a las limitaciones encontradas.
+Este informe documenta la Fase 3 (Integración SDR y Terminal Comercial) del proyecto de curso que despliega una red 5G Standalone (SA) con \textit{srsRAN Project} como red de acceso y \textit{Open5GS} como núcleo. Se reemplazó la radio emulada (ZMQ) de la Fase 2 por una USRP B200 conectada por USB~3 a un portátil con Ubuntu nativo y se levantó una celda n78 TDD de 20~MHz (3489{,}42~MHz, SCS 30~kHz, 51~PRB) al aire, con autorización del docente y a potencia mínima. Se programó una SIM física con pySim y un teléfono comercial OnePlus Nord CE~2 Lite 5G se autenticó con 5G-AKA, estableció la sesión PDU (IP 10.45.0.2) y navegó por Internet a través de la red. El camino exigió resolver nueve fallas, entre ellas la saturación del receptor del SDR por el propio teléfono (ganancia de RX de 40 a 20~dB), el MNC de tres dígitos declarado por la SIM, el plazo de srsRAN para la sesión PDU, la itinerancia de datos de Android y el Wi-Fi del teléfono, además de preparar el tiempo real del anfitrión y automatizar la recuperación de las caídas del USB de la B200. Con el teléfono a cerca de 1~m se midió un RTT UPF--teléfono de 30{,}9~ms en promedio (17--36{,}9~ms, 0\,\% de pérdidas), CQI 13 y MCS 24--26 en descendente con BLER de 0--1\,\%, y SNR de 28--29~dB en el PUSCH, coherentes con el presupuesto de enlace. En 18~min de vigilancia continua la B200 cayó una vez y la red se recuperó sola en 16{,}5~s. El 23/11, con nPerf contra un servidor de Internet, el teléfono alcanzó 38{,}12~Mbit/s en DL y 23{,}47~Mbit/s en UL a menos de 1~m (71\,\% de la cota de la celda), perdió el servicio a 2~m con la ganancia de TX autorizada, y en 60~min de vigilancia la B200 cayó una vez (MTBF de 60~min, recuperación en 16{,}8~s). Se analizan la normativa de espectro y exposición y se proponen soluciones a las limitaciones encontradas.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -114,7 +114,7 @@ Conclusiones (ABET 4) & Normativa de espectro y exposición, privacidad de la SI
 \label{sec:sdr}
 
 \subsection{Hardware y anfitrión}
-El SDR es una USRP B200 (transceptor AD9361, 70~MHz--6~GHz, 1$\times$1, USB~3.0)~\cite{uhd} con dos antenas (TX/RX y RX2), alimentada solo por el USB del portátil porque la fuente externa de 6~V no estuvo disponible. El anfitrión es un portátil Acer A315-53G (Intel Core i5-8250U, 4 núcleos) con Ubuntu 24.04 en arranque dual. Se descartó Windows con WSL2: el reenvío USB de \textit{usbipd} entregó unos 18~MB/s, con 4{,}4\,\% de muestras perdidas, mientras que una celda de 20~MHz exige 23{,}04~MS/s en TX y RX, unos 184~MB/s con muestras de 12 bits (\texttt{sc12}). En Linux nativo, \texttt{benchmark\_rate} de UHD sostuvo 23{,}04~MS/s TX+RX con 0{,}006\,\% de pérdidas en la primera prueba y 0 pérdidas en 30~s el 18/11. El gNB es el mismo contenedor de la Fase 2 (imagen única con los controladores ZMQ y UHD); solo cambia la plantilla de configuración (Fig.~\ref{fig:montaje}).
+El SDR es una USRP B200 (transceptor AD9364, 70~MHz--6~GHz, 1$\times$1, USB~3.0)~\cite{uhd} con dos antenas (TX/RX y RX2; los conectores GPS ANT, 10~MHz y PPS no se usan, pues no hay GPSDO ni referencia externa). Hasta el 19/11 se alimentó solo por el USB del portátil porque la fuente externa de 6~V no estuvo disponible; el 23/11 se usó una fuente de 5~V y 4~A (Ettus especifica 6~V y 3~A). El anfitrión es un portátil Acer A315-53G (Intel Core i5-8250U, 4 núcleos) con Ubuntu 24.04 en arranque dual. Se descartó Windows con WSL2: el reenvío USB de \textit{usbipd} entregó unos 18~MB/s, con 4{,}4\,\% de muestras perdidas, mientras que una celda de 20~MHz exige 23{,}04~MS/s en TX y RX, unos 184~MB/s con muestras de 12 bits (\texttt{sc12}). En Linux nativo, \texttt{benchmark\_rate} de UHD sostuvo 23{,}04~MS/s TX+RX con 0{,}006\,\% de pérdidas en la primera prueba y 0 pérdidas en 30~s el 18/11. El gNB es el mismo contenedor de la Fase 2 (imagen única con los controladores ZMQ y UHD); solo cambia la plantilla de configuración (Fig.~\ref{fig:montaje}).
 
 \begin{figure}[!t]
 \centering
@@ -169,7 +169,7 @@ Seguridad NAS / AS & NEA2+NIA2 / \texttt{nea2} primero \\
 \subsection{Calibración de ganancias}
 La prueba al aire se autorizó a potencia mínima, así que la TX empezó en 30~dB y subió de 10 en 10 solo mientras el teléfono no veía la celda: con 40~dB el teléfono la encontró y se fijó 50~dB para tener margen a 1~m. A 60~dB la B200 cayó a los 95~s (Sec.~\ref{sec:fallas}), por lo que ese valor se descartó.
 
-La ganancia de RX se calibró con una falla real. Con RX 40~dB y el teléfono a cerca de 1~m, el gNB lo liberaba a los 8--13~s con causa NGAP \texttt{radio-connection-with-ue-lost}. Las métricas del gNB mostraban la RSRP del PUSCH como \texttt{ovl} (desborde del ADC del AD9361) y un PHR del teléfono de $-16$ a $-31$~dB: el control de potencia, al no recibir bien, le pedía transmitir al máximo, lo que saturaba más el receptor, y el PUSCH siguiente llegaba con 10 de 10 bloques erróneos (SNR $-24$~dB). Con \textbf{RX 20~dB} el PUSCH pasó a una SNR de 28--29~dB sin \texttt{ovl}. Es el caso contrario al habitual: a distancias cortas el problema no es la sensibilidad sino el rango dinámico del receptor.
+La ganancia de RX se calibró con una falla real. Con RX 40~dB y el teléfono a cerca de 1~m, el gNB lo liberaba a los 8--13~s con causa NGAP \texttt{radio-connection-with-ue-lost}. Las métricas del gNB mostraban la RSRP del PUSCH como \texttt{ovl} (desborde del ADC del AD9364) y un PHR del teléfono de $-16$ a $-31$~dB: el control de potencia, al no recibir bien, le pedía transmitir al máximo, lo que saturaba más el receptor, y el PUSCH siguiente llegaba con 10 de 10 bloques erróneos (SNR $-24$~dB). Con \textbf{RX 20~dB} el PUSCH pasó a una SNR de 28--29~dB sin \texttt{ovl}. Es el caso contrario al habitual: a distancias cortas el problema no es la sensibilidad sino el rango dinámico del receptor.
 
 \subsection{Frecuencia y reloj}
 Sin generador de señales ni GPSDO (el docente indicó que no eran necesarios), el desvío del TCXO de la B200 se validó de forma indirecta. Un desvío de $\pm 2$~ppm equivale a unos $\pm 7$~kHz a 3{,}5~GHz, casi una cuarta parte de la SCS de 30~kHz; si fuera excesivo, el teléfono no decodificaría el SSB ni completaría el PRACH. El teléfono sincronizó, completó el acceso aleatorio, se registró varias veces y sostuvo tráfico con BLER de 0--1\,\%, lo que acota el desvío a lo que corrige su propio lazo de frecuencia. Una referencia de 10~MHz + PPS (GPSDO) eliminaría esta dependencia (Sec.~\ref{sec:concl}).
@@ -197,6 +197,7 @@ La conexión del teléfono se logró por pasos, cada uno con una causa diagnosti
   \item \textbf{Liberación a los 3~s:} srsRAN libera al UE que no pide sesión PDU en 3~s y Android tarda más; el plazo se llevó a 30~s.
   \item \textbf{Liberación a los 8--13~s:} saturación del RX del SDR (Sec.~\ref{sec:sdr}).
   \item \textbf{Sin sesión PDU:} con el EHPLMN 001/01 frente a la red 001/010, Android se considera en itinerancia y no pide datos. Con el APN \texttt{internet} creado y la itinerancia de datos activada, el teléfono estableció la \textbf{sesión PDU el 19/11/2026 a las 17:57:30~UTC} (IP 10.45.0.2, DNN \texttt{internet}) y navegó por Internet a través de la red 5G SA.
+  \item \textbf{Sin sesión PDU con el Wi-Fi encendido (23/11):} el teléfono se registraba y a los pocos segundos pedía la baja (\textit{Deregistration Request}) o dejaba vencer el enlace sin pedir datos: con Wi-Fi, Android no necesita la sesión móvil. Con el Wi-Fi apagado pidió la sesión PDU 10~s después del registro. Tras perder la celda el teléfono no volvió solo; reiniciado, apareció como red ``Open5GS 5G'' en la selección manual de operador. Un Samsung Galaxy A54 5G con la misma SIM no buscó la celda SA (solo listó las redes comerciales), por la configuración 5G SA ligada al operador en su firmware.
 \end{enumerate}
 
 %=====================================================================
@@ -268,10 +269,10 @@ El presupuesto de la Fase 1 se aplicó con \texttt{python -m banco enlace}: espa
 \end{figure}
 
 \subsection{Resultados con el teléfono}
-La Tabla~\ref{tab:kpi} resume lo medido el 19/11 con el teléfono a cerca de 1~m (TX 50, RX 20, 20~MHz), con las métricas del gNB y el ping desde el UPF hacia el teléfono, y lo compara con la Fase 2 (radio ZMQ, n3 FDD de 106~PRB, srsUE).
+La Tabla~\ref{tab:kpi} resume lo medido el 19/11 con el teléfono a cerca de 1~m (TX 50, RX 20, 20~MHz), con las métricas del gNB y el ping desde el UPF hacia el teléfono, y las pruebas de velocidad con nPerf del 23/11 (mismos parámetros), y lo compara con la Fase 2 (radio ZMQ, n3 FDD de 106~PRB, srsUE).
 
 \begin{table}[!t]
-\caption{KPIs medidos con el teléfono (19/11/2026) y comparación}
+\caption{KPIs medidos con el teléfono (19 y 23/11/2026) y comparación}
 \label{tab:kpi}
 \centering
 \footnotesize
@@ -287,24 +288,27 @@ SNR PUSCH & 28--29~dB (RX 20) & Con RX 40: \texttt{ovl} \\
 MCS UL & 28 & Fase 2 (srsUE): 5--6 \\
 Caudal DL observado & hasta 10~Mbit/s (navegación) & Cota MCS 25: $\approx$46~Mbit/s \\
 Caudal UL observado & $\approx$1{,}2~Mbit/s & --- \\
-Caudal DL (nPerf, 1~m) & \nperfdl & Cota 53{,}8~Mbit/s \\
-Caudal UL (nPerf, 1~m) & \nperful & --- \\
-Latencia (nPerf, a Internet) & \nperfping & RTT al UPF: 30{,}9~ms \\
+DL nPerf $<$1~m (23/11) & 38{,}12~Mbit/s & Cota MCS 24: 43{,}8 \\
+UL nPerf $<$1~m (23/11) & 23{,}47~Mbit/s & --- \\
+DL nPerf 1~m (23/11) & 15{,}38~Mbit/s & Cota MCS 12: 16{,}4 \\
+UL nPerf 1~m (23/11) & 7{,}82~Mbit/s & --- \\
+Latencia nPerf (1~m) & \nperfping & RTT al UPF: 30{,}9~ms \\
+RTT UPF--UE con nPerf (1~m) & mediana 27{,}6, media 52{,}3~ms & máx. 462~ms \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Latencia.} El RTT medio hacia el teléfono (30{,}9~ms) es casi igual al de la Fase 2 con radio emulada (31{,}9~ms). En la Fase 2 la latencia la imponía el canal ZMQ síncrono y el procesamiento del srsUE; aquí la imponen el patrón TDD de 5~ms (un paquete de UL espera su ventana), la solicitud de recursos (SR y concesión) del teléfono y sus ciclos de ahorro de energía. El mínimo de 17~ms muestra el piso cuando el teléfono ya tiene recursos asignados.
+\textbf{Latencia.} El RTT medio hacia el teléfono (30{,}9~ms) es casi igual al de la Fase 2 con radio emulada (31{,}9~ms). En la Fase 2 la latencia la imponía el canal ZMQ síncrono y el procesamiento del srsUE; aquí la imponen el patrón TDD de 5~ms (un paquete de UL espera su ventana), la solicitud de recursos (SR y concesión) del teléfono y sus ciclos de ahorro de energía. El mínimo de 17~ms muestra el piso cuando el teléfono ya tiene recursos asignados. El 23/11, con nPerf cargando el enlace, la mediana fue similar (27{,}6~ms) pero la media subió a 52{,}3~ms por colas de hasta 462~ms: el ping comparte la cola del teléfono con la prueba de velocidad.
 
 \textbf{Calidad de enlace.} La predicción a 1~m (SNR 21~dB, MCS 22) y lo medido (CQI 13, MCS 24--26, BLER 0--1\,\%) concuerdan dentro de la incertidumbre de la potencia supuesta: un MCS 2--4 escalones mayor equivale a unos 4--6~dB más de SNR, lo que indica que la Ptx real con TX 50 está algo por encima de $-30$~dBm o que hay ganancia por multitrayecto en interiores. El UL llega a MCS 28 con SNR de 28--29~dB, muy por encima del MCS 5--6 del srsUE en la Fase 2: el límite del UL era el emulador, no la arquitectura.
 
-\textbf{Caudal.} Los 10~Mbit/s de DL del 19/11 corresponden a la demanda de la navegación, no a la capacidad de la celda: con MCS 25 la cota es de unos 46~Mbit/s. Con nPerf saturando el enlace a 1~m se obtuvieron \nperfdl{} en DL y \nperful{} en UL, frente a la cota de 53{,}8~Mbit/s de la celda. En la Fase 2 el TCP DL se quedó en el 54--62\,\% de la cota por el límite de 96~PRB del DCI 1\_0 en el \textit{search space} común; las plantillas de la Fase 3 usan DCI 1\_1, que no tiene ese límite, de modo que la brecha que quede se debe al patrón TDD, al control y a TCP sobre Internet. \pendiente{Una frase con el porcentaje de la cota que alcanzó nPerf y su causa principal.}
+\textbf{Caudal.} Los 10~Mbit/s de DL del 19/11 corresponden a la demanda de la navegación, no a la capacidad de la celda: con MCS 25 la cota es de unos 46~Mbit/s. Con nPerf saturando el enlace a 1~m se obtuvieron \nperfdl{} en DL y \nperful{} en UL, frente a la cota de 53{,}8~Mbit/s de la celda. En la Fase 2 el TCP DL se quedó en el 54--62\,\% de la cota por el límite de 96~PRB del DCI 1\_0 en el \textit{search space} común; las plantillas de la Fase 3 usan DCI 1\_1, que no tiene ese límite, de modo que la brecha que quede se debe al patrón TDD, al control y a TCP sobre Internet. El 23/11 nPerf midió además 38{,}12~Mbit/s en DL y 23{,}47~Mbit/s en UL con el teléfono a menos de 1~m (entre 0{,}3 y 0{,}5~m; la distancia exacta no se anotó) (los registros del gNB mostraron 34--35~Mbit/s con MCS 23--24 y CQI 13 durante la descarga, y 18{,}3--18{,}9~Mbit/s en UL con MCS 28). Eso es el 71\,\% de la cota de la celda, pero el 87\,\% de la cota del MCS que el enlace sostenía (43{,}8~Mbit/s con MCS 24); a 1~m, con el teléfono en la mano, el MCS bajó a 12 (CQI 9) y los 15{,}38~Mbit/s son el 94\,\% de su cota (16{,}4~Mbit/s). La causa principal de la brecha con la cota de la celda es, por tanto, la calidad del enlace radio (el MCS), no el núcleo ni el gNB; el resto se explica por TCP hacia un servidor en Cali y por el control. nPerf muestra ``Movistar'' como proveedor porque lee el nombre grabado en la SIM; la conexión fue la celda propia (``5G (SA)'', mismo tráfico en el gNB).
 
 \subsection{Barrido por distancia}
-La Tabla~\ref{tab:distancia} reúne, por distancia y con la misma ganancia de TX, las métricas del gNB durante la prueba de velocidad (\texttt{make telefono}) y el MCS previsto por el presupuesto de enlace; la Fig.~\ref{fig:enlace} las compara. \pendiente{Una frase sobre la tendencia: si el MCS cae con la distancia como predice el modelo y a qué distancia se pierde el servicio.}
+La Tabla~\ref{tab:distancia} reúne, por distancia y con la misma ganancia de TX, las métricas del gNB durante la prueba de velocidad (\texttt{make telefono}) y el MCS previsto por el presupuesto de enlace; la Fig.~\ref{fig:enlace} las compara. Las tres corridas del 23/11 no muestran una tendencia limpia con la distancia, y eso es en sí un resultado. A 1~m (teléfono en la mano, 11:50) el gNB promedió MCS 11{,}4 y CQI 9{,}3 frente a MCS 22 previsto; a 2~m (11:59) el teléfono solo estuvo conectado 12 de los 60~s, con BLER DL de 65{,}6\,\%, SNR UL de 6{,}4~dB y 88\,\% de pérdida del ping, hasta que el gNB declaró falla de radioenlace (\textit{MAC max KOs}) y el teléfono perdió la celda; y a 0{,}5~m sobre la mesa (12:24, tras reiniciar la B200 y el teléfono) el enlace fue peor que a 1~m: CQI de 8 bajando a 4, MCS 6{,}2, BLER DL de 22{,}4\,\% (hasta 97\,\% al final), RSRP del PUSCH unos 20~dB por debajo de la de la mañana, RTT medio de 206~ms con 5\,\% de pérdida y otra falla de radioenlace al terminar. En cambio, a menos de 1~m a las 11:42 (prueba de nPerf sin \texttt{make telefono}, con los registros del gNB) el MCS fue 23--24 con CQI 13, y el 19/11 a cerca de 1~m, 24--26. Que el DL y el UL empeoraran a la vez y unos 20~dB a la misma distancia apunta a una causa común en el montaje (orientación o apriete de las antenas, posición del teléfono y del cuerpo, multitrayecto) o a la deriva térmica de la B200 tras casi dos horas transmitiendo, más que a la distancia; no se pudo aislar en la sesión. Con TX 50~dB el servicio útil se obtuvo, pues, solo por debajo de 1--2~m y de forma inestable, y el modelo de espacio libre con la Ptx sin calibrar sirve como orden de magnitud, no para predecir el MCS punto a punto. Durante las pruebas hubo unos 50 \textit{underflows} por minuto en el anfitrión. No se midió a 4~m.
 
 \begin{table}[!t]
-\caption{Métricas del gNB frente a la distancia (TX 50~dB, RX 20~dB)}
+\caption{Métricas del gNB frente a la distancia (TX 50~dB, RX 20~dB; 23/11/2026, media de los 60~s de \texttt{make telefono} con nPerf; orden de medición: 1, 2 y 0{,}5~m; a 2~m solo 12~s con el UE conectado)}
 \label{tab:distancia}
 \centering
 \footnotesize
@@ -320,13 +324,13 @@ La Tabla~\ref{tab:distancia} reúne, por distancia y con la misma ganancia de TX
 \end{table}
 
 \subsection{Estabilidad}
-Con \texttt{make vigilar} durante 18{,}05~min (20~MHz, TX 50, RX 20, anfitrión preparado) hubo una caída de la B200 (\texttt{bad vrt header or packet fragment}) recuperada sola en 16{,}5~s (NG Setup incluido), con 4 registros, 6 liberaciones y 1 sesión PDU del teléfono. Eso da una disponibilidad de la celda de $1-16{,}5/1083 \approx 98{,}5$\,\% y un MTBF de al menos 18~min, con una sola muestra. Tras la caída el teléfono no volvió solo a la celda (ni con el ciclo de modo avión): hubo que reiniciarlo. En una vigilancia más larga, en la última sesión: \datosvigilar
+Con \texttt{make vigilar} durante 18{,}05~min (20~MHz, TX 50, RX 20, anfitrión preparado) hubo una caída de la B200 (\texttt{bad vrt header or packet fragment}) recuperada sola en 16{,}5~s (NG Setup incluido), con 4 registros, 6 liberaciones y 1 sesión PDU del teléfono. Eso da una disponibilidad de la celda de $1-16{,}5/1083 \approx 98{,}5$\,\% y un MTBF de al menos 18~min, con una sola muestra. Tras la caída el teléfono no volvió solo a la celda (ni con el ciclo de modo avión): hubo que reiniciarlo. En una vigilancia más larga, el 23/11 y con la fuente de 5~V y 4~A: \datosvigilar{} Que la B200 siga cayendo con fuente externa (aunque de 5~V) sugiere que la energía no es la única causa y apunta también al cable o al controlador USB; una vigilancia previa de 29~min del mismo día no se usa porque una de sus dos caídas se provocó al manipular los cables.
 
 %=====================================================================
 \section{Fallas encontradas y su solución}
 \label{sec:fallas}
 
-La Tabla~\ref{tab:fallas} resume las ocho fallas de la Fase 3 (numeradas F3-1 a F3-8 en el repositorio), con su causa y la solución aplicada.
+La Tabla~\ref{tab:fallas} resume las nueve fallas de la Fase 3 (numeradas F3-1 a F3-9 en el repositorio), con su causa y la solución aplicada.
 
 \begin{table*}[!t]
 \caption{Fallas de la Fase 3, causa y solución}
@@ -344,8 +348,9 @@ F3-3 & Liberación a los 3~s sin sesión PDU & Plazo de 3~s de srsRAN; Android t
 F3-4 & Registrado, pero nunca pide sesión PDU & Android en itinerancia (EHPLMN 001/01 frente a 001/010) sin datos en itinerancia ni APN & APN \texttt{internet} e itinerancia de datos activada \\
 F3-5 & El gNB deja de transmitir (errores USB, \texttt{timed out transmissions}) & B200 alimentada solo por el USB del portátil & Recuperación automática (\texttt{vigilar}); no conectar otros USB con la celda al aire \\
 F3-6 & \textit{Underflows} y colapso del gNB (\texttt{DL task queue is full}) & Gobernador \texttt{powersave}, avahi, sondeo DRM, C-states profundos, suspensión USB & \texttt{make preparar-lab} (un solo \texttt{sudo}) antes de levantar la celda \\
-F3-7 & Liberación a los 8--13~s (NGAP: radio con el UE perdida, causa 21) & RX 40~dB: el PUSCH del teléfono satura el AD9361 (\texttt{ovl}) & RX 20~dB: SNR PUSCH 28--29~dB \\
+F3-7 & Liberación a los 8--13~s (NGAP: radio con el UE perdida, causa 21) & RX 40~dB: el PUSCH del teléfono satura el AD9364 (\texttt{ovl}) & RX 20~dB: SNR PUSCH 28--29~dB \\
 F3-8 & A 20~MHz la B200 cae cada pocos minutos & Carga de USB y CPU del i5 sin fuente externa & 10~MHz es estable pero el teléfono no la ve: 20~MHz + F3-6 + F3-5 \\
+F3-9 & Registrado, pero se da de baja o se libera sin pedir sesión PDU (23/11) & Wi-Fi del teléfono encendido: Android no necesita la sesión móvil & Apagar el Wi-Fi; seleccionar ``Open5GS 5G'' a mano tras perder la celda \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -369,9 +374,9 @@ F3-8 & A 20~MHz la B200 cae cada pocos minutos & Carga de USB y CPU del i5 sin f
 \begin{enumerate}
   \item \textbf{Viabilidad técnica demostrada:} un teléfono comercial sin modificar, con una SIM programada en el laboratorio, se autenticó con 5G-AKA, obtuvo sesión PDU y navegó por una red 5G SA construida con Open5GS, srsRAN y una USRP B200, usando los mismos contenedores de la Fase 2 con solo cambiar la plantilla del gNB.
   \item \textbf{La calibración se hizo con mediciones, no con valores de ejemplo:} la ganancia de RX se bajó de 40 a 20~dB al detectar la saturación del receptor por el propio teléfono, y la de TX se subió solo hasta tener servicio con margen. El desvío del oscilador quedó validado por el registro y el BLER del teléfono.
-  \item \textbf{Los KPIs son coherentes con la teoría:} el MCS medido (24--26) concuerda con el presupuesto de enlace dentro de la incertidumbre de la potencia supuesta, el UL alcanzó MCS 28 (frente a 5--6 con srsUE) y el RTT (30{,}9~ms) es comparable al de la Fase 2. \pendiente{Conclusión del barrido por distancia y del caudal saturado.}
+  \item \textbf{Los KPIs son coherentes con la teoría:} el MCS medido el 19/11 a cerca de 1~m (24--26) concuerda con el presupuesto de enlace dentro de la incertidumbre de la potencia supuesta, el UL alcanzó MCS 28 (frente a 5--6 con srsUE) y el RTT (30{,}9~ms) es comparable al de la Fase 2. Con el enlace saturado nPerf llegó a 38{,}12~Mbit/s en DL (71\,\% de la cota de la celda y 87\,\% de la del MCS sostenido) y 23{,}47~Mbit/s en UL; el caudal lo limitó el MCS, no el núcleo ni el gNB. Con la ganancia autorizada el servicio útil solo se sostuvo por debajo de 1--2~m y de forma inestable: el mismo punto de 0{,}5~m dio MCS 23--24 y, dos horas después, MCS 6 con falla de radioenlace, por lo que la posición y el estado del montaje pesaron más que la distancia.
   \item \textbf{Los problemas del despliegue físico no estaban en el núcleo ni en el gNB, sino en los bordes:} la SIM (MNC de 3 dígitos), el sistema operativo del teléfono (itinerancia), el rango dinámico del SDR y el tiempo real del anfitrión. Cada uno se diagnosticó con una traza o una métrica y quedó documentado con su solución.
-  \item \textbf{Soluciones propuestas a las limitaciones restantes:} alimentar la B200 con su fuente de 6~V o usar una B210 con alimentación externa para eliminar las caídas del USB; un anfitrión con más núcleos para dejar margen al tiempo real; una referencia GPSDO para independizarse del TCXO; reescribir EF.AD de la SIM con MNC de 2 dígitos para volver a 001/01 y quitar la itinerancia; y extender \texttt{vigilar} para que el teléfono recupere la celda tras una caída.
+  \item \textbf{Soluciones propuestas a las limitaciones restantes:} alimentar la B200 con su fuente de 6~V (la de 5~V no eliminó las caídas) y probar otro cable USB~3, o usar una B210 con alimentación externa; un anfitrión con más núcleos para dejar margen al tiempo real; una referencia GPSDO para independizarse del TCXO; reescribir EF.AD de la SIM con MNC de 2 dígitos para volver a 001/01 y quitar la itinerancia; y extender \texttt{vigilar} para que el teléfono recupere la celda tras una caída.
   \item \textbf{Ética:} la prueba al aire se limitó al laboratorio, con autorización, a potencia mínima y con PLMN de pruebas; las claves de la SIM se trataron como datos personales. Fuera del laboratorio el despliegue requeriría permiso del Ministerio TIC.
 \end{enumerate}
 

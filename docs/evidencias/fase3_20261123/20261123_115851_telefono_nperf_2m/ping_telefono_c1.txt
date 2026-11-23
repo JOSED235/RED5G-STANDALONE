@@ -1,0 +1,12 @@
+PING 10.45.0.2 (10.45.0.2) 56(84) bytes of data.
+[1795453135.876504] 64 bytes from 10.45.0.2: icmp_seq=1 ttl=64 time=22.4 ms
+[1795453136.877165] 64 bytes from 10.45.0.2: icmp_seq=2 ttl=64 time=22.4 ms
+[1795453137.876764] 64 bytes from 10.45.0.2: icmp_seq=3 ttl=64 time=21.0 ms
+[1795453138.877114] 64 bytes from 10.45.0.2: icmp_seq=4 ttl=64 time=20.3 ms
+[1795453139.877090] 64 bytes from 10.45.0.2: icmp_seq=5 ttl=64 time=19.2 ms
+[1795453140.877319] 64 bytes from 10.45.0.2: icmp_seq=6 ttl=64 time=18.6 ms
+[1795453141.937686] 64 bytes from 10.45.0.2: icmp_seq=7 ttl=64 time=77.9 ms
+
+--- 10.45.0.2 ping statistics ---
+60 packets transmitted, 7 received, 88.3333% packet loss, time 60277ms
+rtt min/avg/max/mdev = 18.550/28.825/77.913/20.086 ms

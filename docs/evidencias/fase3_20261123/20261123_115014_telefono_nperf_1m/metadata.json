@@ -1,0 +1,133 @@
+{
+  "inicio": "2026-11-23T11:50:14-05:00",
+  "comando": "/home/jose-david/RED5G-STANDALONE/banco/__main__.py telefono --distancia 1 --duracion 60 --etiqueta nperf_1m",
+  "argumentos": {
+    "comando": "telefono",
+    "atenuacion": null,
+    "distancia": 1.0,
+    "duracion": 60,
+    "corridas": 1,
+    "pausa": 10,
+    "equipo": null,
+    "etiqueta": "nperf_1m"
+  },
+  "equipo": "portatil-i5-8250U",
+  "host": {
+    "nombre": "JoseDavid-Tel",
+    "sistema": "Linux 7.0.0-43-generic",
+    "arquitectura": "x86_64",
+    "python": "3.12.3"
+  },
+  "cpu": {
+    "modelo": "Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz",
+    "nucleos_logicos_vm": 8
+  },
+  "docker": {
+    "version_servidor": "29.9.3",
+    "sistema": "Ubuntu 24.04.5 LTS",
+    "kernel": "7.0.0-43-generic",
+    "cpus": 8,
+    "memoria_gib": 19.41
+  },
+  "git": {
+    "commit": "dd8750d53632ed404985238a392031f8080c64d7",
+    "rama": "main",
+    "cambios_sin_commit": true
+  },
+  "configuracion": {
+    "OPEN5GS_VERSION": "v2.8.0",
+    "MCC": "001",
+    "MNC": "010",
+    "TAC": "7",
+    "SST": "1",
+    "DNN": "internet",
+    "AMF_INTEGRITY_ORDER": "NIA2, NIA1, NIA0",
+    "AMF_CIPHERING_ORDER": "NEA2, NEA1, NEA0",
+    "GNB_NEA_PREF_LIST": "nea2,nea1,nea3,nea0",
+    "GNB_NIA_PREF_LIST": "nia2,nia1,nia3",
+    "UE_IMSI": "001010123456780",
+    "UE_K": "<oculto>",
+    "UE_OPC": "<oculto>",
+    "UE_IMEI": "353490069873319",
+    "SUBRED_DOCKER": "10.53.0.0/24",
+    "MONGO_IP": "10.53.0.2",
+    "OPEN5GS_IP": "10.53.0.3",
+    "GNB_IP": "10.53.0.4",
+    "UE_IP": "10.53.0.5",
+    "WEBUI_IP": "10.53.0.6",
+    "GNB_SDR_IP": "10.53.0.7",
+    "GNB_BUFFER_POOL_SEGMENTS": "131072",
+    "BUILD_JOBS": "",
+    "PDSCH_MIN_MCS": "0",
+    "PDSCH_MAX_MCS": "28",
+    "PUSCH_MIN_MCS": "0",
+    "PUSCH_MAX_MCS": "28",
+    "EQUIPO": "portatil-i5-8250U",
+    "GNB_CONFIG": "gnb_b210_n78.yaml",
+    "COMPOSE_FILE": "docker-compose.yml:docker/compose.montajes.yml",
+    "SDR_DEVICE_ARGS": "type=b200,num_recv_frames=64,num_send_frames=64",
+    "SDR_OTW_FORMAT": "sc12",
+    "SDR_CLOCK": "default",
+    "SDR_SYNC": "default",
+    "SDR_TX_GAIN": "50",
+    "SDR_RX_GAIN": "20",
+    "GNB_BW_MHZ": "20",
+    "PCI": "1",
+    "SIM_IMSI": "<oculto>",
+    "SIM_K": "<oculto>",
+    "SIM_OPC": "<oculto>",
+    "GNB_REQUEST_PDU_SESSION_TIMEOUT": "30"
+  },
+  "imagenes": {
+    "red5g-open5gs": "sha256:ebf76e6892cc4d6c4d3e9bc5e9648f3b621248cd4a7c7198fbf22132bf3089f5 2026-11-05T21:14:11.864800924Z",
+    "red5g-webui": "sha256:1278cebbe4cdb25aa34829ccc6f50efb8ebae7860a9885f6f6e0df2022b50e80 2026-10-27T21:04:17.894370902Z",
+    "red5g-gnb": "sha256:00cf62106ca4de7960f291d3bfb0bf27b08815df8b8d6065596309850b2da852 2026-11-09T17:01:40.037202289Z",
+    "red5g-ue": "sha256:58d4f2d5e62009be5652c7638fbb75508abf3cb4ab44204dfb4738be901f7a35 2026-11-11T00:06:31.004532743-05:00"
+  },
+  "contenedores_inicio": {
+    "gnb-sdr": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T16:13:17.58677959Z"
+    },
+    "mongodb": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T15:41:18.77202515Z"
+    },
+    "open5gs": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T15:41:23.594104671Z"
+    },
+    "webui": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T15:41:23.40052559Z"
+    }
+  },
+  "fin": "2026-11-23T11:51:19-05:00",
+  "estado": "completada",
+  "contenedores_fin": {
+    "gnb-sdr": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T16:13:17.58677959Z"
+    },
+    "mongodb": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T15:41:18.77202515Z"
+    },
+    "open5gs": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T15:41:23.594104671Z"
+    },
+    "webui": {
+      "estado": "running",
+      "reinicios": 0,
+      "inicio": "2026-11-23T15:41:23.40052559Z"
+    }
+  }
+}

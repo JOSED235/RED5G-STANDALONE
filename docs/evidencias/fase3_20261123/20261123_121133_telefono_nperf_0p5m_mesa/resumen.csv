@@ -1,0 +1,4 @@
+fecha_hora,prueba,corrida,parametro,valor_parametro,metrica,valor,unidad
+2026-11-23T12:12:48,F3_telefono,1,distancia_m,0.5,enviados,60,paquetes
+2026-11-23T12:12:48,F3_telefono,1,distancia_m,0.5,recibidos,0,paquetes
+2026-11-23T12:12:48,F3_telefono,1,distancia_m,0.5,perdida_pct,100.0,%

@@ -1,0 +1,62 @@
+PING 10.45.0.4 (10.45.0.4) 56(84) bytes of data.
+[1795454640.726164] 64 bytes from 10.45.0.4: icmp_seq=1 ttl=64 time=1387 ms
+[1795454640.756716] 64 bytes from 10.45.0.4: icmp_seq=2 ttl=64 time=393 ms
+[1795454641.471225] 64 bytes from 10.45.0.4: icmp_seq=3 ttl=64 time=107 ms
+[1795454642.446961] 64 bytes from 10.45.0.4: icmp_seq=4 ttl=64 time=82.2 ms
+[1795454643.431824] 64 bytes from 10.45.0.4: icmp_seq=5 ttl=64 time=66.1 ms
+[1795454644.401295] 64 bytes from 10.45.0.4: icmp_seq=6 ttl=64 time=34.5 ms
+[1795454645.387396] 64 bytes from 10.45.0.4: icmp_seq=7 ttl=64 time=19.6 ms
+[1795454646.462270] 64 bytes from 10.45.0.4: icmp_seq=8 ttl=64 time=93.5 ms
+[1795454647.586668] 64 bytes from 10.45.0.4: icmp_seq=9 ttl=64 time=217 ms
+[1795454648.592110] 64 bytes from 10.45.0.4: icmp_seq=10 ttl=64 time=221 ms
+[1795454649.386684] 64 bytes from 10.45.0.4: icmp_seq=11 ttl=64 time=14.9 ms
+[1795454650.406301] 64 bytes from 10.45.0.4: icmp_seq=12 ttl=64 time=33.6 ms
+[1795454651.406312] 64 bytes from 10.45.0.4: icmp_seq=13 ttl=64 time=32.5 ms
+[1795454652.406350] 64 bytes from 10.45.0.4: icmp_seq=14 ttl=64 time=31.6 ms
+[1795454653.386616] 64 bytes from 10.45.0.4: icmp_seq=15 ttl=64 time=10.8 ms
+[1795454654.406512] 64 bytes from 10.45.0.4: icmp_seq=16 ttl=64 time=29.7 ms
+[1795454655.406535] 64 bytes from 10.45.0.4: icmp_seq=17 ttl=64 time=28.8 ms
+[1795454656.406505] 64 bytes from 10.45.0.4: icmp_seq=18 ttl=64 time=27.8 ms
+[1795454657.406797] 64 bytes from 10.45.0.4: icmp_seq=19 ttl=64 time=27.0 ms
+[1795454658.406667] 64 bytes from 10.45.0.4: icmp_seq=20 ttl=64 time=25.9 ms
+[1795454659.406659] 64 bytes from 10.45.0.4: icmp_seq=21 ttl=64 time=24.0 ms
+[1795454660.406719] 64 bytes from 10.45.0.4: icmp_seq=22 ttl=64 time=23.9 ms
+[1795454661.426766] 64 bytes from 10.45.0.4: icmp_seq=23 ttl=64 time=42.0 ms
+[1795454662.407108] 64 bytes from 10.45.0.4: icmp_seq=24 ttl=64 time=21.3 ms
+[1795454663.406952] 64 bytes from 10.45.0.4: icmp_seq=25 ttl=64 time=20.1 ms
+[1795454664.427426] 64 bytes from 10.45.0.4: icmp_seq=26 ttl=64 time=39.6 ms
+[1795454665.406999] 64 bytes from 10.45.0.4: icmp_seq=27 ttl=64 time=18.3 ms
+[1795454666.406951] 64 bytes from 10.45.0.4: icmp_seq=28 ttl=64 time=17.1 ms
+[1795454667.407241] 64 bytes from 10.45.0.4: icmp_seq=29 ttl=64 time=16.5 ms
+[1795454668.427222] 64 bytes from 10.45.0.4: icmp_seq=30 ttl=64 time=35.5 ms
+[1795454669.477508] 64 bytes from 10.45.0.4: icmp_seq=31 ttl=64 time=84.7 ms
+[1795454670.427220] 64 bytes from 10.45.0.4: icmp_seq=32 ttl=64 time=33.4 ms
+[1795454671.407248] 64 bytes from 10.45.0.4: icmp_seq=33 ttl=64 time=12.5 ms
+[1795454672.427508] 64 bytes from 10.45.0.4: icmp_seq=34 ttl=64 time=31.7 ms
+[1795454673.407256] 64 bytes from 10.45.0.4: icmp_seq=35 ttl=64 time=10.5 ms
+[1795454674.407522] 64 bytes from 10.45.0.4: icmp_seq=36 ttl=64 time=9.75 ms
+[1795454675.407693] 64 bytes from 10.45.0.4: icmp_seq=37 ttl=64 time=8.91 ms
+[1795454676.467542] 64 bytes from 10.45.0.4: icmp_seq=38 ttl=64 time=66.8 ms
+[1795454677.413199] 64 bytes from 10.45.0.4: icmp_seq=39 ttl=64 time=11.4 ms
+[1795454678.427589] 64 bytes from 10.45.0.4: icmp_seq=40 ttl=64 time=24.8 ms
+[1795454679.438185] 64 bytes from 10.45.0.4: icmp_seq=41 ttl=64 time=34.4 ms
+[1795454680.482830] 64 bytes from 10.45.0.4: icmp_seq=42 ttl=64 time=78.0 ms
+[1795454681.428020] 64 bytes from 10.45.0.4: icmp_seq=43 ttl=64 time=22.2 ms
+[1795454682.427549] 64 bytes from 10.45.0.4: icmp_seq=44 ttl=64 time=20.8 ms
+[1795454683.467997] 64 bytes from 10.45.0.4: icmp_seq=45 ttl=64 time=60.2 ms
+[1795454684.728090] 64 bytes from 10.45.0.4: icmp_seq=46 ttl=64 time=319 ms
+[1795454685.648078] 64 bytes from 10.45.0.4: icmp_seq=47 ttl=64 time=239 ms
+[1795454686.508254] 64 bytes from 10.45.0.4: icmp_seq=48 ttl=64 time=98.5 ms
+[1795454687.588053] 64 bytes from 10.45.0.4: icmp_seq=49 ttl=64 time=177 ms
+[1795454688.568079] 64 bytes from 10.45.0.4: icmp_seq=50 ttl=64 time=156 ms
+[1795454689.728147] 64 bytes from 10.45.0.4: icmp_seq=51 ttl=64 time=315 ms
+[1795454690.618889] 64 bytes from 10.45.0.4: icmp_seq=52 ttl=64 time=206 ms
+[1795454691.528566] 64 bytes from 10.45.0.4: icmp_seq=53 ttl=64 time=115 ms
+[1795454693.268220] 64 bytes from 10.45.0.4: icmp_seq=54 ttl=64 time=854 ms
+[1795454693.448435] 64 bytes from 10.45.0.4: icmp_seq=55 ttl=64 time=35.1 ms
+[1795454697.728787] 64 bytes from 10.45.0.4: icmp_seq=56 ttl=64 time=3315 ms
+[1795454697.748823] 64 bytes from 10.45.0.4: icmp_seq=57 ttl=64 time=2281 ms
+
+--- 10.45.0.4 ping statistics ---
+60 packets transmitted, 57 received, 5% packet loss, time 59173ms
+rtt min/avg/max/mdev = 8.911/206.416/3314.990/548.117 ms, pipe 4

@@ -82,7 +82,7 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [~] Repetir `make vigilar ARGS="--minutos 30"` (o más) para un MTBF con más de una muestra; una sola falla en 18 min no basta para el informe. Sesión final (19/11): 44,4 min, 1 falla `usb_error` (`LIBUSB_ERROR_NO_DEVICE`), recuperación 6,4 s; sigue siendo una sola muestra por corrida.
 - [~] **Alimentar la B200 por aparte** (autorizado por el profesor el 19/11): fuente de 6 V DC, 3 A y centro positivo según la etiqueta junto al conector; luego `make vigilar` largo para comparar MTBF con y sin fuente. Si con la fuente la B200 sigue desconectándose del bus, sospechar del cable o de la propia B200. 2026-11-23: no hubo fuente de 6 V; se usa una de **5 V / 4 A** (fuera de especificación, descartadas una TP-Link de 9 V y una D-Link de 5 V / 2,5 A) y la B200 igual cayó a los 2 min (`bad vrt header`). Falta la de 6 V / 3 A.
 - [ ] Tras una caída de la B200 el teléfono no vuelve solo a la celda (ni con modo avión): hay que reiniciarlo. Documentarlo como limitación y medir cuánto tarda.
-- [~] Mediciones F3-6/F3-7 con el teléfono (2026-11-23: hechas 0,3–0,5 m y 1 m; faltan 2 y 4 m): `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m con la misma `SDR_TX_GAIN`, comparando con `banco enlace --atenuacion 0 --distancia <m>`.
+- [x] Mediciones F3-6/F3-7 con el teléfono (2026-11-23: nPerf a <1 m y 1 m, `make telefono` a 1, 2 y 0,5 m; sin servicio a 2 m; 4 m no se midió): `make telefono ARGS="--distancia 0.5 --duracion 60"` mientras corre **nPerf** (el usuario la tiene; mide contra Internet) o una app de iperf3 hacia `10.45.0.1`; luego 1, 2 y 4 m con la misma `SDR_TX_GAIN`, comparando con `banco enlace --atenuacion 0 --distancia <m>`.
 - [x] Analizar con `banco protocolos` la traza `capturas/fase3_ngap_20261119_121710.pcap` (tiene el registro, PDUSessionResourceSetup y GTP-U del teléfono) para el análisis de protocolos de la Fase 3.
 - [x] Sesión PDU del teléfono y **navegación** confirmada por el usuario (2026-11-19, 17:57:30 UTC, 20 MHz, TX 50 / RX 20): IP 10.45.0.2, ping UPF → teléfono 0 % de pérdida y RTT 30,9 ms. Faltaban el APN `internet` y la itinerancia de datos (se había desactivado).
 - [ ] El teléfono **no ve la celda de 10 MHz** (ni PRACH en 6 min con el anfitrión preparado y tras reiniciarlo): se volvió a 20 MHz. Pendiente decidir si se insiste (otro ARFCN/SSB) o se documenta como limitación del terminal.
@@ -100,12 +100,14 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Informe de la Fase 3 redactado con los datos existentes: `docs/informe_fase3.tex` (2026-11-19).
 - [x] Presentación final: `docs/presentacion_final.tex` (Beamer, 14 diapositivas) (2026-11-19).
 - [x] Guion del video y lista de la última sesión: `docs/fase3_guion_video.md` (2026-11-19).
-- [ ] Última sesión de laboratorio: barrido por distancia con nPerf + `make telefono`, `vigilar` de 30–60 min, traza de la sesión PDU y grabación del video (`docs/fase3_guion_video.md`).
+- [~] Última sesión de laboratorio (2026-11-23): barrido, nPerf y `vigilar` de 60 min hechos; **falta el video** y, opcional, una traza nueva con la sesión PDU (la del 19/11 sigue siendo la del informe).
+- [ ] Investigar la degradación de ~20 dB (DL y UL) a 0,5 m a las 12:24 del 23/11 frente a las 11:42: apriete/orientación de antenas, temperatura de la B200 o posición del teléfono.
+- [ ] Confirmar la distancia de la primera prueba de nPerf del 23/11 (`0.3m.png`: 0,3 o 0,5 m); el informe dice "entre 0,3 y 0,5 m".
 - [x] `banco protocolos` sobre la traza de la sesión PDU del 19/11: Tabla de la sesión PDU en el informe y diapositiva de protocolos (2026-11-19).
 - [ ] `banco protocolos` atribuye al teléfono la seguridad AS del `capturas/ue.log` del srsUE y no extrae nada con NAS cifrado y registro por 5G-GUTI: avisar en el informe generado o no leer `ue.log` cuando la traza es del `gnb-sdr`.
 - [x] `make datos-fase3` (`analisis/fase3.py`): resultados de `telefono`/`vigilar` → `docs/fase3_datos.tex`, que el informe y la presentación cargan solos (2026-11-19).
 - [x] `make informe` compila ambos PDF con `texlive/texlive:latest-full`; borradores compilados y revisados página por página (informe 5 págs., presentación 14) (2026-11-19).
-- [~] Tras la sesión: `make datos-fase3`, llenar el bloque "VALORES A LLENAR" (`\enlacevideo`; `\nperfdl`, `\nperful` y `\nperfping` ya puestos el 2026-11-23) y las 4 frases en rojo, `make informe` y comprobar que no queda rojo.
+- [~] Tras la sesión: `make datos-fase3`, llenar el bloque "VALORES A LLENAR" y las frases en rojo: hecho el 2026-11-23; **solo queda `\enlacevideo`** y las 4 frases en rojo, `make informe` y comprobar que no queda rojo.
 - [ ] Subir el video (YouTube no listado o Drive) y entregar el PDF del informe, el de la presentación y el enlace.
 - [ ] Confirmar si el repositorio de GitHub es público (la última diapositiva lo cita).
 
@@ -1860,4 +1862,33 @@ presentación (video, tendencia). **No verificado:** la distancia exacta de la p
 La traza `capturas/fase2_traza_20261123_114210.pcap` tiene GTP-U de nPerf pero **no** el registro ni la sesión PDU.
 
 **Pendiente:** 2 y 4 m, traza con la sesión PDU (ciclo de modo avión con Wi-Fi apagado), fin de la vigilancia, video.
+
+### 2026-11-23 (continuación) — Barrido completo, evidencias versionadas e informe terminado
+
+**Qué se hizo:**
+- `make telefono` a **2 m** (`resultados/20261123_115851_telefono_nperf_2m`): el teléfono solo estuvo conectado 12 de 60 s
+  (BLER DL 65,6 %, SNR UL 6,4 dB, 88,3 % de pérdida del ping); RLF a las 11:59:07 y el teléfono perdió la celda.
+- Vigilancia de 60 min con la fuente de 5 V / 4 A (`…_111115_vigilar_…_fuente_5v4a_23nov`): 1 caída (`bad vrt header`,
+  11:13), recuperación 16,8 s, MTBF 60,0 min, 2 sesiones PDU. Es el `\datosvigilar` del informe.
+- Corrida a 0,5 m de las 12:11 **descartada** (el teléfono se había dado de baja a las 12:05:04; 100 % de pérdida):
+  movida a `resultados/descartados/` para que `make datos-fase3` no la lea.
+- Reinicio de la B200 y del gNB (stop → `usbreset` → recrear) a las 12:20 a pedido del usuario; el teléfono volvió con
+  "Open5GS 5G" en la selección manual (PDU 10.45.0.4). Nueva vigilancia en curso (`…_122102_vigilar_…_reintento_23nov`).
+- `make telefono` a **0,5 m sobre la mesa** (`resultados/20261123_122354_telefono_nperf_0p5m_mesa`): CQI 8 → 4, MCS 6,2,
+  BLER DL 22,4 %, RSRP del PUSCH ~20 dB peor que a las 11:42, RTT medio 206 ms (5 % de pérdida) y RLF a las 12:24:54.
+  Sin captura de nPerf. Causa no aislada (antenas, temperatura de la B200 o posición).
+- `make logs-todo` (`resultados/20261123_121759_logs.tar.gz`).
+- **Evidencias versionadas** en `docs/evidencias/fase3_20261123/` (resúmenes, métricas, pings, logs de fallas comprimidos,
+  paquete de logs y un README que dice qué se usa en el informe); K/OPc verificados como ocultos.
+- Informe y presentación: AD9361 → **AD9364** (la B200 es 1×1; el AD9361 es el de la B210), alimentación (5 V / 4 A),
+  falla **F3-9** (Wi-Fi encendido: sin sesión PDU), A54 descartado, tabla de KPIs con fechas y las dos pruebas de nPerf
+  frente a la cota del MCS sostenido (87 % a <1 m con MCS 24; 94 % a 1 m con MCS 12), RTT bajo carga, nota sobre
+  "Movistar" en nPerf, barrido por distancia y conclusiones 3 y 5 redactados, resumen actualizado. README raíz al día.
+
+**Verificación:** cifras leídas de `resumen.csv`/`metricas_gnb.csv`, de los logs de AMF/SMF/gNB y de las capturas; cotas
+recalculadas (TS 38.214 tabla qam64: MCS 12 → 16,4, MCS 24 → 43,8, MCS 28 → 53,8 Mbit/s); `make informe` sin errores ni
+`Overfull` (informe 6 págs., presentación 14), revisado visualmente. Solo queda `\enlacevideo` en rojo.
+**No verificado:** la distancia exacta de la primera prueba de nPerf; la causa de la degradación de las 12:24.
+
+**Pendiente:** video (la celda sigue al aire por si el teléfono vuelve), `make down` y `make revertir-lab` al terminar, push.
 

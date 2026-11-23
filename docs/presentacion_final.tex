@@ -85,7 +85,7 @@ Transmisión al aire y validación con un teléfono comercial real: conectar, au
 \begin{scope}[on background layer]
 \node[draw,dashed,rounded corners,fit=(gnb)(core)(mongo),inner sep=6pt,label={above:Portátil i5-8250U, Ubuntu 24.04 nativo, Docker}] {};
 \end{scope}
-\node[caja,fill=orange!15,left=1.6cm of gnb] (b200) {USRP B200\\AD9361};
+\node[caja,fill=orange!15,left=1.6cm of gnb] (b200) {USRP B200\\AD9364};
 \node[caja,fill=green!12,below=1.4cm of b200] (tel) {OnePlus Nord\\CE 2 Lite 5G};
 \node[caja,right=1.2cm of core] (inet) {Internet};
 \draw[flecha,<->] (b200) -- node[above]{USB 3} (gnb);
@@ -166,12 +166,11 @@ TX / RX & 50 dB / 20 dB \\
 \end{itemize}
 $\Rightarrow$ \texttt{make preparar-lab}: 7--9/min
 \column{0.48\textwidth}
-\textbf{Caídas del USB de la B200} (sin fuente de 6 V)
+\textbf{Caídas del USB de la B200}
 \begin{itemize}\small
   \item \texttt{make vigilar}: detecta, \texttt{usbreset}, recrea y espera NG Setup
-  \item 18 min: 1 caída, recuperada en \alert{16,5 s}
-  \item Disponibilidad $\approx$ 98,5\,\%
-  \item {\scriptsize Última sesión: \datosvigilar}
+  \item 19/11, solo USB: 18 min, 1 caída, \alert{16,5 s}
+  \item {\scriptsize 23/11, fuente 5 V / 4 A: \datosvigilar}
 \end{itemize}
 \textbf{10 MHz}: 0 \textit{underflows}, pero el teléfono no la ve $\Rightarrow$ 20 MHz
 \end{columns}
@@ -224,8 +223,9 @@ CQI / MCS DL & 13 / 24--26 & Previsto: 22 \\
 BLER DL & 0--1\,\% & --- \\
 SNR PUSCH & 28--29 dB & --- \\
 MCS UL & 28 & srsUE: 5--6 \\
-DL (nPerf) & \nperfdl & Cota 53,8 Mbit/s \\
-UL (nPerf) & \nperful & --- \\
+DL nPerf $<$1 m & 38,12 Mbit/s & Cota: 43,8 \\
+UL nPerf $<$1 m & 23,47 Mbit/s & --- \\
+DL / UL 1 m & 15,38 / 7,82 & Cota: 16,4 \\
 \bottomrule
 \end{tabular}
 \column{0.43\textwidth}
@@ -257,8 +257,8 @@ $\times$ 0,657 (DL) $\approx$ \textbf{53,8 Mbit/s}
 \begin{itemize}
   \item Espacio libre, 3489 MHz, NF 9 dB
   \item Ptx supuesta $-30$ dBm (sin generador)
-  \item A 1 m, medido 2--4 MCS por encima: Ptx real algo mayor o multitrayecto en interiores
-  \item \pendiente{tendencia con la distancia}
+  \item 19/11 a $\approx$1 m: 2--4 MCS por encima de lo previsto
+  \item 23/11: MCS 11 a 1 m (en la mano), \alert{sin servicio a 2 m} (BLER 66\,\%) y a 0,5 m MCS 23--24 en la mañana pero 6 dos horas después: pesan más la posición y el montaje que la distancia
 \end{itemize}
 \end{columns}
 \end{frame}
@@ -302,9 +302,9 @@ $\times$ 0,657 (DL) $\approx$ \textbf{53,8 Mbit/s}
 \begin{enumerate}\small
   \item \textbf{Viable:} un teléfono comercial sin modificar se autenticó, obtuvo sesión PDU y navegó por una red 5G SA de software libre con un SDR de bajo costo.
   \item \textbf{Calibración por medición:} RX 40 $\rightarrow$ 20 dB por saturación; TX solo hasta tener servicio con margen.
-  \item \textbf{KPIs coherentes con la teoría:} MCS medido acorde al presupuesto de enlace; RTT igual al de la Fase 2; UL MCS 28.
+  \item \textbf{KPIs coherentes con la teoría:} nPerf 38 Mbit/s DL y 23 Mbit/s UL (87\,\% de la cota del MCS); RTT igual al de la Fase 2; UL MCS 28; servicio hasta 1--2 m con TX 50.
   \item \textbf{Los problemas estaban en los bordes:} SIM, Android, rango dinámico del SDR y tiempo real del anfitrión; todos diagnosticados con trazas o métricas.
-  \item \textbf{Propuestas:} fuente de 6 V o B210, anfitrión con más núcleos, GPSDO, corregir EF.AD de la SIM (volver a 001/01).
+  \item \textbf{Propuestas:} fuente de 6 V (la de 5 V no evitó las caídas) u otro cable, B210, anfitrión con más núcleos, GPSDO, corregir EF.AD de la SIM (volver a 001/01).
 \end{enumerate}
 \end{frame}
 

@@ -1,0 +1,3 @@
+hora,minuto,causa,detalle,usbreset,ng_setup,recuperacion_s
+2026-11-23T10:42:27,0.45,cola_dl_llena,2026-11-23T15:41:39.932320 [MAC     ] [W] [   428.0] Skipped slot indication=428.5. Cause: DL task queue is full.,ok,si,6.8
+2026-11-23T10:53:39,11.66,usb_error,2026-11-23T15:53:28.964771267Z terminate called after throwing an instance of 'uhd::usb_error',ok,si,6.4

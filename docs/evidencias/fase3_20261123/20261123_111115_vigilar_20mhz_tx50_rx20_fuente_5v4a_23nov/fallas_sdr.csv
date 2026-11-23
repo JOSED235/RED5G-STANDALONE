@@ -1,0 +1,2 @@
+hora,minuto,causa,detalle,usbreset,ng_setup,recuperacion_s
+2026-11-23T11:13:23,1.78,vrt_header,2026-11-23T16:13:01.149742241Z ValueError: bad vrt header or packet fragment,ok,si,16.8
