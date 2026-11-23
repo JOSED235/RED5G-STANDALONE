@@ -1884,3 +1884,10 @@ resolver; 65+ pruebas unitarias OK; `bash -n` de `preparar_ubuntu.sh`.
 
 **Pendiente:** video y su enlace (`\enlacevideo`); `make down` y `make revertir-lab` al terminar; push.
 - Segunda vigilancia de 60 min (`resultados/20261123_122102_vigilar_20mhz_tx50_rx20_fuente_5v4a_reintento_23nov`): 2 caídas `bad vrt header` (12:53 y 13:13), recuperación media 16,7 s, 3 registros y 1 sesión PDU del teléfono. Con la anterior: 3 caídas en 120 min, MTBF 40 min, disponibilidad ≈ 99,3 %; llevado al resumen, a la sección de estabilidad y a la diapositiva (`\datosvigilar` solo muestra la primera corrida).
+- Última prueba para el video (14:06–14:38): B200 desconectada y reconectada, `make lab` 5/5; sesión PDU a las 14:19
+  (CQI 14, MCS DL 25–26, UL MCS 28 con SNR 28,4 dB) y grabación de la demostración. Al lanzar nPerf con `make telefono`
+  el gNB colapsó (`DL task queue is full`, 14:35:40; F3-6) y `vigilar` lo recuperó en 10,4 s, pero el teléfono no volvió:
+  la corrida `20261123_143614_telefono_nperf_video` quedó en `resultados/descartados/` (96,7 % de pérdida, sin métricas).
+  `make logs-todo` (`resultados/20261123_143816_logs.tar.gz`, copiado a las evidencias) y **`make down`: celda apagada**.
+  Falta `make revertir-lab` en la terminal del usuario.
+

@@ -1,0 +1,2 @@
+hora,minuto,causa,detalle,usbreset,ng_setup,recuperacion_s
+2026-11-23T14:36:33,17.94,cola_dl_llena,2026-11-23T19:35:40.468322 [MAC     ] [W] [  946.16] Skipped slot indication=947.1. Cause: DL task queue is full.,ok,si,10.4

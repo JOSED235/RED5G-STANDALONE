@@ -1,0 +1,8 @@
+fecha_hora,prueba,corrida,parametro,valor_parametro,metrica,valor,unidad
+2026-11-23T14:38:04,F3_vigilar,1,gnb_bw_mhz,20,duracion_min,19.67,min
+2026-11-23T14:38:04,F3_vigilar,1,gnb_bw_mhz,20,fallas_sdr,1,
+2026-11-23T14:38:04,F3_vigilar,1,gnb_bw_mhz,20,mtbf_min,19.67,min
+2026-11-23T14:38:04,F3_vigilar,1,gnb_bw_mhz,20,recuperacion_media_s,10.4,s
+2026-11-23T14:38:04,F3_vigilar,1,gnb_bw_mhz,20,registros_ue,3,
+2026-11-23T14:38:04,F3_vigilar,1,gnb_bw_mhz,20,liberaciones_ue,6,
+2026-11-23T14:38:04,F3_vigilar,1,gnb_bw_mhz,20,sesiones_pdu,3,
