@@ -1883,4 +1883,4 @@ recalculadas (TS 38.214 tabla qam64: MCS 12 → 16,4, MCS 24 → 43,8, MCS 28 �
 resolver; 65+ pruebas unitarias OK; `bash -n` de `preparar_ubuntu.sh`.
 
 **Pendiente:** video y su enlace (`\enlacevideo`); `make down` y `make revertir-lab` al terminar; push.
-
+- Segunda vigilancia de 60 min (`resultados/20261123_122102_vigilar_20mhz_tx50_rx20_fuente_5v4a_reintento_23nov`): 2 caídas `bad vrt header` (12:53 y 13:13), recuperación media 16,7 s, 3 registros y 1 sesión PDU del teléfono. Con la anterior: 3 caídas en 120 min, MTBF 40 min, disponibilidad ≈ 99,3 %; llevado al resumen, a la sección de estabilidad y a la diapositiva (`\datosvigilar` solo muestra la primera corrida).

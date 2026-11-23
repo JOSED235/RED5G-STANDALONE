@@ -13,6 +13,7 @@ comprimidos (`.gz`). Detalle y lectura de cada dato: entrada del 23/11 en [`BITA
 | `20261123_115851_telefono_nperf_2m` | Ídem a 2 m: el teléfono perdió la celda (BLER 65,6 %, 88 % de pérdida) | Tabla por distancia, Fig. 2 |
 | `20261123_121133_telefono_nperf_0p5m_mesa` | Corrida descartada: el teléfono se había dado de baja (100 % de pérdida) | No se usa (en `resultados/descartados/`) |
 | `20261123_122354_telefono_nperf_0p5m_mesa` | 0,5 m sobre la mesa tras reiniciar B200 y teléfono: CQI 8→4, MCS 6,2, BLER 22,4 %, RTT 206 ms y RLF al final | Tabla por distancia, Fig. 2 |
+| `20261123_122102_vigilar_…_reintento_23nov` | Segunda vigilancia de 60 min tras reiniciar la B200: 2 caídas (`bad vrt header`), 16,7 s | Estabilidad (texto: 3 caídas en 120 min, MTBF 40 min) |
 | `20261123_121759_logs.tar.gz` | `make logs-todo`: logs de los 4 contenedores, kernel, lsusb, CPU y `.env` sin claves | Respaldo |
 
 Capturas de pantalla de nPerf: [`nperf/`](nperf/) (`nperf_0.3m.png` a 0,3 m y `nperf_1m.png` a 1 m).
