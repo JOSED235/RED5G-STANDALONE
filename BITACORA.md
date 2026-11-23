@@ -98,15 +98,15 @@ _Lista viva: se actualiza en cada entrada (marcar `[x]` lo terminado, añadir lo
 - [x] Informe de la Fase 3 redactado con los datos existentes: `docs/informe_fase3.tex` (2026-11-19).
 - [x] Presentación final: `docs/presentacion_final.tex` (Beamer, 14 diapositivas) (2026-11-19).
 - [x] Guion del video y lista de la última sesión: `docs/fase3_guion_video.md` (2026-11-19).
-- [~] Última sesión de laboratorio (2026-11-23): barrido, nPerf y `vigilar` de 60 min hechos; **falta el video** y, opcional, una traza nueva con la sesión PDU (la del 19/11 sigue siendo la del informe).
+- [x] Última sesión de laboratorio (2026-11-23): barrido, nPerf, vigilancias y video. Opcional: una traza nueva con la sesión PDU (la del 19/11 es la del informe).
 - [ ] Investigar la degradación de ~20 dB (DL y UL) a 0,5 m a las 12:24 del 23/11 frente a las 11:42: apriete/orientación de antenas, temperatura de la B200 o posición del teléfono.
 - [x] Distancia de la primera prueba de nPerf del 23/11 confirmada por el autor: 0,3 m.
 - [x] `banco protocolos` sobre la traza de la sesión PDU del 19/11: Tabla de la sesión PDU en el informe y diapositiva de protocolos (2026-11-19).
 - [ ] `banco protocolos` atribuye al teléfono la seguridad AS del `capturas/ue.log` del srsUE y no extrae nada con NAS cifrado y registro por 5G-GUTI: avisar en el informe generado o no leer `ue.log` cuando la traza es del `gnb-sdr`.
 - [x] `make datos-fase3` (`analisis/fase3.py`): resultados de `telefono`/`vigilar` → `docs/fase3_datos.tex`, que el informe y la presentación cargan solos (2026-11-19).
 - [x] `make informe` compila ambos PDF con `texlive/texlive:latest-full`; borradores compilados y revisados página por página (informe 5 págs., presentación 14) (2026-11-19).
-- [~] Tras la sesión: `make datos-fase3`, llenar el bloque "VALORES A LLENAR" y las frases en rojo: hecho el 2026-11-23; **solo queda `\enlacevideo`** y las 4 frases en rojo, `make informe` y comprobar que no queda rojo.
-- [ ] Subir el video (YouTube no listado o Drive) y entregar el PDF del informe, el de la presentación y el enlace.
+- [x] Tras la sesión: `make datos-fase3`, valores de nPerf, frases y enlace del video en el informe y la presentación (2026-11-23). y las 4 frases en rojo, `make informe` y comprobar que no queda rojo.
+- [x] Video subido a Google Drive (2026-11-23); queda entregar los dos PDF y el enlace en la plataforma del curso.
 - [ ] Confirmar si el repositorio de GitHub es público (la última diapositiva lo cita).
 
 ### Calidad
@@ -1904,4 +1904,16 @@ resolver; 65+ pruebas unitarias OK; `bash -n` de `preparar_ubuntu.sh`.
   el sonido del laboratorio queda de fondo al 9 %. En T10 se cortó una frase repetida. La franja inferior de la
   terminal (barra de estado y notificaciones) se difuminó en V1, V2, V6, V8 y V9; se descartó el aviso de cuenta de
   nPerf. **Pendiente:** subirlo (YouTube no listado o Drive) y poner el enlace en `\enlacevideo`.
+
+### 2026-11-23 (entrega) — Enlace del video y publicación
+
+**Qué se hizo:** enlace del video (https://drive.google.com/file/d/1-HOV4RiCsWxqCv6UE2BTmOUK0HAWfsrs/view?usp=sharing) en `\enlacevideo` del informe y de la presentación (en la presentación,
+en letra pequeña para que quepa); la diapositiva "Demostración" ya no promete una traza de Wireshark que el video no
+muestra. README: bloque de entrega al inicio con enlaces al informe, la presentación, el video, las evidencias y la
+bitácora, y tabla de entregables actualizada. Push a GitHub.
+
+**Verificación:** `make informe` sin errores ni `Overfull`; ningún `\pendiente` en los dos `.tex`; enlace revisado
+en el PDF (pdftotext) y en las diapositivas 12 y 14.
+
+**Pendiente:** entregar los dos PDF y el enlace en la plataforma del curso; en el i5, `make revertir-lab`.
 
