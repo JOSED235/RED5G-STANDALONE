@@ -18,4 +18,5 @@ comprimidos (`.gz`). Detalle y lectura de cada dato: entrada del 23/11 en [`BITA
 | `20261123_141820_vigilar_…_ultima_prueba2_23nov` | Última sesión (19,7 min, tras reconectar la B200): 3 sesiones PDU y 1 colapso del gNB (`DL task queue is full`) al lanzar nPerf, recuperado en 10,4 s | Respaldo del video |
 | `20261123_143816_logs.tar.gz` | `make logs-todo` al cerrar la sesión | Respaldo |
 
-Capturas de pantalla de nPerf: [`nperf/`](nperf/) (`nperf_0.3m.png` a 0,3 m y `nperf_1m.png` a 1 m).
+Capturas de pantalla de nPerf: [`nperf/`](nperf/) (`nperf_0.3m.png` a 0,3 m, `nperf_1m.png` a 1 m y
+`nperf_video_1431.png`, fotograma del video a las 14:31 con el teléfono a unos 0,2 m: 43,00 / 23,95 Mbit/s y 38 ms).

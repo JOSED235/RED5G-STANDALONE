@@ -1890,4 +1890,12 @@ resolver; 65+ pruebas unitarias OK; `bash -n` de `preparar_ubuntu.sh`.
   la corrida `20261123_143614_telefono_nperf_video` quedó en `resultados/descartados/` (96,7 % de pérdida, sin métricas).
   `make logs-todo` (`resultados/20261123_143816_logs.tar.gz`, copiado a las evidencias) y **`make down`: celda apagada**.
   Falta `make revertir-lab` en la terminal del usuario.
+- Revisión de los 9 clips del video (`VIDEO/`, no versionado; ≈ 6,5 min): fotogramas y transcripción automática. El clip
+  del nPerf (14:31, teléfono a unos 0,2 m según el autor) muestra **DL 43,00 Mbit/s, UL 23,95 Mbit/s y 38 ms**
+  (fotograma en `docs/evidencias/fase3_20261123/nperf/nperf_video_1431.png`): 80 % de la cota de la celda y 92 % de la
+  del MCS 25. Llevado al resumen, la tabla de KPIs, el párrafo de caudal y la conclusión 3 del informe, y a la
+  presentación (KPIs, conclusiones, fila F3-9 en la diapositiva de conexión). Corregido en la presentación el caudal
+  USB (138 MB/s con `sc12`).
+- `docs/fase3_guion_video.md` reescrito como guion de narración: 9 bloques sobre los clips (con tramos) y 11 sobre las
+  diapositivas. El audio de los clips no sirve (ruido del laboratorio y errores como "megabytes"); se graba aparte.
 

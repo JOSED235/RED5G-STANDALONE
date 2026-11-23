@@ -97,7 +97,7 @@ Transmisión al aire y validación con un teléfono comercial real: conectar, au
 \vspace{0.5em}
 \begin{itemize}\small
   \item Mismos contenedores de la Fase 2: solo cambia la plantilla del gNB (ZMQ $\rightarrow$ UHD).
-  \item Linux nativo: \texttt{usbipd} (WSL2) daba 18 MB/s; la celda exige $\approx$184 MB/s.
+  \item Linux nativo: \texttt{usbipd} (WSL2) daba 18 MB/s; la celda exige $\approx$138 MB/s con \texttt{sc12}.
 \end{itemize}
 \end{frame}
 
@@ -187,6 +187,7 @@ $\Rightarrow$ \texttt{make preparar-lab}: 7--9/min
 Liberación a los 3 s & Plazo de sesión PDU de srsRAN & 30 s \\
 Liberación a los 8--13 s & RX saturado (NGAP causa 21, \texttt{ovl}) & RX 20 dB \\
 Registrado sin sesión PDU & Android en itinerancia (sin NAS tras el registro) & APN + datos en itinerancia \\
+Se da de baja sin pedir datos & Wi-Fi encendido (23/11) & Apagar el Wi-Fi \\
 \bottomrule
 \end{tabular}
 \vspace{1em}
@@ -209,7 +210,7 @@ Registrado sin sesión PDU & Android en itinerancia (sin NAS tras el registro) &
 \end{frame}
 
 %---------------------------------------------------------------------
-\begin{frame}{KPIs medidos (teléfono a $\approx$1 m)}
+\begin{frame}{KPIs medidos con el teléfono}
 \begin{columns}[T]
 \column{0.55\textwidth}
 \small
@@ -223,8 +224,8 @@ CQI / MCS DL & 13 / 24--26 & Previsto: 22 \\
 BLER DL & 0--1\,\% & --- \\
 SNR PUSCH & 28--29 dB & --- \\
 MCS UL & 28 & srsUE: 5--6 \\
-DL nPerf 0,3 m & 38,12 Mbit/s & Cota: 43,8 \\
-UL nPerf 0,3 m & 23,47 Mbit/s & --- \\
+DL / UL nPerf 0,2 m & \textbf{43,00 / 23,95} & Cota: 46,7 \\
+DL / UL nPerf 0,3 m & 38,12 / 23,47 & Cota: 43,8 \\
 DL / UL 1 m & 15,38 / 7,82 & Cota: 16,4 \\
 \bottomrule
 \end{tabular}
@@ -258,7 +259,7 @@ $\times$ 0,657 (DL) $\approx$ \textbf{53,8 Mbit/s}
   \item Espacio libre, 3489 MHz, NF 9 dB
   \item Ptx supuesta $-30$ dBm (sin generador)
   \item 19/11 a $\approx$1 m: 2--4 MCS por encima de lo previsto
-  \item 23/11: MCS 11 a 1 m (en la mano), \alert{sin servicio a 2 m} (BLER 66\,\%) a 0,3 m MCS 23--24 y, 40 min después a 0,5 m, MCS 6: pesan más la posición y el montaje que la distancia
+  \item 23/11: MCS 11 a 1 m (en la mano), \alert{sin servicio a 2 m} (BLER 66\,\%); a 0,3 m, MCS 23--24 y, 40 min después a 0,5 m, MCS 6: pesan más la posición y el montaje que la distancia
 \end{itemize}
 \end{columns}
 \end{frame}
@@ -302,7 +303,7 @@ $\times$ 0,657 (DL) $\approx$ \textbf{53,8 Mbit/s}
 \begin{enumerate}\small
   \item \textbf{Viable:} un teléfono comercial sin modificar se autenticó, obtuvo sesión PDU y navegó por una red 5G SA de software libre con un SDR de bajo costo.
   \item \textbf{Calibración por medición:} RX 40 $\rightarrow$ 20 dB por saturación; TX solo hasta tener servicio con margen.
-  \item \textbf{KPIs coherentes con la teoría:} nPerf 38 Mbit/s DL y 23 Mbit/s UL (87\,\% de la cota del MCS); RTT igual al de la Fase 2; UL MCS 28; servicio hasta 1--2 m con TX 50.
+  \item \textbf{KPIs coherentes con la teoría:} nPerf 43 Mbit/s DL y 24 Mbit/s UL (80\,\% de la cota de la celda, 92\,\% de la del MCS); RTT igual al de la Fase 2; UL MCS 28; servicio hasta 1--2 m con TX 50.
   \item \textbf{Los problemas estaban en los bordes:} SIM, Android, rango dinámico del SDR y tiempo real del anfitrión; todos diagnosticados con trazas o métricas.
   \item \textbf{Propuestas:} fuente de 6 V (la de 5 V no evitó las caídas) u otro cable, B210, anfitrión con más núcleos, GPSDO, corregir EF.AD de la SIM (volver a 001/01).
 \end{enumerate}
