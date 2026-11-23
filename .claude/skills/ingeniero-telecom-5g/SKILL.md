@@ -106,6 +106,8 @@ Filtros útiles: `ngap`, `nas-5gs`, `pfcp`, `gtp`, `http2`, `nas-5gs.mm.message_
 | UDP con pérdida > 100 % | iperf3 3.9 con `-O` en UDP | El banco no usa `-O` en UDP |
 | Caudal bajo y logs enormes | Logs PHY/MAC en `info` | Mantener `warning` (RRC/NGAP/NAS en `info`) |
 | El teléfono se registra y no pide datos; gNB: `UE did not request a PDU session after 3000ms` | Plazo de srsRAN (3 s) y Android en itinerancia sin roaming de datos | `GNB_REQUEST_PDU_SESSION_TIMEOUT=30`, roaming de datos en el teléfono (README F3-3/F3-4) |
+| Registrado con roaming y APN bien, pero se da de baja o se libera sin pedir PDU (23/11) | **Wi-Fi del teléfono encendido**: Android no necesita la sesión móvil | Apagar el Wi-Fi (F3-9); tras perder la celda, reiniciar y elegir "Open5GS 5G" en selección manual. Samsung A54 no busca SA con SIM 001/010 (CSC) |
+| La B200 es AD9364 (1×1), no AD9361 (ese es de la B210); GPS ANT solo sirve con GPSDO interno (`uhd_usrp_probe`: "No GPSDO found") | — | No poner antenas en GPS ANT/10 MHz/PPS. Fuente: 6 V / 3 A; con 5 V / 4 A siguió cayendo (23/11) |
 | `ue.log` / `gnb.log` de 4096 B o 0 B con la red en marcha; falta la línea buscada | srslog escribe en bloques de 4 KiB y solo vacía al terminar el proceso | Leerlos tras `down` (no tras `restart-ran`: el contenedor nuevo sobrescribe el log) |
 
 Para depurar: `docker compose logs gnb|ue|open5gs`, `/var/log/open5gs/*.log` dentro del Core,
