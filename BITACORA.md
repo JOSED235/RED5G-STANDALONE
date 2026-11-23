@@ -1898,4 +1898,10 @@ resolver; 65+ pruebas unitarias OK; `bash -n` de `preparar_ubuntu.sh`.
   USB (138 MB/s con `sc12`).
 - `docs/fase3_guion_video.md` reescrito como guion de narración: 9 bloques sobre los clips (con tramos) y 11 sobre las
   diapositivas. El audio de los clips no sirve (ruido del laboratorio y errores como "megabytes"); se graba aparte.
+- Video final armado (12:52, 1080p, `VIDEO/Fase3_Red5G_SA_Rodriguez.mp4`, no versionado): portada, Parte 1 con los
+  9 clips del laboratorio y un panel con los datos de cada escena, Parte 2 con 11 diapositivas de la presentación y
+  cierre. Narración regrabada por el autor (20 audios), con reducción de ruido, compresión y normalización a −16 LUFS;
+  el sonido del laboratorio queda de fondo al 9 %. En T10 se cortó una frase repetida. La franja inferior de la
+  terminal (barra de estado y notificaciones) se difuminó en V1, V2, V6, V8 y V9; se descartó el aviso de cuenta de
+  nPerf. **Pendiente:** subirlo (YouTube no listado o Drive) y poner el enlace en `\enlacevideo`.
 
