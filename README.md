@@ -13,6 +13,16 @@
 > [evidencias del laboratorio](docs/evidencias/fase3_20261123/) ·
 > [bitácora](BITACORA.md)
 
+## En 30 segundos
+
+<p><img src="docs/evidencias/fase3_20261123/nperf/nperf_0.3m.png" width="32%" alt="nPerf en el teléfono conectado a la celda 5G propia"></p>
+
+- **Qué es:** una red celular 5G Standalone completa con software libre: núcleo Open5GS (11 funciones de red en Docker Compose), estación base srsRAN y radio definido por software (USRP B200).
+- **Resultado:** un teléfono comercial con una SIM programada por el autor se registró en la celda n78 y navegó por Internet: 43,00 / 23,95 Mbit/s con nPerf a 0,2 m y RTT medio de 30,9 ms sin pérdidas.
+- **Video de la demostración:** [Google Drive](https://drive.google.com/file/d/1-HOV4RiCsWxqCv6UE2BTmOUK0HAWfsrs/view?usp=sharing).
+- **Decisión clave:** primero el radio emulado con ZeroMQ y después la B200. El núcleo y el registro se probaron de extremo a extremo sin emitir señal, y al pasar a radio real solo cambió la plantilla del gNB.
+- **Para correrlo sin hardware:** `.\manage_lab.ps1 up` (sección 1.3).
+
 ---
 
 ##  1. Visión General del Proyecto
